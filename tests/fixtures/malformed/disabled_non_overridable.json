@@ -1,0 +1,11 @@
+{
+  "protocol_id": "malformed_disabled_non_overridable",
+  "version": "1.0",
+  "roles": { "container": {}, "module_a": {} },
+  "steps": [
+    { "id": "open_container", "action": "open", "target": "container" }
+  ],
+  "constraints": [
+    { "id": "no_loose_objects", "disabled": true, "basis": "microgravity_hazard" }
+  ]
+}

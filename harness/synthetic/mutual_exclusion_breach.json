@@ -1,0 +1,10 @@
+{
+  "clip_id": "mutual_exclusion_breach",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "module_a is removed and still out when module_b is also removed. one_module_at_a_time is enabled by default (bas_specimen_v1 does not disable it) and both handle_a/handle_b default to concurrency:forbidden.",
+  "events": [
+    { "t": 1.0, "action": "open", "target": "container" },
+    { "t": 2.0, "action": "remove_from", "target": "module_a", "source": "container" },
+    { "t": 3.0, "action": "remove_from", "target": "module_b", "source": "container" }
+  ]
+}

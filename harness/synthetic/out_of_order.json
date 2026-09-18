@@ -1,0 +1,8 @@
+{
+  "clip_id": "out_of_order",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "module_a's lid is opened before open_container ever runs. open_a_lid inherits handle_a's after:[open_container], so this is out_of_order, not a hard-ordering anomaly (only remove_from-on-a-closed-container and stow-before-detach are hard-blocked).",
+  "events": [
+    { "t": 1.0, "action": "open", "target": "module_a" }
+  ]
+}

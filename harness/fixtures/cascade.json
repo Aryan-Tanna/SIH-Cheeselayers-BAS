@@ -1,0 +1,14 @@
+{
+  "clip_id": "cascade",
+  "protocol_id": "bas_specimen_v1",
+  "expected_events": [
+    { "t": 7.0, "type": "violation", "code": "out_of_order", "target": "container", "tolerance_s": 0.5 },
+    { "t": 7.0, "type": "violation", "code": "skip", "target": "module_b", "tolerance_s": 0.5 },
+    { "t": 7.0, "type": "violation", "code": "skip", "target": "module_b", "tolerance_s": 0.5 },
+    { "t": 7.0, "type": "violation", "code": "skip", "target": "module_b.lid", "tolerance_s": 0.5 },
+    { "t": 7.0, "type": "violation", "code": "skip", "target": "module_b", "tolerance_s": 0.5 },
+    { "t": 7.0, "type": "violation", "code": "skip", "target": "module_b", "tolerance_s": 0.5 }
+  ],
+  "expected_alerts": 4,
+  "partial": true
+}

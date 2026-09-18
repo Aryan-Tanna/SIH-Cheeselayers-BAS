@@ -1,0 +1,11 @@
+{
+  "clip_id": "lid_unstowed_idle_tail",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "module_a's lid is detached at t=3 and never stowed, but the clip's last ACTION event is also t=3 -- nothing else happens on camera before the clip ends at t=20. clip_duration_s tells the harness the clip keeps running with no further action, so the 12s lid_stow_required timeout must still fire from idle tail time, not just from a subsequent action arriving late.",
+  "events": [
+    { "t": 1.0, "action": "open", "target": "container" },
+    { "t": 2.0, "action": "remove_from", "target": "module_a", "source": "container" },
+    { "t": 3.0, "action": "open", "target": "module_a" }
+  ],
+  "clip_duration_s": 20.0
+}

@@ -1,0 +1,12 @@
+{
+  "clip_id": "skipped_step",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "close_a_lid's own after now includes stow_a_lid (ruling: explicit intra-group after chains), so closing the lid without ever stowing it fires its own immediate out_of_order at t=4, in addition to the retrospective out_of_order on close_container and the skip violation at t=11. Three distinct root causes (close_a_lid, close_container, stow_a_lid), so none suppress each other -- 3 logged, 3 spoken.",
+  "expected_events": [
+    { "t": 4.0, "type": "violation", "code": "out_of_order", "target": "module_a", "tolerance_s": 0.5 },
+    { "t": 11.0, "type": "violation", "code": "out_of_order", "target": "container", "tolerance_s": 0.5 },
+    { "t": 11.0, "type": "violation", "code": "skip", "target": "module_a.lid", "tolerance_s": 0.5 }
+  ],
+  "expected_alerts": 3,
+  "partial": true
+}

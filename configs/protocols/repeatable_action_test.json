@@ -1,0 +1,66 @@
+{
+  "protocol_id": "repeatable_action_test",
+  "version": "1.0",
+  "title": "Synthetic: repeated mutual-exclusion breach",
+  "description": "Test-only protocol, not a real experiment. Exists to exercise alert_policy.root_cause_cooldown_s: mutual_exclusion_breach's root_cause_id is the constant 'one_module_at_a_time', not a per-role id, so pulling out a THIRD and FOURTH module while others are still out lets the same root_cause_id fire repeatedly -- something bas_specimen_v1's two single-fire modules structurally cannot do. See CLAUDE.md ruling on phase-0 report item 4.",
+  "inherits": "configs/defaults.yaml",
+  "object_profile": "configs/objects/profile_repeatable_test.yaml",
+  "roles": {
+    "container": { "required": true },
+    "module_a": { "required": true },
+    "module_b": { "required": true },
+    "module_c": { "required": true },
+    "module_d": { "required": true }
+  },
+  "steps": [
+    {
+      "id": "open_container",
+      "action": "open",
+      "target": "container",
+      "prompt": "Open the payload container."
+    },
+    {
+      "id": "handle_a",
+      "type": "group",
+      "after": ["open_container"],
+      "steps": [
+        { "id": "remove_a", "action": "remove_from", "target": "module_a", "source": "container" },
+        { "id": "return_a", "action": "place_into", "target": "module_a", "dest": "container", "after": ["remove_a"] }
+      ]
+    },
+    {
+      "id": "handle_b",
+      "type": "group",
+      "after": ["open_container"],
+      "steps": [
+        { "id": "remove_b", "action": "remove_from", "target": "module_b", "source": "container" },
+        { "id": "return_b", "action": "place_into", "target": "module_b", "dest": "container", "after": ["remove_b"] }
+      ]
+    },
+    {
+      "id": "handle_c",
+      "type": "group",
+      "after": ["open_container"],
+      "steps": [
+        { "id": "remove_c", "action": "remove_from", "target": "module_c", "source": "container" },
+        { "id": "return_c", "action": "place_into", "target": "module_c", "dest": "container", "after": ["remove_c"] }
+      ]
+    },
+    {
+      "id": "handle_d",
+      "type": "group",
+      "after": ["open_container"],
+      "steps": [
+        { "id": "remove_d", "action": "remove_from", "target": "module_d", "source": "container" },
+        { "id": "return_d", "action": "place_into", "target": "module_d", "dest": "container", "after": ["remove_d"] }
+      ]
+    },
+    {
+      "id": "close_container",
+      "action": "close",
+      "target": "container",
+      "after": ["handle_a", "handle_b", "handle_c", "handle_d"]
+    }
+  ],
+  "strict_mode": {}
+}

@@ -1,0 +1,30 @@
+{
+  "clip_id": "debounce_raw_observations",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "Exercises src.protocol.debounce.Debouncer end-to-end through the replay harness (k=5, n=8 from defaults.yaml's default_timing), not just in its own unit tests. Three cases on independent keys, all fed as noisy per-frame presence/absence: (1) open/container flickers (starts false, drops out once, then locks in) before finally reaching 5-of-8 true and confirming at t=1.30 -- proves a noisy-but-eventually-agreeing signal still produces exactly one ActionEvent, at the observation where the window first reaches k. It then holds true for one more observation and genuinely goes false (5 consecutive false observations evict the earlier true run from the k=8 window), confirming a real DOWN-transition at t=1.60 -- proves the debounced state is not sticky-true (a state that never releases would silently block every future re-confirmation of the same action, which is worse than one missed confirmation, since nothing about it looks broken from the outside). The down-transition itself produces no synthetic ActionEvent (this stream shape only synthesizes events on confirmed transitions TO present, by design), so it is verified directly against src.protocol.debounce.Debouncer in tests/test_harness.py, not via the replay's confirmed_events list. (2) remove_from/module_a (from container) alternates true/false forever in perfect lockstep, so no 8-observation window ever reaches 5 of either state -- proves a balanced-noise key produces no spurious confirmation through the full path (not general noise/signal discrimination; see the down-transition case above for the state-release property).",
+  "raw_observations": [
+    { "t": 1.00, "action": "open", "target": "container", "present": false },
+    { "t": 1.05, "action": "open", "target": "container", "present": true },
+    { "t": 1.10, "action": "open", "target": "container", "present": false },
+    { "t": 1.15, "action": "open", "target": "container", "present": true },
+    { "t": 1.20, "action": "open", "target": "container", "present": true },
+    { "t": 1.25, "action": "open", "target": "container", "present": true },
+    { "t": 1.30, "action": "open", "target": "container", "present": true },
+    { "t": 1.35, "action": "open", "target": "container", "present": true },
+    { "t": 1.40, "action": "open", "target": "container", "present": false },
+    { "t": 1.45, "action": "open", "target": "container", "present": false },
+    { "t": 1.50, "action": "open", "target": "container", "present": false },
+    { "t": 1.55, "action": "open", "target": "container", "present": false },
+    { "t": 1.60, "action": "open", "target": "container", "present": false },
+    { "t": 2.00, "action": "remove_from", "target": "module_a", "source": "container", "present": true },
+    { "t": 2.05, "action": "remove_from", "target": "module_a", "source": "container", "present": false },
+    { "t": 2.10, "action": "remove_from", "target": "module_a", "source": "container", "present": true },
+    { "t": 2.15, "action": "remove_from", "target": "module_a", "source": "container", "present": false },
+    { "t": 2.20, "action": "remove_from", "target": "module_a", "source": "container", "present": true },
+    { "t": 2.25, "action": "remove_from", "target": "module_a", "source": "container", "present": false },
+    { "t": 2.30, "action": "remove_from", "target": "module_a", "source": "container", "present": true },
+    { "t": 2.35, "action": "remove_from", "target": "module_a", "source": "container", "present": false },
+    { "t": 2.40, "action": "remove_from", "target": "module_a", "source": "container", "present": true },
+    { "t": 2.45, "action": "remove_from", "target": "module_a", "source": "container", "present": false }
+  ]
+}

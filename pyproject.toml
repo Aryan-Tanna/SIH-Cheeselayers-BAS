@@ -1,0 +1,37 @@
+[project]
+name = "bas-har-copilot"
+version = "0.1.0"
+description = "BAS Glovebox HAR Co-Pilot — SIH PS 26174"
+requires-python = ">=3.11"
+dependencies = [
+    "pyyaml==6.0.2",
+    "jsonschema==4.23.0",
+]
+
+[project.optional-dependencies]
+# Perception/audio/GUI extras. Deliberately NOT installed in phase 0 and
+# NEVER imported at module level anywhere under src/ or harness/ — the
+# replay harness must run with --stub-detector before any model exists,
+# and importing these at module scope would break that on a clean install.
+vision = [
+    "opencv-python==4.10.0.84",
+    "ultralytics==8.3.28",
+    "mediapipe==0.10.18",
+    "pillow==11.0.0",
+]
+dev = [
+    "pytest==8.3.3",
+    "pytest-cov==6.0.0",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*", "harness*", "scripts*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

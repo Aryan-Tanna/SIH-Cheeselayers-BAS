@@ -1,0 +1,9 @@
+{
+  "protocol_id": "malformed_cyclic_after",
+  "version": "1.0",
+  "roles": { "container": {}, "module_a": {} },
+  "steps": [
+    { "id": "step_x", "action": "open", "target": "container", "after": ["step_y"] },
+    { "id": "step_y", "action": "close", "target": "container", "after": ["step_x"] }
+  ]
+}

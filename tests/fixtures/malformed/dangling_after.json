@@ -1,0 +1,8 @@
+{
+  "protocol_id": "malformed_dangling_after",
+  "version": "1.0",
+  "roles": { "container": {} },
+  "steps": [
+    { "id": "open_container", "action": "open", "target": "container", "after": ["step_that_does_not_exist"] }
+  ]
+}

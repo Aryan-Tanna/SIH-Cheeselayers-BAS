@@ -1,0 +1,30 @@
+# configs/objects/profile_rect.yaml
+#
+# Binds abstract protocol roles to physical props for the "slab" prop
+# family — rectangular, no lid. Same protocol JSON as profile_jar.yaml;
+# has_lid: false makes every open/stow/close-lid step's `condition`
+# evaluate false, so those steps are skipped silently (see addendum,
+# "Conditional steps are skipped, not missed"). This is what makes the
+# mixed-prop case testable: point one role at this profile's module and
+# the other at profile_jar.yaml's module in a mixed_profile variant.
+
+schema_version: 1
+profile_id: rect
+description: "Slab prop family: rectangular body, no lid."
+
+roles:
+  container:
+    class_id: box
+    has_lid: true
+    lid_type: hinged
+    thresholds:
+      grasp_distance_px: 40
+      lid_open_angle_deg: 35
+
+  module_a:
+    class_id: slab
+    has_lid: false
+
+  module_b:
+    class_id: slab
+    has_lid: false

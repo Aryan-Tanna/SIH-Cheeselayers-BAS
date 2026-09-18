@@ -1,0 +1,9 @@
+{
+  "protocol_id": "malformed_colour_name",
+  "version": "1.0",
+  "roles": { "container": {}, "red_module": {} },
+  "steps": [
+    { "id": "open_container", "action": "open", "target": "container" },
+    { "id": "remove_red", "action": "remove_from", "target": "red_module", "source": "container", "after": ["open_container"] }
+  ]
+}

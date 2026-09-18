@@ -1,0 +1,12 @@
+{
+  "protocol_id": "malformed_image_frame_zone",
+  "version": "1.0",
+  "roles": { "container": {}, "module_a": {} },
+  "zones": {
+    "stow_zone": { "frame": "image" }
+  },
+  "steps": [
+    { "id": "open_container", "action": "open", "target": "container" },
+    { "id": "stow_lid", "action": "move_to_zone", "target": "module_a.lid", "zone": "stow_zone", "after": ["open_container"] }
+  ]
+}

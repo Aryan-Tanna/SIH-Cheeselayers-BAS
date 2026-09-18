@@ -1,0 +1,10 @@
+{
+  "clip_id": "debounce_raw_observations",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "Measured (not hand-derived) from debounce_raw_observations() + run_replay() + a direct Debouncer(k=5, n=8) replay of the same observations (see tests/test_harness.py). The open/container signal (false, true, false, true, true, true, true, true) first reaches 5-of-8 true on its 7th observation, t=1.30 -- the ONLY confirmed ActionEvent produced, so it is also the only step_complete. It then holds true one more tick and takes 5 consecutive false observations (t=1.40..1.60) to evict the earlier true run from the 8-window and genuinely confirm false at t=1.60 -- a real DOWN-transition, not a sticky-true debouncer, verified directly against Debouncer.state() since this stream shape (by design) only synthesizes ActionEvents on transitions TO present, so the down-transition itself produces no event here or in actual_events. The remove_from/module_a signal alternates true/false in lockstep for all 10 observations, holding at exactly 4-of-8 for both states, so it never reaches 5-of-8 either way and the debouncer never transitions away from its initial False -- zero anomalies, zero unmatched, zero violations. This proves a balanced-noise key produces NO spurious confirmation through the full engine/alert/logging path, not general noise/signal discrimination (the down-transition case above covers state release; a regression that broke transition detection entirely would still pass the noise-key check alone). partial:false so an accidental confirmation on the noise key would fail this as an unexpected event, not silently pass.",
+  "expected_events": [
+    { "t": 1.30, "type": "step_complete", "step": "open_container" }
+  ],
+  "expected_alerts": 0,
+  "partial": false
+}

@@ -1,0 +1,12 @@
+{
+  "clip_id": "root_cause_cooldown",
+  "protocol_id": "repeatable_action_test",
+  "_note": "Four modules pulled out in sequence while the earlier ones stay out. mutual_exclusion_breach fires on module_b (t=3), module_c (t=5), module_d (t=12), all sharing root_cause_id='one_module_at_a_time'. t=3->t=5 is 2s (inside the 8s cooldown, should suppress); t=3->t=12 is 9s (past cooldown, should speak again).",
+  "events": [
+    { "t": 1.0, "action": "open", "target": "container" },
+    { "t": 2.0, "action": "remove_from", "target": "module_a", "source": "container" },
+    { "t": 3.0, "action": "remove_from", "target": "module_b", "source": "container" },
+    { "t": 5.0, "action": "remove_from", "target": "module_c", "source": "container" },
+    { "t": 12.0, "action": "remove_from", "target": "module_d", "source": "container" }
+  ]
+}

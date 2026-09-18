@@ -1,0 +1,19 @@
+{
+  "clip_id": "clean_run",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "Full happy path, both modules, no violations expected.",
+  "events": [
+    { "t": 1.0, "action": "open", "target": "container" },
+    { "t": 3.0, "action": "remove_from", "target": "module_a", "source": "container" },
+    { "t": 4.0, "action": "open", "target": "module_a" },
+    { "t": 5.0, "action": "move_to_zone", "target": "module_a.lid", "zone": "stow_zone" },
+    { "t": 6.0, "action": "close", "target": "module_a" },
+    { "t": 7.0, "action": "place_into", "target": "module_a", "dest": "container" },
+    { "t": 8.0, "action": "remove_from", "target": "module_b", "source": "container" },
+    { "t": 9.0, "action": "open", "target": "module_b" },
+    { "t": 10.0, "action": "move_to_zone", "target": "module_b.lid", "zone": "stow_zone" },
+    { "t": 11.0, "action": "close", "target": "module_b" },
+    { "t": 12.0, "action": "place_into", "target": "module_b", "dest": "container" },
+    { "t": 13.0, "action": "close", "target": "container" }
+  ]
+}

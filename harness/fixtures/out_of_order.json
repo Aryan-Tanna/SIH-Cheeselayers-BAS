@@ -1,0 +1,9 @@
+{
+  "clip_id": "out_of_order",
+  "protocol_id": "bas_specimen_v1",
+  "expected_events": [
+    { "t": 1.0, "type": "violation", "code": "out_of_order", "target": "module_a", "tolerance_s": 0.5 }
+  ],
+  "expected_alerts": 1,
+  "partial": true
+}

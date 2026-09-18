@@ -1,0 +1,11 @@
+{
+  "protocol_id": "malformed_missing_basis",
+  "version": "1.0",
+  "roles": { "container": {}, "module_a": {} },
+  "steps": [
+    { "id": "open_container", "action": "open", "target": "container" }
+  ],
+  "constraints": [
+    { "id": "custom_check", "type": "precondition", "violation_code": "wrong_orientation", "severity": "advisory" }
+  ]
+}

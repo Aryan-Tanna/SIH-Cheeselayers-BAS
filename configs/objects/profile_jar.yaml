@@ -1,0 +1,36 @@
+# configs/objects/profile_jar.yaml
+#
+# Binds abstract protocol roles to physical props for the "jar" prop
+# family — cylindrical, screw cap. Drives bas_specimen_v1 and the demo.
+#
+# lid_type "screw" tells src/kinematics/lid_state.py to model the lid as
+# axial translation (unscrewing), not rotation about an edge hinge.
+
+schema_version: 1
+profile_id: jar
+description: "Jar prop family: cylindrical body, screw-cap lid."
+
+roles:
+  container:
+    class_id: box
+    has_lid: true
+    lid_type: hinged
+    thresholds:
+      grasp_distance_px: 40
+      lid_open_angle_deg: 35
+
+  module_a:
+    class_id: jar
+    has_lid: true
+    lid_type: screw
+    thresholds:
+      grasp_distance_px: 30
+      lid_open_travel_px: 18
+
+  module_b:
+    class_id: jar
+    has_lid: true
+    lid_type: screw
+    thresholds:
+      grasp_distance_px: 30
+      lid_open_travel_px: 18

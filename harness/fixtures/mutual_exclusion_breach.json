@@ -1,0 +1,9 @@
+{
+  "clip_id": "mutual_exclusion_breach",
+  "protocol_id": "bas_specimen_v1",
+  "expected_events": [
+    { "t": 3.0, "type": "violation", "code": "mutual_exclusion_breach", "target": "module_b", "tolerance_s": 0.5 }
+  ],
+  "expected_alerts": 1,
+  "partial": true
+}

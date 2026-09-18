@@ -1,0 +1,30 @@
+# configs/zones.yaml
+#
+# Rack-space geometry for zones referenced by protocols. Phase 0 has no
+# ArUco calibration and no video, so these are placeholder extents in
+# rack-frame millimetres, shaped correctly for the loader/validator and
+# for src/kinematics zone_confinement checks to consume once real
+# rack-to-camera calibration exists. Do NOT treat these numbers as
+# measured — they are unset placeholders, not defaults to build on.
+
+schema_version: 1
+
+zones:
+  stow_zone:
+    frame: rack
+    shape: aabb
+    # rack-frame millimetres, origin at the ArUco-derived rack anchor.
+    # Unset — fill in once fiducial batch 2 lands.
+    min: null
+    max: null
+
+  container_interior:
+    frame: rack
+    shape: aabb
+    min: null
+    max: null
+
+note: >
+  Every zone MUST declare frame: rack. An "image" frame zone breaks the
+  moment the rig tilts or the camera moves, defeating the whole point of
+  rack-centric normalization. The validator rejects image-frame zones.

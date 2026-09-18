@@ -1,0 +1,34 @@
+# configs/objects/profile_repeatable_test.yaml
+#
+# Binds configs/protocols/repeatable_action_test.json's roles. Lidless
+# on purpose (has_lid: false everywhere) — this protocol exists solely
+# to exercise mutual_exclusion_breach's root_cause_id repeating within
+# the alert policy's root_cause_cooldown_s window, which bas_specimen_v1
+# cannot do (its remove_from steps each fire at most once). Lid handling
+# is irrelevant to that and would only add noise.
+
+schema_version: 1
+profile_id: repeatable_test
+description: "Synthetic profile for testing repeated-root-cause alert suppression. Not a real prop family."
+
+roles:
+  container:
+    class_id: box
+    has_lid: true
+    lid_type: hinged
+
+  module_a:
+    class_id: slab
+    has_lid: false
+
+  module_b:
+    class_id: slab
+    has_lid: false
+
+  module_c:
+    class_id: slab
+    has_lid: false
+
+  module_d:
+    class_id: slab
+    has_lid: false

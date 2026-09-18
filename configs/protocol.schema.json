@@ -1,0 +1,428 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "configs/protocol.schema.json",
+  "title": "BAS HAR experiment protocol",
+  "description": "Validates an experiment definition. The engine implements constraint TYPES; a protocol selects which apply. Anything unspecified inherits configs/defaults.yaml under a fail-safe posture.",
+  "type": "object",
+  "required": [
+    "protocol_id",
+    "version",
+    "roles",
+    "steps"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "protocol_id": {
+      "type": "string",
+      "pattern": "^[a-z0-9_]+$",
+      "description": "Unique, lowercase, underscores. Appears in every log line."
+    },
+    "version": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "inherits": {
+      "type": "string",
+      "default": "configs/defaults.yaml",
+      "description": "Defaults file. Omitting it still inherits the standard defaults."
+    },
+    "object_profile": {
+      "type": "string",
+      "description": "YAML binding roles to physical props (class ids, has_lid, lid_type, thresholds)."
+    },
+    "roles": {
+      "type": "object",
+      "minProperties": 1,
+      "description": "Abstract roles the protocol refers to. Bound to real objects by object_profile. Protocols must NOT name colours or shapes directly.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "required": {
+            "type": "boolean",
+            "default": true
+          },
+          "label": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "zones": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "frame": {
+            "enum": [
+              "rack",
+              "image"
+            ],
+            "default": "rack"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      },
+      "description": "Zones MUST be defined in the rack frame. An image-frame zone breaks the moment the rig tilts, defeating orientation-agnosticism."
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/stepOrGroup"
+      }
+    },
+    "constraints": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/constraint"
+      },
+      "description": "Optional. Entries with the same id as a default REPLACE it. Non-overridable defaults are merged regardless."
+    },
+    "strict_mode": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "require_lid_stow": {
+          "type": "boolean"
+        },
+        "require_sealed_before_return": {
+          "type": "boolean"
+        },
+        "require_orientation": {
+          "type": "boolean"
+        },
+        "force_module_order": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "A group id that must complete first, or null for free ordering."
+        }
+      }
+    },
+    "alert_policy": {
+      "$ref": "#/definitions/alertPolicy"
+    },
+    "timing": {
+      "$ref": "#/definitions/timing"
+    }
+  },
+  "definitions": {
+    "stepOrGroup": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/step"
+        },
+        {
+          "$ref": "#/definitions/group"
+        }
+      ]
+    },
+    "step": {
+      "type": "object",
+      "required": [
+        "id",
+        "action",
+        "target"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.]+$"
+        },
+        "action": {
+          "enum": [
+            "grasp",
+            "release",
+            "open",
+            "close",
+            "place_into",
+            "remove_from",
+            "move_to_zone",
+            "dwell"
+          ],
+          "description": "The primitive set. The engine implements these once. A genuinely new kind of physical action requires a new primitive in code, not config."
+        },
+        "target": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "dest": {
+          "type": "string"
+        },
+        "zone": {
+          "type": "string"
+        },
+        "after": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Step or group ids that must complete first. ALL ordering comes from here. Group membership alone implies no ordering."
+        },
+        "requires": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "State predicates, e.g. module_a.sealed, module_b.in_zone:work_area."
+        },
+        "condition": {
+          "type": "string",
+          "description": "If false, the step is SKIPPED and not flagged as missed. e.g. target.has_lid"
+        },
+        "optional": {
+          "type": "boolean",
+          "default": false
+        },
+        "min_duration_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "timeout_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "on_timeout": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string",
+          "description": "Spoken when this step becomes satisfiable. Pre-rendered to WAV at startup."
+        },
+        "success": {
+          "type": "string"
+        }
+      }
+    },
+    "group": {
+      "type": "object",
+      "required": [
+        "id",
+        "type",
+        "steps"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_.]+$"
+        },
+        "type": {
+          "const": "group"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/stepOrGroup"
+          }
+        },
+        "after": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "concurrency": {
+          "enum": [
+            "forbidden",
+            "permitted",
+            "required"
+          ],
+          "default": "forbidden",
+          "description": "Whether this group may overlap with sibling groups. Default forbidden implements the one-at-a-time default."
+        },
+        "condition": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "success": {
+          "type": "string"
+        }
+      },
+      "description": "IMPORTANT: a group is a NAMING AND CONSTRAINT-ATTACHMENT device, NOT an atomicity guarantee. Steps inside a group may interleave with steps outside it unless a concurrency setting or mutual_exclusion constraint forbids it."
+    },
+    "constraint": {
+      "type": "object",
+      "required": [
+        "id"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "disabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Disables an inherited default of the same id. Rejected with a warning for non-overridable defaults."
+        },
+        "type": {
+          "enum": [
+            "mutual_exclusion",
+            "co_requirement",
+            "concurrency_required",
+            "no_loose_objects",
+            "precondition",
+            "precondition_failure",
+            "zone_confinement",
+            "timeout",
+            "sequence"
+          ]
+        },
+        "groups": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "applies_to": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "applies_on": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "permitted_zones": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "permitted_while_grasped": {
+          "type": "boolean"
+        },
+        "expression": {
+          "type": "string"
+        },
+        "when": {
+          "type": "string"
+        },
+        "zone": {
+          "type": "string"
+        },
+        "grace_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "timeout_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_gap_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "violation_code": {
+          "enum": [
+            "skip",
+            "wrong_object",
+            "out_of_order",
+            "mutual_exclusion_breach",
+            "lid_unstowed",
+            "module_not_sealed",
+            "module_not_returned",
+            "premature_close",
+            "loose_object",
+            "wrong_orientation",
+            "open_module_out_of_zone",
+            "premature_transfer",
+            "prep_not_concurrent"
+          ]
+        },
+        "severity": {
+          "enum": [
+            "advisory",
+            "caution",
+            "warning"
+          ]
+        },
+        "alert": {
+          "type": "string"
+        },
+        "basis": {
+          "enum": [
+            "physical_impossibility",
+            "microgravity_hazard",
+            "contamination_control",
+            "rack_mount_geometry",
+            "physical_plus_hazard",
+            "procedural_integrity"
+          ],
+          "description": "Which rule source this comes from. procedural_integrity covers the engine-native sequence constraints (out_of_order, skip, wrong_object) — not a physical/hazard/contamination/geometry concern, but a trustworthiness-of-the-recorded-sequence one. A constraint with no basis is a constraint nobody can defend to a judge."
+        }
+      }
+    },
+    "alertPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "root_cause_cooldown_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max_alerts_per_minute": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "suppress_consequences_of_same_root": {
+          "type": "boolean"
+        },
+        "log_all_violations": {
+          "const": true
+        },
+        "severity_speaks": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "severity_tone_only": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "timing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "step_debounce_frames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "step_debounce_of_n": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "grasp_min_frames": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "lid_state_hysteresis_frames": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+clips/
+clips_norm/
+frames/
+runs/
+__pycache__/
+*.pyc
+.venv/

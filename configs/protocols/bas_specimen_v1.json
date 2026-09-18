@@ -1,0 +1,168 @@
+{
+    "protocol_id": "bas_specimen_v1",
+    "version": "1.0",
+    "title": "Dual specimen module inspection",
+    "description": "Open the payload container, handle each specimen module, return it, seal the container.",
+    "_authoring_note": "This protocol declares only its STEPS. Every safety constraint is inherited from configs/defaults.yaml — one module at a time, no loose objects, sealed before return, container empty before close, lid stowing. An author who wants different behaviour overrides explicitly. Silence means the cautious interpretation. The loader prints the resolved constraint set at startup so nothing is enforced invisibly. Each module's own 5 steps carry explicit intra-group `after` chains (remove -> open lid -> stow lid -> close lid -> return) — per the addendum, group membership alone implies no ordering, so this sequencing had to be stated, not assumed from list order. The two groups (handle_a / handle_b) remain free-order relative to EACH OTHER; only steps within the same group are chained.",
+    "inherits": "configs/defaults.yaml",
+    "object_profile": "configs/objects/profile_jar.yaml",
+    "roles": {
+        "container": {
+            "required": true
+        },
+        "module_a": {
+            "required": true
+        },
+        "module_b": {
+            "required": true
+        }
+    },
+    "zones": {
+        "stow_zone": {
+            "frame": "rack"
+        },
+        "container_interior": {
+            "frame": "rack"
+        }
+    },
+    "steps": [
+        {
+            "id": "open_container",
+            "action": "open",
+            "target": "container",
+            "prompt": "Open the payload container.",
+            "success": "Container open. Select a specimen module."
+        },
+        {
+            "id": "handle_a",
+            "type": "group",
+            "after": [
+                "open_container"
+            ],
+            "steps": [
+                {
+                    "id": "remove_a",
+                    "action": "remove_from",
+                    "target": "module_a",
+                    "source": "container",
+                    "prompt": "Remove the first specimen module."
+                },
+                {
+                    "id": "open_a_lid",
+                    "action": "open",
+                    "target": "module_a",
+                    "condition": "target.has_lid",
+                    "after": ["remove_a"],
+                    "prompt": "Unseal the module."
+                },
+                {
+                    "id": "stow_a_lid",
+                    "action": "move_to_zone",
+                    "target": "module_a.lid",
+                    "zone": "stow_zone",
+                    "condition": "target.has_lid",
+                    "after": ["open_a_lid"],
+                    "prompt": "Secure the lid in the stow zone."
+                },
+                {
+                    "id": "close_a_lid",
+                    "action": "close",
+                    "target": "module_a",
+                    "condition": "target.has_lid",
+                    "after": ["stow_a_lid"],
+                    "prompt": "Reseal the module."
+                },
+                {
+                    "id": "return_a",
+                    "action": "place_into",
+                    "target": "module_a",
+                    "dest": "container",
+                    "after": ["close_a_lid"],
+                    "prompt": "Return the module to the container.",
+                    "success": "First module secured."
+                }
+            ]
+        },
+        {
+            "id": "handle_b",
+            "type": "group",
+            "after": [
+                "open_container"
+            ],
+            "steps": [
+                {
+                    "id": "remove_b",
+                    "action": "remove_from",
+                    "target": "module_b",
+                    "source": "container",
+                    "prompt": "Remove the second specimen module."
+                },
+                {
+                    "id": "open_b_lid",
+                    "action": "open",
+                    "target": "module_b",
+                    "condition": "target.has_lid",
+                    "after": ["remove_b"],
+                    "prompt": "Unseal the module."
+                },
+                {
+                    "id": "stow_b_lid",
+                    "action": "move_to_zone",
+                    "target": "module_b.lid",
+                    "zone": "stow_zone",
+                    "condition": "target.has_lid",
+                    "after": ["open_b_lid"],
+                    "prompt": "Secure the lid in the stow zone."
+                },
+                {
+                    "id": "close_b_lid",
+                    "action": "close",
+                    "target": "module_b",
+                    "condition": "target.has_lid",
+                    "after": ["stow_b_lid"],
+                    "prompt": "Reseal the module."
+                },
+                {
+                    "id": "return_b",
+                    "action": "place_into",
+                    "target": "module_b",
+                    "dest": "container",
+                    "after": ["close_b_lid"],
+                    "prompt": "Return the module to the container."
+                }
+            ]
+        },
+        {
+            "id": "close_container",
+            "action": "close",
+            "target": "container",
+            "after": [
+                "handle_a",
+                "handle_b"
+            ],
+            "prompt": "Seal the payload container.",
+            "success": "Experiment complete. Log written."
+        }
+    ],
+    "_no_constraints_block": "Intentionally absent. All constraints come from defaults.yaml. Compare with the examples below, which override.",
+    "strict_mode": {},
+    "_variant_examples": {
+        "_comment": "Not loaded. Reference for authors writing a different intent with the SAME primitives and the SAME binary. Copy into a new file, change the protocol_id.",
+        "strict_order_yellow_then_red": {
+            "change": "Add \"after\": [\"handle_b\"] to the handle_a group.",
+            "effect": "Free ordering becomes strict. Taking module A first is now out_of_order."
+        },
+        "interleaved_lifo": {
+            "change": "Flatten the groups and use per-step after dependencies: remove_b -> remove_a -> return_a -> return_b. Then set constraints: [{\"id\": \"one_module_at_a_time\", \"disabled\": true}].",
+            "effect": "Both modules out simultaneously becomes correct. Returning B before A becomes the violation. Note that no_loose_objects still applies — it is not overridable."
+        },
+        "relaxed_lid_handling": {
+            "change": "strict_mode: { \"require_lid_stow\": false }",
+            "effect": "Lids may rest anywhere while the module is being handled. Useful for prop variants with no stow surface."
+        },
+        "no_lid_props": {
+            "change": "Point object_profile at profile_rect.yaml (has_lid: false).",
+            "effect": "All open/stow/close lid steps are skipped by the condition guard, not flagged as missed. Same protocol file, asymmetric execution on mixed props."
+        }
+    }
+}

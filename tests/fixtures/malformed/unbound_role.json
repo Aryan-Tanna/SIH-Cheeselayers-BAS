@@ -1,0 +1,10 @@
+{
+  "protocol_id": "malformed_unbound_role",
+  "version": "1.0",
+  "object_profile": "configs/objects/profile_jar.yaml",
+  "roles": { "container": {}, "module_a": {}, "module_z": {} },
+  "steps": [
+    { "id": "open_container", "action": "open", "target": "container" },
+    { "id": "touch_z", "action": "grasp", "target": "module_z" }
+  ]
+}

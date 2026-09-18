@@ -1,0 +1,202 @@
+# configs/defaults.yaml
+#
+# Applied to EVERY protocol unless that protocol explicitly overrides.
+# Posture: fail-safe. Silence in the experiment definition means the
+# cautious interpretation, not the permissive one.
+#
+# The loader MUST print the resolved constraint set at load time, marking
+# each entry [default] or [protocol], so an author can see what is active
+# without reading this file. Silent defaults are how a user ends up
+# debugging violations they never wrote.
+
+schema_version: 1
+
+# ---------------------------------------------------------------
+# Defaults that apply unless the protocol says otherwise
+# ---------------------------------------------------------------
+default_constraints:
+
+  one_module_at_a_time:
+    type: mutual_exclusion
+    scope: all_module_groups        # every top-level group handling a module
+    violation_code: mutual_exclusion_breach
+    severity: caution
+    alert: "Return the current module before accessing another."
+    basis: contamination_control
+    override_with: "concurrency: permitted | required on the group"
+
+  no_loose_objects:
+    type: no_loose_objects
+    applies_to: ["*_module", "*_lid"]
+    permitted_zones: [stow_zone, container_interior]
+    permitted_while_grasped: true
+    grace_s: 10
+    violation_code: loose_object
+    severity: warning
+    alert: "Unsecured object outside a permitted zone."
+    basis: microgravity_hazard
+    overridable: false
+    note: >
+      NOT overridable. A floating object is a hazard regardless of what
+      the experiment is trying to achieve. A protocol may ADD permitted
+      zones, never remove the constraint.
+
+  sealed_before_return:
+    type: precondition
+    expression: "module.has_lid implies module.sealed"
+    applies_on: [place_into]
+    violation_code: module_not_sealed
+    severity: caution
+    alert: "Module returned unsealed."
+    basis: contamination_control
+    override_with: "strict_mode.require_sealed_before_return: false"
+
+  container_empty_before_close:
+    type: precondition
+    expression: "all declared modules in_container"
+    applies_on: [close]
+    applies_to: [container]
+    violation_code: module_not_returned
+    severity: warning
+    alert: "Container sealed with a module still outside."
+    basis: physical_plus_hazard
+    overridable: false
+
+  lid_stow_required:
+    type: timeout
+    expression: "detached lid reaches stow_zone"
+    timeout_s: 12
+    violation_code: lid_unstowed
+    severity: caution
+    alert: "Secure the lid in the stow zone."
+    basis: microgravity_hazard
+    override_with: "strict_mode.require_lid_stow: false"
+
+  correct_insertion_orientation:
+    type: precondition
+    expression: "module.orientation within profile tolerance"
+    applies_on: [place_into]
+    violation_code: wrong_orientation
+    severity: advisory
+    alert: "Module orientation incorrect for the rack mount."
+    basis: rack_mount_geometry
+    enabled_by_default: false       # advisory only; opt in per protocol
+    override_with: "strict_mode.require_orientation: true"
+
+  # ---------------------------------------------------------------
+  # Engine-native sequence constraints
+  #
+  # Unlike the six above, these don't gate a check the engine might
+  # otherwise skip — the engine ALWAYS walks the after-graph and ALWAYS
+  # runs end-of-run skip detection. What these entries govern is purely
+  # policy: whether the resulting violation is reported at all, and at
+  # what severity. Severity is policy, not code — it belongs here, not
+  # hardcoded in src/protocol/engine.py. A protocol may still override
+  # or disable any of them the same way as the six above (same id,
+  # `disabled: true`, or a replacement entry in its own `constraints`).
+  # ---------------------------------------------------------------
+
+  out_of_order:
+    type: sequence
+    expression: "a step's action was attempted before its after-graph prerequisites were complete"
+    violation_code: out_of_order
+    severity: caution
+    alert: "That step is out of sequence."
+    basis: procedural_integrity
+    note: >
+      Engine-native — always evaluated for every step completion, not
+      opt-in per protocol. Disabling this stops the ENGINE from
+      reporting out-of-order attempts; it does not change what ordering
+      the after-graph itself encodes.
+
+  skip:
+    type: sequence
+    expression: "a required, applicable step never completed by the time the protocol's terminal step completed"
+    violation_code: skip
+    severity: warning
+    alert: "A required step was never completed."
+    basis: procedural_integrity
+    note: >
+      Fires once per missed step, at the terminal (sink) step's
+      completion. A step with its own dedicated constraint (e.g. an
+      unstowed lid, an unreturned module) surfaces under that
+      constraint's own violation code instead — skip is the catch-all
+      for steps nothing else is watching.
+
+  wrong_object:
+    type: sequence
+    expression: "action recognized, but its target does not match the sole currently-satisfiable step of that action"
+    violation_code: wrong_object
+    severity: caution
+    alert: "Wrong object for this step."
+    basis: procedural_integrity
+    note: >
+      Only fires when exactly one satisfiable step shares the action —
+      with two or more, which one the operator intended is ambiguous,
+      so the engine logs it as an unmatched action instead of guessing.
+
+# ---------------------------------------------------------------
+# Ordering defaults
+# ---------------------------------------------------------------
+default_ordering:
+  module_order: free
+  note: >
+    When a protocol declares two module groups with no "after" dependency
+    between them, either order is valid. Override per protocol with
+    strict_mode.force_module_order.
+
+  hard_ordering_always_enforced:
+    - "a module cannot leave a closed container"
+    - "a lid cannot be stowed before it is detached"
+  note_hard: >
+    These are physical impossibilities, not policy. They are enforced by
+    the engine and cannot be disabled by any protocol or strict_mode flag.
+    "A container cannot be closed while a module is outside it" was
+    originally listed here too and has been removed — it is not a
+    physical impossibility (an operator CAN push a lid shut over a module
+    still outside it), so miscategorising it as hard ordering would have
+    meant silently blocking an action operator authority requires the
+    system to allow. It is enforced instead, correctly, as the
+    non-overridable container_empty_before_close POLICY constraint above:
+    logged, alerted, and the close still completes.
+
+# ---------------------------------------------------------------
+# Alert policy defaults
+# ---------------------------------------------------------------
+default_alert_policy:
+  root_cause_cooldown_s: 8
+  max_alerts_per_minute: 4
+  suppress_consequences_of_same_root: true
+  log_all_violations: true          # not overridable; the log is complete
+  severity_speaks: [caution, warning]
+  severity_tone_only: [advisory]
+  note: >
+    Log completeness and alert restraint are separate concerns. Every
+    violation is logged. Only root causes are spoken.
+
+# ---------------------------------------------------------------
+# Timing defaults
+# ---------------------------------------------------------------
+default_timing:
+  step_debounce_frames: 5
+  step_debounce_of_n: 8
+  grasp_min_frames: 4
+  lid_state_hysteresis_frames: 6
+  calibration_note: >
+    Estimates from dataset pacing. Recalibrate against the tuning
+    fixtures. Never tune against a single clip.
+
+# ---------------------------------------------------------------
+# Resolution order
+# ---------------------------------------------------------------
+resolution_order:
+  - "1. hard ordering (engine, non-negotiable)"
+  - "2. non-overridable defaults (no_loose_objects, container_empty_before_close)"
+  - "3. explicit protocol constraints"
+  - "4. protocol strict_mode flags"
+  - "5. overridable defaults from this file"
+  - "6. engine fallbacks"
+note_resolution: >
+  A protocol constraint with the same id as a default REPLACES it.
+  Non-overridable defaults are merged in regardless and a warning is
+  emitted if a protocol tries to disable one.

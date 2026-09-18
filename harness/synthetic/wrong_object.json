@@ -1,0 +1,10 @@
+{
+  "clip_id": "wrong_object",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "With explicit intra-group after chains, remove_a and remove_b are the only two steps satisfiable right after open_container. module_a is removed once (completing remove_a); reaching for module_a again is not a match (remove_a already complete) and remove_b is the sole remaining satisfiable remove_from step, so this is reported as reaching for the wrong object.",
+  "events": [
+    { "t": 1.0, "action": "open", "target": "container" },
+    { "t": 2.0, "action": "remove_from", "target": "module_a", "source": "container" },
+    { "t": 3.0, "action": "remove_from", "target": "module_a", "source": "container" }
+  ]
+}
