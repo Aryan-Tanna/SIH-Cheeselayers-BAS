@@ -1,0 +1,6 @@
+clip_id,duration_s,fps_mode,orientation,lighting,prop_family,prop_family_conf,lid_type,lid_type_conf,gloves,gloves_conf,camera_angle,camera_angle_conf,session_id,notes
+Dataset1_glovebox,44.1,cfr,landscape,unknown,unknown,0.0,unknown,0.0,unknown,0.0,unknown,0.0,,
+Dataset2_glovebox,58.3,cfr,landscape,unknown,unknown,0.0,unknown,0.0,unknown,0.0,unknown,0.0,,
+Dataset3_glovebox,34.6,cfr,portrait,unknown,unknown,0.0,unknown,0.0,unknown,0.0,unknown,0.0,,
+Dataset4_glovebox,44.0,cfr,landscape,unknown,unknown,0.0,unknown,0.0,unknown,0.0,unknown,0.0,,
+Dataset5_glovebox,37.2,cfr,landscape,unknown,unknown,0.0,unknown,0.0,unknown,0.0,unknown,0.0,,
