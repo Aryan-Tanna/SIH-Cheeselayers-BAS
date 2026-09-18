@@ -11,7 +11,17 @@ check; direct inter-frame timestamp measurement on Dataset1 confirmed
 its deltas cluster at 0.033333s/0.033334s (30fps) with only
 encoder-rounding jitter, not genuine variability."""
 
-from scripts.normalize_clips import _parse_rate, detect_vfr
+import csv
+
+from scripts.normalize_clips import (
+    ClipChange,
+    _parse_rate,
+    _read_rotation_overrides,
+    _transpose_filters,
+    _write_rotation_manifest,
+    decide_rotation,
+    detect_vfr,
+)
 
 PILOT_CLIP_RATES = {
     "Dataset1": ("13230000/440983", "30/1"),
@@ -53,3 +63,74 @@ def test_genuinely_different_rate_is_vfr():
 def test_zero_r_frame_rate_does_not_crash():
     assert detect_vfr(_probe("30/1", "0/0")) is True
     assert detect_vfr(_probe("0/0", "0/0")) is False
+
+
+def test_decide_rotation_override_wins_over_everything():
+    assert decide_rotation("Dataset3", is_portrait=False, tag_rotation_deg=90, overrides={"Dataset3": 270}) == (
+        270, "override",
+    )
+
+
+def test_decide_rotation_tag_wins_over_default():
+    assert decide_rotation("clip", is_portrait=True, tag_rotation_deg=180, overrides={}) == (180, "tag")
+
+
+def test_decide_rotation_portrait_no_tag_defaults_to_90_clockwise_and_flags():
+    # Dataset3_glovebox.mp4: is_portrait=True, no rotation tag detected
+    # (confirmed via real ffprobe output) -- this is the exact real
+    # scenario that produced the un-rotated pilot bug.
+    assert decide_rotation("Dataset3", is_portrait=True, tag_rotation_deg=0, overrides={}) == (90, "defaulted")
+
+
+def test_decide_rotation_landscape_no_tag_is_zero_not_defaulted():
+    assert decide_rotation("clip", is_portrait=False, tag_rotation_deg=0, overrides={}) == (0, "none")
+
+
+def test_transpose_filters_cover_all_four_rotations():
+    assert _transpose_filters(0) == []
+    assert _transpose_filters(90) == ["transpose=1"]
+    assert _transpose_filters(180) == ["hflip", "vflip"]
+    assert _transpose_filters(270) == ["transpose=2"]
+
+
+def _change(filename: str, rotate_deg: int, source: str) -> ClipChange:
+    return ClipChange(
+        filename=filename, src_fps_mode="cfr", src_width=478, src_height=850,
+        was_portrait=True, tag_rotation_deg=0, rotate_deg=rotate_deg,
+        rotation_source=source, transcoded=True,
+    )
+
+
+def test_unconfirmed_default_does_not_round_trip_as_an_override(tmp_path):
+    # Regression: an earlier version wrote every clip's freshly-decided
+    # rotate_deg back to the manifest with nothing distinguishing "the
+    # script guessed this" from "a human approved this," so a SECOND run
+    # with zero human review read its own unconfirmed "defaulted" guess
+    # back in as if it were a confirmed override -- silently losing the
+    # "defaulted, verify" signal after exactly one run, for every clip,
+    # even ones that were never portrait/ambiguous at all.
+    path = tmp_path / "rotation.csv"
+    _write_rotation_manifest([_change("Dataset3_glovebox.mp4", 90, "defaulted")], path)
+    assert _read_rotation_overrides(path) == {}
+
+
+def test_confirmed_default_does_round_trip_as_an_override(tmp_path):
+    path = tmp_path / "rotation.csv"
+    _write_rotation_manifest([_change("Dataset3_glovebox.mp4", 90, "defaulted")], path)
+    rows = list(csv.DictReader(open(path, newline="", encoding="utf-8")))
+    rows[0]["confirmed"] = "yes"
+    with open(path, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=["clip_id", "rotate_deg", "source", "confirmed"])
+        writer.writeheader()
+        writer.writerows(rows)
+
+    assert _read_rotation_overrides(path) == {"Dataset3_glovebox": 90}
+
+
+def test_override_source_is_written_back_as_confirmed_so_it_persists(tmp_path):
+    # Once a clip is sourced from a confirmed override, that confirmation
+    # must survive being written back out, or a human's correction would
+    # only take effect for exactly one run.
+    path = tmp_path / "rotation.csv"
+    _write_rotation_manifest([_change("Dataset3_glovebox.mp4", 270, "override")], path)
+    assert _read_rotation_overrides(path) == {"Dataset3_glovebox": 270}

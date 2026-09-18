@@ -30,13 +30,14 @@ from pathlib import Path
 
 CLIPS_NORM_DIR = Path("clips_norm")
 MANIFEST_DIR = Path("manifest")
+ROTATION_MANIFEST_PATH = MANIFEST_DIR / "rotation.csv"
 MAX_CLIPS_PER_SHEET = 20
 THUMBS_PER_CLIP = 6
 STATS_FRAME_WIDTH = 640
 
 DERIVED_COLUMNS = [
-    "duration_s", "fps_mode", "orientation", "mean_brightness", "color_temp_k",
-    "skin_pixel_fraction",
+    "duration_s", "fps_mode", "orientation", "rotate_deg", "mean_brightness",
+    "color_temp_k", "skin_pixel_fraction",
 ]
 GUESSED_COLUMNS = ["prop_family", "lid_type", "gloves", "camera_angle"]
 HUMAN_COLUMNS = ["session_id", "notes"]
@@ -55,6 +56,7 @@ class ClipRow:
     duration_s: float = 0.0
     fps_mode: str = "unknown"
     orientation: str = "unknown"
+    rotate_deg: str = "unknown"
     mean_brightness: float = 0.0
     color_temp_k: float = 0
     skin_pixel_fraction: float = 0.0
@@ -152,7 +154,28 @@ def _extract_representative_frame(clip_path: Path, duration_s: float, width: int
     return Image.open(BytesIO(result.stdout)).convert("RGB")
 
 
-def derive_row(clip_path: Path) -> ClipRow:
+def _read_rotate_degs(path: Path) -> dict[str, int]:
+    """Read-only relay of normalize_clips.py's own rotation decisions,
+    purely for human visibility in clips.csv during the review pass --
+    this script does not apply rotation itself (clips_norm/ is already
+    rotated by the time this runs) and never writes to this file. A
+    clip missing from the file (or the file not existing at all) means
+    no rotation decision was ever recorded, not "confirmed zero.\""""
+    degs: dict[str, int] = {}
+    if not path.exists():
+        return degs
+    with open(path, newline="", encoding="utf-8") as f:
+        for row in csv.DictReader(f):
+            raw = (row.get("rotate_deg") or "").strip()
+            if raw:
+                try:
+                    degs[row["clip_id"]] = int(raw)
+                except ValueError:
+                    pass
+    return degs
+
+
+def derive_row(clip_path: Path, rotate_degs: dict[str, int] | None = None) -> ClipRow:
     """ffprobe derivations (duration/fps_mode/orientation) plus real
     pixel-statistics derivations (mean_brightness, color_temp_k,
     skin_pixel_fraction -- all DERIVED, no threshold judgment applied).
@@ -208,20 +231,24 @@ def derive_row(clip_path: Path) -> ClipRow:
         color_temp_k = 0
         skin_pixel_fraction = 0.0
 
+    rotate_deg = (rotate_degs or {}).get(clip_path.stem, "unknown")
+
     return ClipRow(
         clip_id=clip_path.stem,
         duration_s=round(duration, 1),
         fps_mode=fps_mode,
         orientation=orientation,
+        rotate_deg=rotate_deg,
         mean_brightness=mean_brightness,
         color_temp_k=color_temp_k,
         skin_pixel_fraction=skin_pixel_fraction,
     )
 
 
-def build_manifest(clips_dir: Path) -> list[ClipRow]:
+def build_manifest(clips_dir: Path, rotation_manifest_path: Path = ROTATION_MANIFEST_PATH) -> list[ClipRow]:
     clips = sorted(clips_dir.glob("*.mp4"))
-    return [derive_row(c) for c in clips]
+    rotate_degs = _read_rotate_degs(rotation_manifest_path)
+    return [derive_row(c, rotate_degs) for c in clips]
 
 
 def write_manifest_csv(rows: list[ClipRow], out_path: Path) -> None:
@@ -241,6 +268,7 @@ def write_manifest_csv(rows: list[ClipRow], out_path: Path) -> None:
                 "duration_s": r.duration_s,
                 "fps_mode": r.fps_mode,
                 "orientation": r.orientation,
+                "rotate_deg": r.rotate_deg,
                 "mean_brightness": r.mean_brightness,
                 "color_temp_k": r.color_temp_k,
                 "skin_pixel_fraction": r.skin_pixel_fraction,

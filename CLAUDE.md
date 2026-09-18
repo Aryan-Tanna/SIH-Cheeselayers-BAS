@@ -19,26 +19,27 @@ would waste the next session's time; open decisions awaiting the human;
 known-broken things not yet fixed.
 
 **Status:**
-- Phase 1 pilot done through review sheet (5 clips), stopped there per
-  instruction. `manifest/clips.csv` session_id/notes still blank,
+- Phase 1 pilot through review sheet (5 clips) + separability_check.py
+  run (`manifest/separability_check.png`, 40 frames) — a RANDOM
+  fallback sample, not near-transition selection (clips.csv notes are
+  still blank). Detector class list (Decision point 1) is blocked on
+  human review of that sheet.
+- `manifest/clips.csv` session_id/notes/guessed columns still blank,
   awaiting human review.
-- Fixed this session: `normalize_clips.py` VFR false-positive (was exact
-  avg/r_frame_rate string compare, now 1% relative tolerance);
-  `build_review_sheet.py` duration_s stuck at 0.0 (ffprobe multi-line
-  CSV parse bug); mean_brightness/color_temp_k/skin_pixel_fraction now
-  real pixel-derived numbers, not placeholders.
-- NOT fixed, needs a human call: `normalize_clips.py` doesn't rotate a
-  portrait clip with no rotation tag (Dataset3 still 478x850 in
-  `clips_norm/`) — correct handling is a product decision, not a guess.
-- prop_family/lid_type/gloves/camera_angle: no phase-1 signal exists,
-  all report "unimplemented" not "unknown, 0.0" (gloves skin-fraction
-  heuristic was tried and measurably fails to separate gloved/bare on
-  real clips — see `build_review_sheet.py`).
-- Env: `.venv/Scripts/python.exe` (python.org 3.13) only, never the MSYS
-  ucrt64 Python on PATH. `pillow` now installed (vision extra).
-  ffmpeg/ffprobe confirmed on PATH.
-- git initialized this session. `pytest` 124/124, `harness/run_all.py`
-  9/9 green as of last check.
+- Fixed this session: `normalize_clips.py` VFR false-positive (1%
+  tolerance, was exact string compare) and Dataset3 rotation
+  (portrait+no-tag now defaults to 90° CW via `manifest/rotation.csv`,
+  confirmed-gated so an unreviewed default can't become an override);
+  `build_review_sheet.py` duration_s bug (ffprobe multi-line CSV
+  parse); mean_brightness/color_temp_k/skin_pixel_fraction are real
+  pixel-derived numbers.
+- prop_family/lid_type/gloves/camera_angle: no phase-1 signal, all
+  "unimplemented" (gloves heuristic tried, measurably fails to
+  separate gloved/bare on real clips).
+- Env: `.venv/Scripts/python.exe` (python.org 3.13) only, never MSYS
+  ucrt64; pillow installed; ffmpeg `-noautorotate` works,
+  `-autorotate 0` doesn't parse on this build.
+- git initialized. pytest 132/132, harness/run_all.py 9/9 green.
 
 
 ## Your role
