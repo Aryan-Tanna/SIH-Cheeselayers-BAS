@@ -73,18 +73,23 @@ def derive_row(clip_path: Path) -> ClipRow:
     duration = 0.0
     orientation = "unknown"
     fps_mode = "unknown"
-    if lines:
-        parts = lines[0].split(",")
-        try:
-            width, height, avg_fr, r_fr = parts[:4]
-            orientation = "portrait" if int(height) > int(width) else "landscape"
-            fps_mode = "cfr" if avg_fr == r_fr else "vfr"
-        except (ValueError, IndexError):
-            pass
-        try:
-            duration = float(parts[-1])
-        except ValueError:
-            pass
+    # ffprobe emits one CSV line per requested section (stream, then
+    # format), never merged onto a single line -- the stream fields and
+    # the duration are on DIFFERENT lines, not the head/tail of one.
+    for line in lines:
+        parts = line.split(",")
+        if len(parts) == 4:
+            try:
+                width, height, avg_fr, r_fr = parts
+                orientation = "portrait" if int(height) > int(width) else "landscape"
+                fps_mode = "cfr" if avg_fr == r_fr else "vfr"
+            except ValueError:
+                pass
+        elif len(parts) == 1:
+            try:
+                duration = float(parts[0])
+            except ValueError:
+                pass
 
     return ClipRow(
         clip_id=clip_path.stem,

@@ -7,7 +7,84 @@ repo, so the next session (yours or a fresh one) doesn't need to be
 re-briefed from scratch. Keep it accurate rather than complete — delete
 stale entries instead of letting them accumulate.
 
-**Where things stand (last updated: phase-0 build + first review round):**
+**Where things stand (last updated: phase-1 pilot run, stopped at the
+review sheet checkpoint as instructed):**
+
+**Phase 1 pilot run — done through the review sheet, stopped there per
+explicit instruction.** 5 real clips in `clips/` (`Dataset1..5_glovebox.mp4`).
+Ran `normalize_clips.py` -> `extract_frames.py` -> `build_review_sheet.py`
+in that order (matches extract_frames.py's own docstring: build_review_sheet
+"runs AFTER extraction"). Did NOT run `separability_check.py`,
+`test_mediapipe_gloves.py`, or `split.py` — those are past the review
+sheet gate and out of scope for this pilot. Installed `pillow==11.0.0`
+(the declared `vision` extra in `pyproject.toml`; both `extract_frames.py`'s
+dHash dedup and `build_review_sheet.py`'s contact sheets import PIL) —
+not in `.venv` before this session, needed for any phase-1 script to run
+at all.
+
+Results: `clips_norm/` (5 files), `frames/` (148 total: 30/19/40/43/16
+per clip — Dataset2 and Dataset5 flagged LOW by extract_frames.py's own
+<20-kept heuristic, "check for near-static clip", not yet investigated),
+`manifest/clips.csv` + `manifest/review_sheet_00.png`.
+
+Two real bugs hit by running phase-1 scripts against real data for the
+first time (both scripts were "written in phase 0, NOT run" before this
+session — this is exactly the risk that phrase flagged):
+
+1. **`normalize_clips.py` doesn't rotate a genuinely-portrait clip with
+   no rotation tag — NOT fixed, needs a product decision, not a code
+   guess.** `Dataset3_glovebox.mp4` is 478x850 with no EXIF `rotate` tag
+   and no Display Matrix side-data (`detect_rotation()` returns
+   `is_portrait=True, rotation=0`). `normalize_one()` only appends the
+   transpose filter `if rotation:` — a truthy check on the numeric
+   degree value, not on `is_portrait` — so a clip that's portrait but
+   carries no rotation metadata (as opposed to a landscape-sensor phone
+   video tagged "rotate 90") passes through UNROTATED. Confirmed via
+   `ffprobe` on the `clips_norm/` output (still 478x850) and visually
+   obvious in `review_sheet_00.png` (Dataset3's row is sideways relative
+   to the other four). The review sheet's `orientation` column still
+   correctly says "portrait" for it (derived independently via ffprobe
+   in `build_review_sheet.py`, unaffected by this bug) — the human
+   checkpoint this sheet exists for will catch it. Not fixed because the
+   correct behavior is ambiguous without seeing the footage: is this
+   clip genuinely shot in portrait (should the pipeline accept portrait
+   natively instead of forcing landscape?), or is it landscape content
+   with lost/stripped rotation metadata (which way, 90 CW or CCW, does
+   it need to turn)? That's a call for whoever reviews the sheet, not
+   something to guess in code.
+2. **`build_review_sheet.py`'s `duration_s` was silently 0.0 for every
+   clip — FIXED, unambiguous parsing bug.** `derive_row()` asked ffprobe
+   for `format=duration:stream=width,height,avg_frame_rate,r_frame_rate`
+   in one call; ffprobe answers with ONE CSV LINE PER SECTION (stream
+   fields on line 0, duration alone on line 1), never merged onto one
+   line. The old code read `parts[:4]` from `lines[0]` for the stream
+   fields (correct) and `parts[-1]` of that SAME line for duration
+   (wrong — that's `r_frame_rate`, e.g. `"30/1"`; `float("30/1")` raises,
+   silently swallowed by the bare `except ValueError: pass`, leaving the
+   `0.0` default). Fixed to iterate all returned lines and parse by
+   field count (4 fields = stream row, 1 field = duration row) instead
+   of assuming a fixed position. Verified: `manifest/clips.csv`'s
+   `duration_s` now matches `extract_frames.py`'s independently-measured
+   durations exactly (44.1, 58.3, 34.6, 44.0, 37.2). `pytest` 110/110
+   still green after the fix.
+
+Not yet done, deliberately (per "stop after the review sheet"): nobody
+has filled in `session_id`/`notes` in `manifest/clips.csv` (both blank,
+as `build_review_sheet.py` itself demands — "STOP: a human must fill
+session_id and correct guessed columns before anything downstream").
+`separability_check.py` and `test_mediapipe_gloves.py` reference a
+"Decision points — STOP AND ASK" section that does not exist anywhere
+in this repo — **`CLAUDE.md` itself is truncated**, cutting off
+mid-sentence at "You are the senior perception and systems engineer on
+a four-person team" with nothing after (confirmed: file is exactly 150
+lines, `## Your role` is its last heading). Whatever originally defined
+those decision points, phase-1 checkpoint criteria beyond the review
+sheet, and the rest of "Your role" is missing from both `CLAUDE.md` and
+`CLAUDE_addendum_protocol.md`. Not a blocker for the review-sheet-only
+pilot just run, but WILL block `separability_check.py` (Decision point
+1) and `test_mediapipe_gloves.py` (Decision point 2) once phase 1
+continues past the human review checkpoint — surface this to the user
+before attempting either.
 
 Phase 0 is built: repo scaffolded, config loader/validator, protocol
 engine, debouncer, alert policy, hash-chained session log, kinematics
