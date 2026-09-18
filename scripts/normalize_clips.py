@@ -48,15 +48,42 @@ def ffprobe_json(path: Path) -> dict:
     return json.loads(out.stdout)
 
 
+def _parse_rate(rate: str) -> float:
+    num, _, den = rate.partition("/")
+    den = den or "1"
+    try:
+        d = float(den)
+        return float(num) / d if d else 0.0
+    except ValueError:
+        return 0.0
+
+
+# Relative tolerance for "disagree beyond rounding." avg_frame_rate is
+# computed from actual frame_count/duration and essentially never lands
+# on an exact match to the declared nominal r_frame_rate even for
+# genuinely CFR footage -- e.g. a real 30fps CFR clip measured at
+# 30.0064 (observed on real pilot footage, all well under 0.1%) against
+# a declared 30/1. A real VFR clip (frames genuinely dropped/duplicated)
+# produces a much larger disagreement than encoder rounding noise -- see
+# tests/test_normalize_clips.py for the measured margin.
+_VFR_RELATIVE_TOLERANCE = 0.01
+
+
 def detect_vfr(probe: dict) -> bool:
     """A clip is VFR if the declared average frame rate and the
     container's nominal r_frame_rate disagree beyond rounding, or if
     consecutive packet durations vary — ffprobe's avg_frame_rate vs
-    r_frame_rate mismatch is a cheap, reliable-enough first signal."""
+    r_frame_rate mismatch is a cheap, reliable-enough first signal.
+    Exact equality is too strict: avg_frame_rate is a computed ratio
+    (frame_count/duration) that almost never exactly equals the
+    declared nominal rate even on genuinely CFR footage, so it needs a
+    numeric tolerance, not string equality (see _VFR_RELATIVE_TOLERANCE)."""
     video = next(s for s in probe["streams"] if s["codec_type"] == "video")
-    avg = video.get("avg_frame_rate", "0/0")
-    r = video.get("r_frame_rate", "0/0")
-    return avg != r
+    avg = _parse_rate(video.get("avg_frame_rate", "0/0"))
+    r = _parse_rate(video.get("r_frame_rate", "0/0"))
+    if r == 0:
+        return avg != 0
+    return abs(avg - r) / r > _VFR_RELATIVE_TOLERANCE
 
 
 def detect_rotation(probe: dict) -> tuple[bool, int]:

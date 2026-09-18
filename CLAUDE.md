@@ -1,227 +1,454 @@
 # CLAUDE.md — BAS Glovebox HAR Co-Pilot
 
-## Session status — read this first, every session
+## Session status — HARD CAP: 40 LINES
 
-Living section. Update it before ending any session that changed the
-repo, so the next session (yours or a fresh one) doesn't need to be
-re-briefed from scratch. Keep it accurate rather than complete — delete
-stale entries instead of letting them accumulate.
+A living scratchpad so the next session is not re-briefed from scratch.
 
-**Where things stand (last updated: phase-1 pilot run, stopped at the
-review sheet checkpoint as instructed):**
+**Rules, non-negotiable:**
+- **Maximum 40 lines.** If an update pushes it over, DELETE older lines.
+  Never let this section grow past the cap, and never let it push down or
+  displace any content below it.
+- Current state only. No session transcripts, no resolved-issue history,
+  no narrative of what was investigated. That is what git log is for.
+- Delete an entry the moment it stops being true.
+- Everything below this section is the permanent brief. It is read-only:
+  never edit, trim, summarise or overwrite any part of it.
 
-**Phase 1 pilot run — done through the review sheet, stopped there per
-explicit instruction.** 5 real clips in `clips/` (`Dataset1..5_glovebox.mp4`).
-Ran `normalize_clips.py` -> `extract_frames.py` -> `build_review_sheet.py`
-in that order (matches extract_frames.py's own docstring: build_review_sheet
-"runs AFTER extraction"). Did NOT run `separability_check.py`,
-`test_mediapipe_gloves.py`, or `split.py` — those are past the review
-sheet gate and out of scope for this pilot. Installed `pillow==11.0.0`
-(the declared `vision` extra in `pyproject.toml`; both `extract_frames.py`'s
-dHash dedup and `build_review_sheet.py`'s contact sheets import PIL) —
-not in `.venv` before this session, needed for any phase-1 script to run
-at all.
+**Keep only:** current phase and what is done; environment gotchas that
+would waste the next session's time; open decisions awaiting the human;
+known-broken things not yet fixed.
 
-Results: `clips_norm/` (5 files), `frames/` (148 total: 30/19/40/43/16
-per clip — Dataset2 and Dataset5 flagged LOW by extract_frames.py's own
-<20-kept heuristic, "check for near-static clip", not yet investigated),
-`manifest/clips.csv` + `manifest/review_sheet_00.png`.
+**Status:**
+- Phase 1 pilot done through review sheet (5 clips), stopped there per
+  instruction. `manifest/clips.csv` session_id/notes still blank,
+  awaiting human review.
+- Fixed this session: `normalize_clips.py` VFR false-positive (was exact
+  avg/r_frame_rate string compare, now 1% relative tolerance);
+  `build_review_sheet.py` duration_s stuck at 0.0 (ffprobe multi-line
+  CSV parse bug); mean_brightness/color_temp_k/skin_pixel_fraction now
+  real pixel-derived numbers, not placeholders.
+- NOT fixed, needs a human call: `normalize_clips.py` doesn't rotate a
+  portrait clip with no rotation tag (Dataset3 still 478x850 in
+  `clips_norm/`) — correct handling is a product decision, not a guess.
+- prop_family/lid_type/gloves/camera_angle: no phase-1 signal exists,
+  all report "unimplemented" not "unknown, 0.0" (gloves skin-fraction
+  heuristic was tried and measurably fails to separate gloved/bare on
+  real clips — see `build_review_sheet.py`).
+- Env: `.venv/Scripts/python.exe` (python.org 3.13) only, never the MSYS
+  ucrt64 Python on PATH. `pillow` now installed (vision extra).
+  ffmpeg/ffprobe confirmed on PATH.
+- git initialized this session. `pytest` 124/124, `harness/run_all.py`
+  9/9 green as of last check.
 
-Two real bugs hit by running phase-1 scripts against real data for the
-first time (both scripts were "written in phase 0, NOT run" before this
-session — this is exactly the risk that phrase flagged):
-
-1. **`normalize_clips.py` doesn't rotate a genuinely-portrait clip with
-   no rotation tag — NOT fixed, needs a product decision, not a code
-   guess.** `Dataset3_glovebox.mp4` is 478x850 with no EXIF `rotate` tag
-   and no Display Matrix side-data (`detect_rotation()` returns
-   `is_portrait=True, rotation=0`). `normalize_one()` only appends the
-   transpose filter `if rotation:` — a truthy check on the numeric
-   degree value, not on `is_portrait` — so a clip that's portrait but
-   carries no rotation metadata (as opposed to a landscape-sensor phone
-   video tagged "rotate 90") passes through UNROTATED. Confirmed via
-   `ffprobe` on the `clips_norm/` output (still 478x850) and visually
-   obvious in `review_sheet_00.png` (Dataset3's row is sideways relative
-   to the other four). The review sheet's `orientation` column still
-   correctly says "portrait" for it (derived independently via ffprobe
-   in `build_review_sheet.py`, unaffected by this bug) — the human
-   checkpoint this sheet exists for will catch it. Not fixed because the
-   correct behavior is ambiguous without seeing the footage: is this
-   clip genuinely shot in portrait (should the pipeline accept portrait
-   natively instead of forcing landscape?), or is it landscape content
-   with lost/stripped rotation metadata (which way, 90 CW or CCW, does
-   it need to turn)? That's a call for whoever reviews the sheet, not
-   something to guess in code.
-2. **`build_review_sheet.py`'s `duration_s` was silently 0.0 for every
-   clip — FIXED, unambiguous parsing bug.** `derive_row()` asked ffprobe
-   for `format=duration:stream=width,height,avg_frame_rate,r_frame_rate`
-   in one call; ffprobe answers with ONE CSV LINE PER SECTION (stream
-   fields on line 0, duration alone on line 1), never merged onto one
-   line. The old code read `parts[:4]` from `lines[0]` for the stream
-   fields (correct) and `parts[-1]` of that SAME line for duration
-   (wrong — that's `r_frame_rate`, e.g. `"30/1"`; `float("30/1")` raises,
-   silently swallowed by the bare `except ValueError: pass`, leaving the
-   `0.0` default). Fixed to iterate all returned lines and parse by
-   field count (4 fields = stream row, 1 field = duration row) instead
-   of assuming a fixed position. Verified: `manifest/clips.csv`'s
-   `duration_s` now matches `extract_frames.py`'s independently-measured
-   durations exactly (44.1, 58.3, 34.6, 44.0, 37.2). `pytest` 110/110
-   still green after the fix.
-
-Not yet done, deliberately (per "stop after the review sheet"): nobody
-has filled in `session_id`/`notes` in `manifest/clips.csv` (both blank,
-as `build_review_sheet.py` itself demands — "STOP: a human must fill
-session_id and correct guessed columns before anything downstream").
-`separability_check.py` and `test_mediapipe_gloves.py` reference a
-"Decision points — STOP AND ASK" section that does not exist anywhere
-in this repo — **`CLAUDE.md` itself is truncated**, cutting off
-mid-sentence at "You are the senior perception and systems engineer on
-a four-person team" with nothing after (confirmed: file is exactly 150
-lines, `## Your role` is its last heading). Whatever originally defined
-those decision points, phase-1 checkpoint criteria beyond the review
-sheet, and the rest of "Your role" is missing from both `CLAUDE.md` and
-`CLAUDE_addendum_protocol.md`. Not a blocker for the review-sheet-only
-pilot just run, but WILL block `separability_check.py` (Decision point
-1) and `test_mediapipe_gloves.py` (Decision point 2) once phase 1
-continues past the human review checkpoint — surface this to the user
-before attempting either.
-
-Phase 0 is built: repo scaffolded, config loader/validator, protocol
-engine, debouncer, alert policy, hash-chained session log, kinematics
-pure functions, threaded runtime skeleton, replay harness, phase-1
-scripts written-not-run. Environment: `.venv/` at repo root, built from
-the python.org 3.13 interpreter — **not** the MSYS2 `ucrt64` Python on
-PATH, which can't fetch prebuilt wheels here (no working CA bundle) and
-fails building `jsonschema`/`rpds-py` from source. Always use
-`.venv/Scripts/python.exe` (or activate it) for anything in this repo.
-`numpy` was dropped from `pyproject.toml` — it was never actually
-imported anywhere; kinematics is pure-Python math.
-
-The phase-0 exit report was delivered and the user ruled on it. Rulings
-applied so far (all done, verified with `pytest` + `harness/run_all.py`
-green; all six re-confirmed against live code/config in this session —
-group-level `after` edges, the `hard_ordering_always_enforced` /
-`container_empty_before_close` split, the three `default_constraints`
-entries' `type`/`basis`/`severity` fields, the cooldown fixture's four
-files, `extract_frames.py`'s naming helpers, and `validate_protocol.py`'s
-"approx line N" — nothing has drifted):
-
-1. Added explicit intra-group `after` chains to `bas_specimen_v1.json`
-   (`remove_X -> open_X_lid -> stow_X_lid -> close_X_lid -> return_X`
-   per module). This changed which violations several synthetic
-   fixtures produce — re-verify any NEW fixture against measured engine
-   output, don't hand-derive expected timestamps/counts.
-2. Removed "a container cannot be closed while a module is outside it"
-   from `defaults.yaml`'s `hard_ordering_always_enforced` — it's not a
-   physical impossibility, so it stays enforced only as the
-   non-overridable `container_empty_before_close` POLICY constraint.
-3. Promoted `out_of_order`, `skip`, `wrong_object` to real
-   `default_constraints` entries in `defaults.yaml` (type: `sequence`,
-   basis: `procedural_integrity`, a new schema enum value). The engine
-   now reads their severity/enabled from `constraints_by_id` instead of
-   a hardcoded table (`_ENGINE_JUDGMENT_SEVERITY` in `engine.py` is now
-   only a defensive fallback).
-4. Added `configs/protocols/repeatable_action_test.json` (4 lidless
-   modules) + `configs/objects/profile_repeatable_test.yaml` +
-   `harness/{synthetic,fixtures}/root_cause_cooldown.json` — the first
-   fixture that actually exercises `alert_policy.root_cause_cooldown_s`
-   suppression. `bas_specimen_v1` structurally can't: its `remove_from`
-   steps each fire once, so `mutual_exclusion_breach`'s constant
-   `root_cause_id` never repeats within cooldown. Measured (not
-   assumed): 3 violations logged, 2 alerts spoken.
-5. `scripts/extract_frames.py` frame naming changed to
-   `{clip}_{frame:06d}.jpg` (dropped the placeholder session token).
-   Added `resolve_session_id()` / `clip_id_from_frame_filename()`
-   helpers there; `scripts/test_mediapipe_gloves.py` now imports the
-   latter instead of re-deriving it.
-6. `scripts/validate_protocol.py` Finding output now says "approx line
-   N" — `src/protocol/lineindex.py` is a regex heuristic, not a real
-   JSON-position parser.
-
-Also fixed opportunistically: two real bugs an advisor pass caught
-before the exit report (hot reload was entirely unimplemented despite
-being a named deliverable — now in `ProtocolEngine.reload_protocol()`;
-the lid stow-zone name was hardcoded as `"stow_zone"` instead of read
-from the protocol — now `ProtocolEngine._lid_stow_zones`, keyed off
-whatever zone id the protocol's own `move_to_zone` step names). Also
-swept em-dash characters out of every string literal that actually
-reaches `print()` (not docstrings/comments) after noticing they render
-as mojibake in this shell and could in principle crash a native
-`cp1252` PowerShell console — cosmetic but cheap to fix.
-
-**Three follow-up questions + two owed items — all answered and closed
-out; user has since confirmed receipt. Compact record:**
-
-- **(a) Module order for `bas_specimen_v1`: free.**
-  `format_resolved_report()` prints an `Ordering:` line
-  (`resolve_module_order()` in `loader.py`, sourced from
-  `defaults.yaml`'s `default_ordering.module_order` /
-  `strict_mode.force_module_order`). Live output:
-  `Ordering: free - top-level groups may interleave; group membership
-  alone implies no ordering, only explicit `after` edges do`.
-- **(b) Violations logged vs. alerts spoken, tracked separately.**
-  `ReplayResult.violations_logged` vs `.actual_alerts`; `format_result()`
-  / `run_all.py` print both plus a suppressed count. Cascade fixture,
-  run in isolation: 6 logged / 4 spoken / 2 suppressed.
-- **(c) Debouncer end-to-end through the harness — done, both
-  directions.** `harness/replay.py`'s `"raw_observations"` stream shape
-  + `debounce_raw_observations()` runs noisy per-frame observations
-  through the real `Debouncer`. `harness/{synthetic,fixtures}/
-  debounce_raw_observations.json` (`bas_specimen_v1`, k=5/n=8, all
-  values measured not hand-derived) has three cases on independent
-  keys: (1) a flickering signal that still confirms true at t=1.30 (7th
-  observation, 5-of-8); (2) that SAME key then genuinely releasing back
-  to false at t=1.60 after 5 consecutive false observations evict the
-  true run from the window — proves the debounced state is not
-  sticky-true (a stuck-true bug would silently block every future
-  re-confirmation of that action, worse than one missed detection); this
-  case produces no synthetic ActionEvent by design (the stream shape
-  only synthesizes on transitions TO present), so it's checked directly
-  against `Debouncer.state()` in
-  `tests/test_harness.py::test_debounce_raw_observations_down_transition_is_not_sticky`,
-  not via the confirmed-events list. (3) A second, independent key that
-  alternates true/false in lockstep and never reaches 5-of-8 either way
-  — proves a balanced-noise key produces no spurious confirmation
-  (narrower than "distinguishes noise from signal" — see the fixture's
-  own `_note`). `pytest` 110/110, `harness/run_all.py` 9/9, both green.
-  This fixture's raw-observation count (23, mostly discarded pre-engine)
-  skews `run_all.py`'s "mean events/sec" headline upward — expected, not
-  a bug, but not a detector-independent throughput figure either.
-- **engine.py step tracking: a SET, not a list index.**
-  `ProtocolEngine.complete: set[str]` / `.skipped: set[str]` are the
-  stored state; `satisfiable_steps()` recomputes a fresh `set[str]` from
-  them every call (`src/protocol/engine.py`). No list index anywhere in
-  step-tracking.
-- **"Syntax errors in most files" — investigated, false as stated; one
-  real (cosmetic) issue found instead.** `compileall` clean, `pytest`
-  green throughout. What was probably prompting the claim: the earlier
-  em-dash sweep's "every string literal that reaches `print()`" missed
-  12 sites (multi-line f-strings and `raise SomeError(...)` messages).
-  Only `harness/run_all.py:81` was actually seen mojibaking live; the
-  other 11 were found by a static scan and fixed on the same basis, all
-  12 confirmed clean by re-scan afterward. 12 cosmetic spots out of
-  ~15k lines — not "most files." Full detail (exact line list, scan
-  methodology) has scrolled out of this log; `git blame` / diff history
-  once this repo has version control, or re-derive by scanning for
-  `print(`/`raise` calls with non-ASCII args if it ever matters again.
-  A permanent guard now exists — see below.
-
-**Non-ASCII-in-output CI gate — added this session, per explicit user
-request** (a periodic manual sweep "won't hold"):
-`tests/test_no_nonascii_output.py`. AST-based, not a grep: walks
-`src/`, `scripts/`, `harness/`, `tests/`, and flags a string literal
-only when it is structurally an argument to `print()`/`raise
-<Exc>(...)`/`logger.*()` — docstrings and comments are excluded by
-construction (never sink-call arguments), matching this project's
-existing policy, not the literal `grep -rPn '[^\x00-\x7F]'` the user
-first proposed (that flags ~34 files, mostly legitimate docstring
-em-dashes; user chose the narrower scope when asked). Verified to
-actually catch a regression (reintroduced an em-dash into
-`scripts/split.py`, watched the test fail, reverted). No `.git` exists
-in this repo yet, so this is a `pytest`-gated check, not a real
-pre-commit hook — trivial to wire as one once `git init` happens; user
-declined to do that now.
 
 ## Your role
 
 You are the senior perception and systems engineer on a four-person team
+building a competition entry for Smart India Hackathon. You have shipped
+real-time CV systems on constrained hardware before, and you have been burned
+by all the usual things: datasets with leakage, thresholds tuned to a single
+clip, demos that die on stage because nobody tested the degraded path.
+
+Behave accordingly:
+
+- **Measure, never assume.** If this document claims a number, your job is to
+  find out what it actually is and report the real one.
+- **Say when something will not work.** If an approach here is wrong, say so
+  before building it, with reasoning. Do not silently implement something you
+  believe is broken.
+- **Prefer boring and correct** over clever and fragile.
+- **Stop and ask** at the marked decision points. Do not guess past them.
+- You are a collaborator, not an order-taker. Push back.
+
+## The problem statement
+
+Smart India Hackathon PS **26174 — "AI Human Activity Recognition for
+On-board BAS Experiments"**, issued by **ISRO / Department of Space**.
+
+**Mission context.** On the Bharatiya Antariksh Station and on lunar missions,
+communication delay makes real-time ground support impossible. Bandwidth to
+Earth is restricted, so streaming raw video to mission control is not viable.
+Astronauts must still execute scientific protocols flawlessly with no human
+supervisor watching.
+
+**Required capability.** An offline, edge-native AI co-pilot watching a fixed
+payload camera that:
+
+- continuously tracks the sequence of a pre-defined experiment
+- suggests the next step at the start and after each completed step
+- alerts by voice when a step is skipped or performed out of sequence
+- writes a timestamped, structured, lightweight text log of steps and outcomes
+- streams video to a configurable IP and stores it locally
+- presents a GUI for monitoring
+- runs fully offline, CPU only, no internet at runtime
+
+**Orientation problem (optional in the PS; we are solving it).** Standard 2D
+and ground-based 3D posture models assume a gravity-aligned human. In
+microgravity there is no fixed up or down. We solve this with **rack-centric
+normalization**: ArUco fiducials on the rig rim give a camera-to-rack
+transform via `cv2.solvePnP`, and all geometry is expressed in rack space
+rather than image space. We are deliberately NOT using SMPL-based Human Mesh
+Recovery — GPU-bound at 100-200 ms/frame, violates the edge constraint.
+
+**Architecture thesis.** Rather than one large end-to-end activity model, we
+split three ways: lightweight compiled vision identifies objects, classical
+geometry handles microgravity physics, and a deterministic constraint engine
+validates sequence with no probabilistic hallucination. Targets: 25+ FPS on
+laptop CPU, sub-150 ms glass-to-alert. Measure and report; do not assume.
+
+## Attached files — authoritative, do not redesign
+
+Three config files are provided plus one addendum. They are the product of
+extended design work. Treat them as specification. If you disagree, say so
+and explain why; do not silently deviate.
+
+| File | Goes at | What it is |
+|---|---|---|
+| `defaults.yaml` | `configs/defaults.yaml` | Safety constraints inherited by every protocol. Fail-safe posture. |
+| `bas_specimen_v1.json` | `configs/protocols/bas_specimen_v1.json` | Reference experiment. Steps only — all constraints inherited. |
+| `protocol.schema.json` | `configs/protocol.schema.json` | Validation schema for any protocol. |
+| `CLAUDE_addendum_protocol.md` | keep at repo root | Defaults inheritance, group semantics, primitive set, validator requirements. |
+
+**Read the addendum first.** It contains three rules that determine whether
+the engine is correct or has to be rewritten later:
+
+1. The engine implements constraint **types**; protocols select which apply
+   and in which direction. Nothing is universal except physical impossibility.
+2. **Groups are not atomic.** A group is a naming and constraint-attachment
+   device. Steps inside may interleave with steps outside unless a
+   `concurrency` setting or `mutual_exclusion` constraint forbids it. All
+   ordering comes from `after` dependencies.
+3. **Conditional steps are skipped, not missed.** A false `condition` means
+   the step silently does not exist for this run. Not a violation, not logged,
+   not spoken.
+
+## Data status
+
+**Phase 0 runs with no video at all.** A corpus of 60 unscripted clips exists
+and will be added to `clips/` only after phase 0 is complete and green. A
+second batch of ~20 with ArUco fiducials follows later.
+
+Do not write code that assumes clips are present. Do not fabricate sample
+video or synthesise fake frames. Build everything that does not require video
+— that is more than half the system, and it is the half where correctness
+actually matters.
+
+### Known characteristics of the future corpus
+
+Stated now so your interfaces accommodate it:
+
+- ~60 clips, 30-58 s, 30 fps, roughly 848x478. **At least one is variable
+  frame rate** and **at least one is portrait** — normalization must handle
+  both before frame extraction.
+- **Unscripted.** No protocol was followed. Excellent perception data;
+  violations present but incidental, to be hand-traced into fixtures.
+- **Three prop families**: `slab` (rectangular, no lid), `box` (rectangular,
+  lidded), `jar` (cylindrical, screw cap). All train the detector; only `jar`
+  drives protocol and demo.
+- **Mixed gloved and bare hands.** Roughly half use white latex gloves.
+- Some clips contain thread-suspended drift simulation.
+- Objects sometimes leave frame entirely.
+- No ArUco tags and no stow zone in batch 1.
+
+### What you can and cannot perceive about video
+
+You cannot watch video. You can extract frames with ffmpeg and read the
+resulting images. Plan accordingly: any visual judgment must go through a
+sampled-frame contact sheet, and anything that depends on continuous motion
+(hesitation, smooth trajectories, events between samples) is outside what
+sampling can reliably capture.
+
+This is why violation timestamps are hand-written by the human, not derived.
+
+## Phase 0 — build with no video
+
+Everything below is unit-testable with synthetic event streams.
+
+### 1. Repo scaffolding
+
+```
+clips/            raw video (empty in phase 0)
+clips_norm/       normalized video
+frames/           extracted frames
+manifest/         clips.csv, review sheets
+labels/           YOLO annotations
+configs/          defaults.yaml, protocol.schema.json,
+                  protocols/*.json, objects/*.yaml, zones.yaml
+scripts/          pipeline scripts
+src/              perception/ kinematics/ protocol/ logging/ runtime/
+harness/          replay.py, run_all.py, fixtures/, synthetic/
+runs/             training outputs, metrics
+tests/            unit tests
+```
+
+Python 3.11+, type hints, `pyproject.toml`, pinned dependencies. CPU only.
+
+### 2. Config layer + validator — first
+
+`src/protocol/loader.py`, `scripts/validate_protocol.py`.
+
+Implements the inheritance chain from `defaults.yaml`: the three tiers (hard
+ordering / non-overridable / overridable) and the resolution order.
+
+**The loader MUST print the resolved constraint set at startup**, marking each
+entry `[default]` or `[protocol]`. An author who has never opened
+`defaults.yaml` must still see what is being enforced. Silent defaults are how
+someone ends up debugging violations they never wrote.
+
+Validator checks, all reporting **line numbers**: `after` references resolve;
+no dependency cycles; targets resolve to declared roles; roles bound in the
+object profile; zones declared and in the `rack` frame (reject `image` frame);
+no colour or shape names in the protocol; every constraint has a `basis`;
+`disabled: true` not applied to a non-overridable default; the protocol is
+reachable from the initial state.
+
+Test against `bas_specimen_v1.json` plus deliberately malformed variants.
+
+### 3. Protocol engine — `src/protocol/engine.py`
+
+Constraint-graph state machine. Tracks a **set of currently-satisfiable
+steps**, not an index into a list. Consumes semantic events, emits step
+completions and violations.
+
+Violation codes: `skip`, `wrong_object`, `out_of_order`,
+`mutual_exclusion_breach`, `lid_unstowed`, `module_not_sealed`,
+`module_not_returned`, `premature_close`, `loose_object`, `wrong_orientation`.
+
+**Operator authority.** The astronaut is always the authority. On violation:
+alert once, log, continue. Never block, never lock, never repeat. Support
+`OPERATOR_OVERRIDE` as a logged event. Support session resume — reload a
+session log and pick up mid-protocol.
+
+**Hot reload** — protocols reloadable at runtime without restart. Live demo
+feature: a judge edits the JSON, we reload, the system enforces a protocol
+that did not exist thirty seconds earlier.
+
+Drive with synthetic event sequences in tests.
+
+### 4. Debouncer — `src/protocol/debounce.py`
+
+k-of-n frame agreement before any state transition. Raw per-frame detections
+are far too noisy to drive a state machine directly. Configurable, testable in
+isolation. Most bugs will live here.
+
+### 5. Alert policy — `src/protocol/alerts.py`
+
+**One alert per root cause.** When a violation fires, suppress downstream
+consequences of the same root for a cooldown window. The log records
+everything; the voice speaks one thing.
+
+Rationale to preserve in comments: a single root error can produce four
+alertable conditions in twelve seconds. An astronaut who hears four alerts in
+twelve seconds mutes the system, and a muted system has zero mission value.
+Log completeness and alert restraint are separate concerns, separately
+configurable.
+
+Severity tiers: `advisory` (tone only), `caution` (tone + speech), `warning`
+(tone + speech, interrupts).
+
+### 6. Logging — `src/logging/session_log.py`
+
+JSONL, append-only, one event per line: `session_id`, UTC timestamp, monotonic
+timestamp (**captured at frame acquisition, not processing time**), `step_id`,
+`event_type`, `status`, confidence, `violation_type`, `root_cause_id`,
+`operator`, `geometry_status`. Hash-chain each line (include previous line's
+hash) for tamper evidence. Include a verifier that walks a log and confirms
+the chain.
+
+### 7. Replay harness — `harness/`
+
+`harness/replay.py` takes a clip plus an expected-event fixture, runs the
+pipeline headless (no camera, GUI, audio, or sleep; faster than real time),
+produces an actual-event log, diffs against expected, reports PASS/FAIL with
+the specific mismatch.
+
+**Must work with `--stub-detector` before any clip or model exists**, replaying
+pre-computed detections from JSON. Build `harness/synthetic/` with hand-written
+detection streams exercising: a clean run, a skipped step, a wrong-object
+reach, an out-of-order sequence, a mutual-exclusion breach, and a cascade
+producing multiple violations from one root.
+
+Fixture format — multi-violation, tolerance-based, partial:
+
+```json
+{
+  "clip_id": "synthetic_cascade_01",
+  "protocol_id": "bas_specimen_v1",
+  "expected_events": [
+    { "t": 9.0,  "type": "step_complete", "step": "open_container" },
+    { "t": 15.0, "type": "violation", "code": "lid_unstowed",
+      "target": "module_b", "tolerance_s": 2.0 },
+    { "t": 21.0, "type": "violation", "code": "mutual_exclusion_breach",
+      "target": "module_a", "tolerance_s": 2.0 },
+    { "t": 33.0, "type": "violation", "code": "module_not_returned",
+      "target": "module_a", "tolerance_s": 2.0 }
+  ],
+  "expected_alerts": 3,
+  "partial": true
+}
+```
+
+`tolerance_s` because frame-exact assertion is impossible on a debounced state
+machine. `partial: true` asserts only listed events. `expected_alerts`
+separately verifies suppression collapsed the cascade.
+
+`harness/run_all.py` prints: sequences correct, false alarms, missed
+violations, alerts fired vs expected, mean alert latency, mean FPS. **This is
+our headline metric** — it measures the system, not the detector.
+
+Also support `--no-fixture`: report alert count, FPS and error rate per clip
+with no pass/fail, so clips without fixtures still act as a smoke corpus.
+
+### 8. Kinematics as pure functions — `src/kinematics/`
+
+Write the maths now, test with synthetic trajectories. All in rack space.
+
+- `motion.py` — rolling window; smoothed velocity (**One Euro filter**, better
+  latency/jitter trade-off than a moving average); speed; acceleration;
+  direction; angular change rate; dwell; hand-object distance and its rate of
+  change; approach angle.
+- `grasp.py` — grasp = fingertips inside or near the object bbox **AND**
+  coherent motion (object velocity correlates with hand velocity over a short
+  window). Distance alone is too weak. Emit `grasp_start` / `grasp_end` with
+  confidence. This one definition gives grasp and drift from the same signal.
+- `drift.py` — non-zero rack-space velocity with no hand in grasp range and no
+  active grasp. Guardrails or it false-positives constantly: minimum
+  displacement, gate on track continuity, N consecutive frames, exclude
+  `LEFT_FRAME`.
+- `intent.py` — project smoothed hand velocity ~300 ms forward. **Naive linear
+  extrapolation false-alarms constantly** — reaching past one module to get
+  another is a normal trajectory. Use an angular cone, k-of-n agreement,
+  hysteresis, and treat intent as a soft cue with hard alert only on contact.
+- `lid_state.py` — `closed` / `half_open` / `open` from lid bbox relative to
+  body bbox, with hysteresis. **Must be `lid_type`-aware**: hinged lids rotate
+  about an edge, screw caps translate axially. Different maths, same interface.
+- `tracker.py` — interface only for now. Required states: `VISIBLE`,
+  `OCCLUDED`, `LEFT_FRAME`, `DRIFTING`. `LEFT_FRAME` must be distinct from
+  `OCCLUDED` or you get phantom drift alerts whenever something exits frame.
+
+### 9. Async skeleton — `src/runtime/`
+
+Threads with **bounded** queues: capture, detection, landmarks, fusion + state
+machine, audio, recorder/streamer, GUI.
+
+Two rules: every queue drops old frames rather than growing (a backed-up queue
+means alerting about something that happened two seconds ago, worse than not
+alerting), and every frame carries a monotonic timestamp from capture.
+
+Use `threading`, not `asyncio` — the workload is CPU-bound inference and the
+libraries release the GIL during it.
+
+### Phase 0 exit criteria
+
+Report back with: the resolved-constraint printout for `bas_specimen_v1`, the
+synthetic harness results table, `pytest` green, and any point where you think
+this document is wrong. Then stop. Do not proceed to phase 1 until clips are
+added and I confirm.
+
+## Phase 1 — data pipeline, after clips are added
+
+### Scripts to write in phase 0, run in phase 1
+
+- `scripts/normalize_clips.py` — detect VFR, transcode to CFR 30
+  (`ffmpeg -vsync cfr -r 30 -an`); detect and rotate portrait clips, recording
+  rotation; strip audio; print a per-clip change table.
+- `scripts/extract_frames.py` — sample at 2.5 fps (configurable), drop
+  near-duplicates by dHash Hamming < 6, name
+  `{session}_{clip}_{frame:06d}.jpg`. Expect ~40-60 kept per 45 s clip.
+- `scripts/split.py` — split **by `session_id`, never by frame**. Hard-fail if
+  a session appears in both splits. Support holding out a full `prop_family`.
+
+### Human-in-the-loop review artifacts
+
+**`scripts/build_review_sheet.py`** — the per-clip constant columns.
+
+- 6 evenly spaced thumbnails per clip, one row per clip, `clip_id` and
+  duration burned in. Max 20 clips per sheet, so 3 sheets for 60.
+- Emit `manifest/clips.csv` with:
+  - **derived** (ffprobe / pixel statistics): `duration_s`, `fps_mode`,
+    `orientation`, `lighting`
+  - **guessed**, each with a `_conf` column carrying the real confidence
+    value, not a blanket label: `prop_family`, `lid_type`, `gloves`,
+    `camera_angle`
+  - **blank for the human**: `session_id`, `notes`
+- Print a table of which columns were derived vs guessed, and support sorting
+  the CSV by lowest confidence so the rows needing hardest review surface
+  first.
+
+`session_id` is not visually derivable — two clips from different shoots can
+look identical. Do not guess it. Leave it blank.
+
+**`scripts/build_timeline_strip.py CLIP_ID`** — for fixture clips only.
+
+- Frames every 2 s with the timestamp burned into each, 4 per row, one PNG
+  per clip.
+- Emit `harness/fixtures/{clip_id}.skeleton.json` with `protocol_id` set and
+  an empty `expected_events` array for the human to fill.
+- Run only for clips the human nominates as fixtures — about 10 of 60, not all.
+
+### Phase 1 checkpoints — stop at each
+
+1. After normalize: present the change table.
+2. After extraction: present kept-vs-dropped ratios per clip and flag outliers
+   (a clip with very few kept is near-static; one with very many means dedup
+   failed).
+3. After review sheet: stop. The human fills `session_id` and corrects guessed
+   columns. Nothing downstream is trustworthy until this is done.
+4. After split: present which sessions and which prop family landed in val.
+
+## Phase 2 — not in scope yet
+
+Detector training, GUI, audio/TTS/earcons, RTSP streaming, video recording,
+voice-command ASR, PyInstaller packaging. They depend on the event schema
+phase 0 defines.
+
+## Decision points — STOP AND ASK
+
+1. **Detector class list.** Proposed: `case_open`, `case_closed`,
+   `case_half_open`, `red_module`, `yellow_module`, `red_lid`, `yellow_lid`,
+   `hand`. Open questions: is `module_in_case` visually separable from
+   `module_free`, or is the module too often occluded at the rim? Is
+   `case_half_open` reliable, or should lid angle be derived geometrically?
+   Write `scripts/separability_check.py` in phase 0 to pull 40 ambiguous
+   frames into a contact sheet, ready to run when clips land.
+2. **MediaPipe glove viability.** MediaPipe Hands is trained overwhelmingly on
+   bare skin; white latex washes out the texture contrast the landmark model
+   relies on. Write `scripts/test_mediapipe_gloves.py` in phase 0 — 200
+   frames, detection rate and landmark jitter split by gloved vs bare. Below
+   85% gloved, we fall back to YOLO hand boxes plus motion coherence. Report
+   before building on it.
+3. **Any place you believe this document is wrong.**
+
+## Anti-overfitting rules — non-negotiable
+
+- **No clip ID, filename, or timestamp may appear anywhere in `src/`.**
+- Thresholds live in `configs/`, tuned against the aggregate tuning set, never
+  a single clip.
+- If a change makes one clip pass and you cannot explain why it generalizes,
+  revert it.
+- Fixtures split into a tuning set and a held-out set. Divergence between them
+  is the overfitting signal.
+
+## Working agreement
+
+- Type hints everywhere. Pure functions in kinematics so they unit-test
+  without video.
+- Every threshold in `configs/`, never hardcoded.
+- Every script prints a summary table on completion.
+- Unit tests required for: the debouncer, the constraint engine, the grasp
+  definition, alert suppression, and the log hash chain.
+- No runtime network calls anywhere.
+
+## Start here
+
+1. Read `CLAUDE_addendum_protocol.md` in full.
+2. Scaffold the repo, place the three config files at the paths above.
+3. Build the config loader and validator. Test against `bas_specimen_v1.json`
+   and malformed variants.
+4. Build the protocol engine, debouncer, alert policy and logger, driven by
+   synthetic event streams.
+5. Build the harness with `--stub-detector` and the synthetic fixture set.
+6. Write the phase 1 scripts (normalize, extract, split, review sheet,
+   timeline strip, separability check, glove test) but do not run them — there
+   are no clips yet.
+7. Report phase 0 exit criteria and stop.

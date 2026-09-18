@@ -10,7 +10,10 @@ Columns are split three ways, exactly per CLAUDE.md:
   - derived  (ffprobe / pixel statistics — trustworthy, no _conf needed)
   - guessed  (prop_family, lid_type, gloves, camera_angle — each carries
     its own *_conf column with the real confidence value, not a blanket
-    label)
+    label). A column phase 1 has no honest way to guess prints
+    "unimplemented" with conf 0.0, not "unknown" with conf 0.0 -- the
+    two must not look the same in the CSV, since one means "we tried
+    and got nothing" and the other means "we didn't try."
   - blank for the human (session_id, notes) — session_id is not
     visually derivable; two clips from different shoots can look
     identical, so it is never guessed.
@@ -22,16 +25,28 @@ import argparse
 import csv
 import subprocess
 from dataclasses import dataclass, field
+from io import BytesIO
 from pathlib import Path
 
 CLIPS_NORM_DIR = Path("clips_norm")
 MANIFEST_DIR = Path("manifest")
 MAX_CLIPS_PER_SHEET = 20
 THUMBS_PER_CLIP = 6
+STATS_FRAME_WIDTH = 640
 
-DERIVED_COLUMNS = ["duration_s", "fps_mode", "orientation", "lighting"]
+DERIVED_COLUMNS = [
+    "duration_s", "fps_mode", "orientation", "mean_brightness", "color_temp_k",
+    "skin_pixel_fraction",
+]
 GUESSED_COLUMNS = ["prop_family", "lid_type", "gloves", "camera_angle"]
 HUMAN_COLUMNS = ["session_id", "notes"]
+
+UNIMPLEMENTED = "unimplemented"
+
+# Standard YCbCr skin-tone threshold range (Chai & Ngan-style; no ML).
+SKIN_Y_MIN = 80
+SKIN_CB_RANGE = (77, 127)
+SKIN_CR_RANGE = (133, 173)
 
 
 @dataclass
@@ -40,14 +55,16 @@ class ClipRow:
     duration_s: float = 0.0
     fps_mode: str = "unknown"
     orientation: str = "unknown"
-    lighting: str = "unknown"
-    prop_family: str = "unknown"
+    mean_brightness: float = 0.0
+    color_temp_k: float = 0
+    skin_pixel_fraction: float = 0.0
+    prop_family: str = UNIMPLEMENTED
     prop_family_conf: float = 0.0
-    lid_type: str = "unknown"
+    lid_type: str = UNIMPLEMENTED
     lid_type_conf: float = 0.0
-    gloves: str = "unknown"
+    gloves: str = UNIMPLEMENTED
     gloves_conf: float = 0.0
-    camera_angle: str = "unknown"
+    camera_angle: str = UNIMPLEMENTED
     camera_angle_conf: float = 0.0
     session_id: str = ""
     notes: str = ""
@@ -56,12 +73,102 @@ class ClipRow:
         return min(self.prop_family_conf, self.lid_type_conf, self.gloves_conf, self.camera_angle_conf)
 
 
+def _mean_brightness(image) -> float:
+    from PIL import ImageStat
+
+    return ImageStat.Stat(image.convert("L")).mean[0]
+
+
+def _srgb_to_linear(c: float) -> float:
+    c = c / 255.0
+    return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+
+def _color_temperature_k(image) -> float:
+    """McCamy's CCT approximation from mean sRGB -> linear RGB -> CIE
+    XYZ (standard sRGB primaries) -> xy chromaticity -> McCamy's cubic
+    fit. Assumes a single dominant illuminant and ignores scene
+    reflectance/colour -- a rough lighting descriptor for a review
+    sheet, not a colorimetrically exact measurement."""
+    from PIL import ImageStat
+
+    r, g, b = ImageStat.Stat(image).mean[:3]
+    rl, gl, bl = _srgb_to_linear(r), _srgb_to_linear(g), _srgb_to_linear(b)
+    x_ = 0.4124564 * rl + 0.3575761 * gl + 0.1804375 * bl
+    y_ = 0.2126729 * rl + 0.7151522 * gl + 0.0721750 * bl
+    z_ = 0.0193339 * rl + 0.1191920 * gl + 0.9503041 * bl
+    denom = x_ + y_ + z_
+    if denom <= 0:
+        return 0.0
+    x = x_ / denom
+    y = y_ / denom
+    if (0.1858 - y) == 0:
+        return 0.0
+    n = (x - 0.3320) / (0.1858 - y)
+    return 449 * n**3 + 3525 * n**2 + 6823.3 * n + 5520.33
+
+
+def _skin_pixel_fraction(image) -> float:
+    """Coarse YCbCr skin-tone thresholding, NOT localized to a detected
+    hand bounding box -- phase 1 has no hand/pose detector available
+    without either using MediaPipe (which would make a gloves GUESS
+    circular with test_mediapipe_gloves.py's own MediaPipe detection-
+    rate test, since that script uses the gloves column as its
+    gloved/bare ground-truth split) or a fine-tuned detector this phase
+    doesn't have. Exposed as a DERIVED diagnostic number, not turned
+    into a gloved/bare guess -- see the "gloves" comment in derive_row()
+    for why: measured against this project's own 5-clip phase-1 pilot
+    corpus, this fraction does NOT separate gloved from bare hands
+    (visually gloved Dataset1/2 measured 0.157/0.283; visually bare
+    Dataset4/5 measured 0.628/0.162 -- Dataset5's bare hands measured
+    LOWER skin fraction than either gloved clip). Left in as a real
+    number a human reviewer can read, not a signal this script trusts
+    enough to categorize on."""
+    from PIL import ImageChops
+
+    y, cb, cr = image.convert("YCbCr").split()
+    y_mask = y.point(lambda p: 255 if p > SKIN_Y_MIN else 0)
+    cb_mask = cb.point(lambda p: 255 if SKIN_CB_RANGE[0] <= p <= SKIN_CB_RANGE[1] else 0)
+    cr_mask = cr.point(lambda p: 255 if SKIN_CR_RANGE[0] <= p <= SKIN_CR_RANGE[1] else 0)
+    combined = ImageChops.multiply(ImageChops.multiply(y_mask, cb_mask), cr_mask)
+    total = combined.width * combined.height
+    return combined.histogram()[255] / total if total else 0.0
+
+
+def _extract_representative_frame(clip_path: Path, duration_s: float, width: int = STATS_FRAME_WIDTH):
+    """One frame from the middle of the clip, for pixel statistics.
+    Returns None if ffmpeg produced nothing (e.g. duration is 0)."""
+    from PIL import Image
+
+    t = duration_s / 2
+    cmd = [
+        "ffmpeg", "-y", "-ss", str(t), "-i", str(clip_path),
+        "-frames:v", "1", "-vf", f"scale={width}:-2",
+        "-f", "image2pipe", "-vcodec", "mjpeg", "-",
+    ]
+    result = subprocess.run(cmd, capture_output=True, check=True)
+    if not result.stdout:
+        return None
+    return Image.open(BytesIO(result.stdout)).convert("RGB")
+
+
 def derive_row(clip_path: Path) -> ClipRow:
-    """ffprobe-only derivations. Guessed columns (prop_family, lid_type,
-    gloves, camera_angle) require the actual detector/classifier from
-    phase 2 and are left at confidence 0.0 / "unknown" here — this
-    function is what phase 1 has without a model yet. Swap in a real
-    classifier call once one exists; the CSV shape does not change.
+    """ffprobe derivations (duration/fps_mode/orientation) plus real
+    pixel-statistics derivations (mean_brightness, color_temp_k,
+    skin_pixel_fraction -- all DERIVED, no threshold judgment applied).
+
+    All four GUESSED columns are "unimplemented" here, including
+    gloves: a skin-tone-fraction threshold was implemented and measured
+    against this project's own 5-clip phase-1 pilot corpus (see
+    _skin_pixel_fraction()'s docstring for the actual numbers), and it
+    does not separate gloved from bare hands -- a visually bare-handed
+    clip measured LOWER skin fraction than two visually gloved clips.
+    Shipping a confident "true"/"false" off a threshold that measurably
+    doesn't discriminate would be a fabricated guess wearing a
+    plausible-looking confidence number, exactly what "unimplemented"
+    exists to prevent. prop_family, lid_type, and camera_angle have no
+    attempted phase-1 signal at all -- no object/shape classifier
+    exists yet, that is explicitly phase 2.
     """
     probe = subprocess.run(
         ["ffprobe", "-v", "quiet", "-show_entries",
@@ -91,12 +198,24 @@ def derive_row(clip_path: Path) -> ClipRow:
             except ValueError:
                 pass
 
+    frame = _extract_representative_frame(clip_path, duration)
+    if frame is not None:
+        mean_brightness = round(_mean_brightness(frame), 1)
+        color_temp_k = round(_color_temperature_k(frame))
+        skin_pixel_fraction = round(_skin_pixel_fraction(frame), 4)
+    else:
+        mean_brightness = 0.0
+        color_temp_k = 0
+        skin_pixel_fraction = 0.0
+
     return ClipRow(
         clip_id=clip_path.stem,
         duration_s=round(duration, 1),
         fps_mode=fps_mode,
         orientation=orientation,
-        lighting="unknown",  # pixel-statistics estimate — TODO phase 2
+        mean_brightness=mean_brightness,
+        color_temp_k=color_temp_k,
+        skin_pixel_fraction=skin_pixel_fraction,
     )
 
 
@@ -122,7 +241,9 @@ def write_manifest_csv(rows: list[ClipRow], out_path: Path) -> None:
                 "duration_s": r.duration_s,
                 "fps_mode": r.fps_mode,
                 "orientation": r.orientation,
-                "lighting": r.lighting,
+                "mean_brightness": r.mean_brightness,
+                "color_temp_k": r.color_temp_k,
+                "skin_pixel_fraction": r.skin_pixel_fraction,
                 "prop_family": r.prop_family, "prop_family_conf": r.prop_family_conf,
                 "lid_type": r.lid_type, "lid_type_conf": r.lid_type_conf,
                 "gloves": r.gloves, "gloves_conf": r.gloves_conf,
@@ -192,8 +313,19 @@ def main() -> int:
         path = build_contact_sheet(batch, i // MAX_CLIPS_PER_SHEET, args.out_dir)
         print(f"wrote {path} ({len(batch)} clips)")
 
+    unimplemented_cols = sorted({
+        col for col in GUESSED_COLUMNS
+        for r in rows
+        if getattr(r, col) == UNIMPLEMENTED
+    })
+
     print(f"\nderived columns : {DERIVED_COLUMNS}")
     print(f"guessed columns : {GUESSED_COLUMNS} (each with a _conf column)")
+    if unimplemented_cols:
+        print(
+            f"UNIMPLEMENTED   : {unimplemented_cols} (no phase-1 signal -- see "
+            f"derive_row()'s docstring for why each one; conf is 0.0, not a real guess)"
+        )
     print(f"human columns   : {HUMAN_COLUMNS} (blank - fill in before scripts/split.py)")
     print(f"\n{len(rows)} clips written to {args.out_dir / 'clips.csv'}")
     print("STOP: a human must fill session_id and correct guessed columns before anything downstream.")

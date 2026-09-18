@@ -1,6 +1,6 @@
-clip_id,duration_s,fps_mode,orientation,lighting,prop_family,prop_family_conf,lid_type,lid_type_conf,gloves,gloves_conf,camera_angle,camera_angle_conf,session_id,notes
-Dataset1_glovebox,44.1,cfr,landscape,unknown,unknown,0.0,unknown,0.0,unknown,0.0,unknown,0.0,,
-Dataset2_glovebox,58.3,cfr,landscape,unknown,unknown,0.0,unknown,0.0,unknown,0.0,unknown,0.0,,
-Dataset3_glovebox,34.6,cfr,portrait,unknown,unknown,0.0,unknown,0.0,unknown,0.0,unknown,0.0,,
-Dataset4_glovebox,44.0,cfr,landscape,unknown,unknown,0.0,unknown,0.0,unknown,0.0,unknown,0.0,,
-Dataset5_glovebox,37.2,cfr,landscape,unknown,unknown,0.0,unknown,0.0,unknown,0.0,unknown,0.0,,
+clip_id,duration_s,fps_mode,orientation,mean_brightness,color_temp_k,skin_pixel_fraction,prop_family,prop_family_conf,lid_type,lid_type_conf,gloves,gloves_conf,camera_angle,camera_angle_conf,session_id,notes
+Dataset1_glovebox,44.1,cfr,landscape,124.2,6278,0.157,unimplemented,0.0,unimplemented,0.0,unimplemented,0.0,unimplemented,0.0,,
+Dataset2_glovebox,58.3,cfr,landscape,125.6,5069,0.2833,unimplemented,0.0,unimplemented,0.0,unimplemented,0.0,unimplemented,0.0,,
+Dataset3_glovebox,34.6,cfr,portrait,122.2,5614,0.1022,unimplemented,0.0,unimplemented,0.0,unimplemented,0.0,unimplemented,0.0,,
+Dataset4_glovebox,44.0,cfr,landscape,127.1,4230,0.6284,unimplemented,0.0,unimplemented,0.0,unimplemented,0.0,unimplemented,0.0,,
+Dataset5_glovebox,37.2,cfr,landscape,132.6,5452,0.1623,unimplemented,0.0,unimplemented,0.0,unimplemented,0.0,unimplemented,0.0,,
