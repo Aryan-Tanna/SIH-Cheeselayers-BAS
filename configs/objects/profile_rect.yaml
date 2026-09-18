@@ -14,7 +14,13 @@ description: "Slab prop family: rectangular body, no lid."
 
 roles:
   container:
-    class_id: box
+    # Same physical container as profile_jar.yaml's (mixed-profile
+    # experiments point one role at each) -- kept consistent with it.
+    # See configs/objects/LABELLING_GUIDANCE.md for why this is two
+    # whole-shape classes, not a separately tracked lid bbox.
+    state_class_ids:
+      open: case_open
+      closed: case_closed
     has_lid: true
     lid_type: hinged
     thresholds:

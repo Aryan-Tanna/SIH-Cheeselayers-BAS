@@ -19,27 +19,24 @@ would waste the next session's time; open decisions awaiting the human;
 known-broken things not yet fixed.
 
 **Status:**
-- Phase 1 pilot through review sheet (5 clips) + separability_check.py
-  run (`manifest/separability_check.png`, 40 frames) — a RANDOM
-  fallback sample, not near-transition selection (clips.csv notes are
-  still blank). Detector class list (Decision point 1) is blocked on
-  human review of that sheet.
+- Phase 1 pilot: review sheet + separability check both done (5 clips).
+  Detector class list is FINAL (see `configs/objects/LABELLING_GUIDANCE.md`):
+  case_open, case_closed, red_module, yellow_module, red_lid, yellow_lid,
+  hand. Containment/lid-angle resolved geometrically, not classified.
+- `configs/objects/*.yaml` updated to match (state_class_ids,
+  lid_class_id); `scripts/validate_protocol.py` now prints the resolved
+  constraint set on every run (closes the CLAUDE.md gap).
 - `manifest/clips.csv` session_id/notes/guessed columns still blank,
-  awaiting human review.
-- Fixed this session: `normalize_clips.py` VFR false-positive (1%
-  tolerance, was exact string compare) and Dataset3 rotation
-  (portrait+no-tag now defaults to 90° CW via `manifest/rotation.csv`,
-  confirmed-gated so an unreviewed default can't become an override);
-  `build_review_sheet.py` duration_s bug (ffprobe multi-line CSV
-  parse); mean_brightness/color_temp_k/skin_pixel_fraction are real
-  pixel-derived numbers.
-- prop_family/lid_type/gloves/camera_angle: no phase-1 signal, all
-  "unimplemented" (gloves heuristic tried, measurably fails to
-  separate gloved/bare on real clips).
+  awaiting human review — nothing downstream (split.py) should run yet.
+- Dataset3 rotation now correct (90° CW, `manifest/rotation.csv`,
+  confirmed-gated overrides). prop_family/lid_type/gloves/camera_angle:
+  "unimplemented" — no phase-1 signal exists, not a fake guess.
+- Known pre-existing, not fixed: `validate_protocol.py` crashes
+  (traceback, not a clean FAIL) on genuinely malformed (non-JSON) input.
 - Env: `.venv/Scripts/python.exe` (python.org 3.13) only, never MSYS
   ucrt64; pillow installed; ffmpeg `-noautorotate` works,
   `-autorotate 0` doesn't parse on this build.
-- git initialized. pytest 132/132, harness/run_all.py 9/9 green.
+- git initialized. pytest 137/137, harness/run_all.py 9/9 green.
 
 
 ## Your role

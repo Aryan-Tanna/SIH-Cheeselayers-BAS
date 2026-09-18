@@ -13,7 +13,11 @@ description: "Synthetic profile for testing repeated-root-cause alert suppressio
 
 roles:
   container:
-    class_id: box
+    # Kept consistent with profile_jar.yaml's container schema even
+    # though this profile is synthetic -- see LABELLING_GUIDANCE.md.
+    state_class_ids:
+      open: case_open
+      closed: case_closed
     has_lid: true
     lid_type: hinged
 

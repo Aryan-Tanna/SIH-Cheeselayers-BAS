@@ -5,6 +5,22 @@
 #
 # lid_type "screw" tells src/kinematics/lid_state.py to model the lid as
 # axial translation (unscrewing), not rotation about an edge hinge.
+#
+# Detector class list decided from configs/objects/LABELLING_GUIDANCE.md's
+# separability review (manifest/separability_check.png, phase-1 pilot
+# corpus): case_open, case_closed, red_module, yellow_module, red_lid,
+# yellow_lid, hand. module_in_case/module_free and case_half_open were
+# explicitly rejected as classes -- containment and lid angle are both
+# resolved geometrically from bboxes, not asked of the classifier. See
+# LABELLING_GUIDANCE.md for the full reasoning and the annotation
+# edge-case rules (occlusion, mid-rotation, motion blur) -- read those
+# before labelling a single frame from this corpus.
+#
+# The colours and exact class names below are THIS corpus's real props,
+# not a universal schema -- a different prop family binds its own class
+# names in its own profile (see CLAUDE_addendum_protocol.md, "Roles, not
+# colours"); the number of modules, whether a lid exists at all, and how
+# many container-state classes are needed can all differ per protocol.
 
 schema_version: 1
 profile_id: jar
@@ -12,7 +28,17 @@ description: "Jar prop family: cylindrical body, screw-cap lid."
 
 roles:
   container:
-    class_id: box
+    # The container's own open/closed state is two directly-detected
+    # WHOLE-SHAPE classes, not a separately tracked lid bbox + geometric
+    # angle -- unlike a module's small screw-cap lid, the container's
+    # hinged flap changes the whole box's silhouette, so appearance
+    # alone reliably separates open from closed. There is deliberately
+    # no case_half_open: nothing downstream needs a continuous angle for
+    # the container (only module lids do, via lid_class_id below), so
+    # adding that class would be complexity with no consumer.
+    state_class_ids:
+      open: case_open
+      closed: case_closed
     has_lid: true
     lid_type: hinged
     thresholds:
@@ -20,7 +46,13 @@ roles:
       lid_open_angle_deg: 35
 
   module_a:
-    class_id: jar
+    class_id: red_module
+    # The lid IS its own detected bbox (unlike the container's), because
+    # src/kinematics/lid_state.py already derives a continuous open/
+    # closed state from a screw-cap lid's bbox position relative to the
+    # module body -- exactly the geometric derivation this class list
+    # relies on instead of a "half-open" classifier class.
+    lid_class_id: red_lid
     has_lid: true
     lid_type: screw
     thresholds:
@@ -28,9 +60,16 @@ roles:
       lid_open_travel_px: 18
 
   module_b:
-    class_id: jar
+    class_id: yellow_module
+    lid_class_id: yellow_lid
     has_lid: true
     lid_type: screw
     thresholds:
       grasp_distance_px: 30
       lid_open_travel_px: 18
+
+# Classes a detector for this prop family must recognize that are not
+# bound to a protocol role (containment/grasp geometry needs a hand
+# bbox, but "hand" is a perception primitive, not a role).
+detector_classes_not_role_bound:
+  - hand

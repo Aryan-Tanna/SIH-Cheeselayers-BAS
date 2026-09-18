@@ -29,6 +29,8 @@ from src.protocol.loader import (  # noqa: E402
     ParsedProtocol,
     load_yaml,
     parse_protocol,
+    print_resolved_constraints,
+    resolve,
     resolve_constraints,
 )
 
@@ -345,12 +347,29 @@ def main() -> int:
 
     if not findings:
         print(f"OK: {args.protocol} is valid.")
-        return 0
+    else:
+        print(f"FAIL: {args.protocol} - {len(findings)} finding(s):")
+        for f in findings:
+            print(f)
 
-    print(f"FAIL: {args.protocol} - {len(findings)} finding(s):")
-    for f in findings:
-        print(f)
-    return 1
+    # CLAUDE.md: "The loader MUST print the resolved constraint set at
+    # startup ... An author who has never opened defaults.yaml must
+    # still be able to see what is being enforced." This script already
+    # loads and resolves the same protocol to validate it, so it is the
+    # natural single place for that printout to happen on every run, not
+    # a separate untriggered code path. Only skipped if resolution
+    # itself throws (typically because the findings above already
+    # explain why the protocol can't even be parsed) -- the findings
+    # are the actionable output in that case, not a traceback.
+    try:
+        resolved = resolve(args.protocol, args.defaults)
+    except Exception as e:  # noqa: BLE001 - reported, not crashed on
+        print(f"\n(resolved-constraint printout skipped: {e})")
+    else:
+        print()
+        print_resolved_constraints(resolved)
+
+    return 1 if findings else 0
 
 
 if __name__ == "__main__":
