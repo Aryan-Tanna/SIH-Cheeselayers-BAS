@@ -303,9 +303,21 @@ def check_reachable(parsed: ParsedProtocol, idx: LineIndex, profile: dict | None
 
 
 def validate(protocol_path: Path, defaults_path: Path) -> list[Finding]:
-    raw_text = protocol_path.read_text(encoding="utf-8")
+    # This is the live hot-reload path (CLAUDE.md: "protocols reloadable
+    # at runtime without restart... a judge edits the JSON, we reload").
+    # A bad comma or a typo'd path must produce a clean FAIL finding,
+    # never a raw traceback on stage.
+    try:
+        raw_text = protocol_path.read_text(encoding="utf-8")
+    except OSError as e:
+        return [Finding(None, f"cannot read '{protocol_path}': {e}")]
+
+    try:
+        raw = json.loads(raw_text)
+    except json.JSONDecodeError as e:
+        return [Finding(None, f"malformed JSON: {e.msg} (line {e.lineno}, column {e.colno})")]
+
     idx = LineIndex(raw_text)
-    raw = json.loads(raw_text)
     schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
     defaults = load_yaml(defaults_path)
 

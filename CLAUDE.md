@@ -25,18 +25,17 @@ known-broken things not yet fixed.
   hand. Containment/lid-angle resolved geometrically, not classified.
 - `configs/objects/*.yaml` updated to match (state_class_ids,
   lid_class_id); `scripts/validate_protocol.py` now prints the resolved
-  constraint set on every run (closes the CLAUDE.md gap).
-- `manifest/clips.csv` session_id/notes/guessed columns still blank,
-  awaiting human review — nothing downstream (split.py) should run yet.
-- Dataset3 rotation now correct (90° CW, `manifest/rotation.csv`,
-  confirmed-gated overrides). prop_family/lid_type/gloves/camera_angle:
-  "unimplemented" — no phase-1 signal exists, not a fake guess.
-- Known pre-existing, not fixed: `validate_protocol.py` crashes
-  (traceback, not a clean FAIL) on genuinely malformed (non-JSON) input.
+  constraint set on every run AND fails clean (no traceback) on
+  malformed JSON or a missing file.
+- Next steps are the user's: fill `manifest/clips.csv` session_id +
+  confirm/correct `rotate_deg` in `manifest/rotation.csv`, bring in the
+  other 55 clips, start hand-labelling per LABELLING_GUIDANCE.md.
+- prop_family/lid_type/gloves/camera_angle: "unimplemented" — no
+  phase-1 signal exists, not a fake guess.
 - Env: `.venv/Scripts/python.exe` (python.org 3.13) only, never MSYS
   ucrt64; pillow installed; ffmpeg `-noautorotate` works,
   `-autorotate 0` doesn't parse on this build.
-- git initialized. pytest 137/137, harness/run_all.py 9/9 green.
+- git initialized. pytest 140/140, harness/run_all.py 9/9 green.
 
 
 ## Your role

@@ -99,13 +99,29 @@ precision than the frame actually supports.**
   estimate of the module's **full extent**, including the occluded
   part, if you can confidently infer it from the visible portion and
   the object's known shape (e.g. a cylinder's visible curve implies the
-  rest of the circle). If the occluded fraction is large enough that
-  you're guessing rather than inferring — you cannot say within roughly
-  one box-width where the far edge is — do not fabricate a box. Skip
-  the frame for that instance and flag it as `occlusion` in the
-  annotation tool's notes/attributes field, do not silently omit it
-  (an omitted instance with no note looks identical to "this frame
-  correctly has no module," which is a different fact).
+  rest of the circle). Full extent, not visible extent, is required:
+  containment (module centroid inside case bbox, see above) is computed
+  from the box's centroid, and a visible-extent-only box's centroid
+  shifts as a hand slides across an otherwise stationary object — the
+  module would appear to move even though it hasn't, corrupting the
+  exact geometric signal this whole class-list decision relies on. If
+  the occluded fraction is large enough that you're guessing rather
+  than inferring — you cannot say within roughly one box-width where
+  the far edge is — do not fabricate a box. Skip the frame for that
+  instance and flag it as `occlusion` in the annotation tool's
+  notes/attributes field, do not silently omit it (an omitted instance
+  with no note looks identical to "this frame correctly has no
+  module," which is a different fact).
+- **Tub is transparent and reflective.** Label the real object seen
+  through the tub's wall or lid, never a reflection on the plastic
+  surface. A reflection's apparent position depends on lighting and
+  viewing angle, not on where anything actually is — labelling one
+  injects a phantom detection with no real-world referent, and (same
+  reasoning as above) a phantom box corrupts centroid-based containment
+  for whatever real object it gets mistaken for. If genuinely unsure
+  whether something is the real object or its reflection, treat it as
+  the same ambiguous case as occlusion and motion blur: skip and flag
+  (`reflection_ambiguous`), don't guess.
 - **Lid mid-rotation / mid-unscrew.** Label the lid's box exactly where
   it visually is at that instant — never round to "closed" or "open."
   This is the entire point of deriving state geometrically instead of
@@ -118,7 +134,7 @@ precision than the frame actually supports.**
   flag it `motion_blur`, same as occlusion — do not average toward a
   guessed sharp edge. A detector trained on confidently-mislabelled
   blur is worse than one that simply saw fewer blurred examples.
-- **General rule underlying all three:** a skipped, flagged instance
+- **General rule underlying all four:** a skipped, flagged instance
   costs one fewer training example. A confidently wrong box costs a
   false signal the model has no way to distinguish from a correct one,
   and that cost compounds across every frame labelled the same
