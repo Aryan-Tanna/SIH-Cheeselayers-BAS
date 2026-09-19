@@ -14,9 +14,25 @@ dependencies = [
 # replay harness must run with --stub-detector before any model exists,
 # and importing these at module scope would break that on a clean install.
 vision = [
-    "opencv-python==4.10.0.84",
+    # opencv-python and opencv-contrib-python both provide a top-level
+    # `cv2` package and conflict if both are installed -- contrib is a
+    # strict superset, and mediapipe pulls it in anyway (below), so it
+    # is the only one listed here. Do not add opencv-python alongside
+    # it; installing both corrupts the shared cv2 install (confirmed:
+    # cv2.imread disappears entirely).
+    "opencv-contrib-python==5.0.0.93",
     "ultralytics==8.3.28",
-    "mediapipe==0.10.18",
+    # 0.10.18 (original pin) has no Python 3.13 wheel. 0.10.30, the
+    # oldest version that does, removed the classic mediapipe.solutions
+    # API entirely (only the newer mediapipe.tasks API remains, which
+    # needs an explicit local model file -- see models/README.md) AND
+    # has a broken native-library loader on Windows for this project's
+    # actual use (HandLandmarker.create_from_options() raises
+    # `AttributeError: function 'free' not found` inside
+    # mediapipe_c_bindings.load_shared_library -- a packaging bug, not
+    # anything in this repo's code). 1.0.1 is confirmed working:
+    # scripts/test_mediapipe_gloves.py runs end-to-end against it.
+    "mediapipe==1.0.1",
     "pillow==11.0.0",
 ]
 dev = [

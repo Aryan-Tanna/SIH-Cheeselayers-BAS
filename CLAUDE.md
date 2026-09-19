@@ -19,23 +19,27 @@ would waste the next session's time; open decisions awaiting the human;
 known-broken things not yet fixed.
 
 **Status:**
-- Phase 1 pilot: review sheet + separability check both done (5 clips).
-  Detector class list is FINAL (see `configs/objects/LABELLING_GUIDANCE.md`):
-  case_open, case_closed, red_module, yellow_module, red_lid, yellow_lid,
-  hand. Containment/lid-angle resolved geometrically, not classified.
-- `configs/objects/*.yaml` updated to match (state_class_ids,
-  lid_class_id); `scripts/validate_protocol.py` now prints the resolved
-  constraint set on every run AND fails clean (no traceback) on
-  malformed JSON or a missing file.
+- Decision point 2 (MediaPipe glove viability) RESOLVED: gloved
+  detection rate 26.1% (Dataset1+5), bare 79.0% (Dataset2+4) — well
+  under the 85% threshold, so fall back to YOLO hand boxes + motion
+  coherence, per CLAUDE.md's own rule. Dataset3 has MIXED hands (right
+  bare, left gloved), excluded from this split.
+- mediapipe pin now 1.0.1, not 0.10.18 (no cp313 wheel; 0.10.30 dropped
+  the needed API, has a broken native loader on Windows). New:
+  `models/hand_landmarker.task` vendored (Apache 2.0, see
+  models/README.md), never fetched at runtime. opencv pin is
+  opencv-contrib-python only now — installing opencv-python alongside
+  it corrupts the shared cv2 install.
+- Detector class list is FINAL (see
+  `configs/objects/LABELLING_GUIDANCE.md`): case_open, case_closed,
+  red_module, yellow_module, red_lid, yellow_lid, hand.
 - Next steps are the user's: fill `manifest/clips.csv` session_id +
-  confirm/correct `rotate_deg` in `manifest/rotation.csv`, bring in the
-  other 55 clips, start hand-labelling per LABELLING_GUIDANCE.md.
+  confirm/correct `rotate_deg`, bring in the other 55 clips, start
+  hand-labelling.
 - prop_family/lid_type/gloves/camera_angle: "unimplemented" — no
-  phase-1 signal exists, not a fake guess.
+  phase-1 signal exists.
 - Env: `.venv/Scripts/python.exe` (python.org 3.13) only, never MSYS
-  ucrt64; pillow installed; ffmpeg `-noautorotate` works,
-  `-autorotate 0` doesn't parse on this build.
-- git initialized. pytest 140/140, harness/run_all.py 9/9 green.
+  ucrt64. git initialized. pytest 144/144, harness/run_all.py 9/9.
 
 
 ## Your role
