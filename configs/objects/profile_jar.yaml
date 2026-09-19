@@ -9,10 +9,16 @@
 # Detector class list decided from configs/objects/LABELLING_GUIDANCE.md's
 # separability review (manifest/separability_check.png, phase-1 pilot
 # corpus): case_open, case_closed, red_module, yellow_module, red_lid,
-# yellow_lid, hand. module_in_case/module_free and case_half_open were
-# explicitly rejected as classes -- containment and lid angle are both
-# resolved geometrically from bboxes, not asked of the classifier. See
-# LABELLING_GUIDANCE.md for the full reasoning and the annotation
+# yellow_lid, hand_gloved, hand_bare. module_in_case/module_free and
+# case_half_open were explicitly rejected as classes -- containment and
+# lid angle are both resolved geometrically from bboxes, not asked of
+# the classifier. hand was split into hand_gloved/hand_bare after the
+# MediaPipe glove test (models/hand_landmarker.task) came back 26%
+# detection on gloved hands vs 79% on bare -- runtime needs to know
+# per-hand which detection path to use, and a skin-tone heuristic on
+# the hand region was already rejected once for the same reason it
+# failed for the clips.csv gloves column (see build_review_sheet.py).
+# See LABELLING_GUIDANCE.md for the full reasoning and the annotation
 # edge-case rules (occlusion, mid-rotation, motion blur) -- read those
 # before labelling a single frame from this corpus.
 #
@@ -70,6 +76,26 @@ roles:
 
 # Classes a detector for this prop family must recognize that are not
 # bound to a protocol role (containment/grasp geometry needs a hand
-# bbox, but "hand" is a perception primitive, not a role).
+# bbox, but "hand" is a perception primitive, not a role). Split into
+# hand_gloved/hand_bare per the MediaPipe glove test result -- see the
+# header comment above and LABELLING_GUIDANCE.md's "Objects in this
+# corpus" section.
 detector_classes_not_role_bound:
-  - hand
+  - hand_gloved
+  - hand_bare
+
+# Canonical numeric class IDs for detector training (list index == class
+# ID, YOLO-style). This is the single source of truth -- nothing else
+# in this repo currently generates a training data.yaml or a Label
+# Studio config; when either is added, derive its class list from this
+# field rather than retyping the names (that's exactly how the id/name
+# pairing drifts out of sync).
+detector_class_names:
+  - case_open      # 0
+  - case_closed    # 1
+  - red_module     # 2
+  - yellow_module  # 3
+  - red_lid        # 4
+  - yellow_lid     # 5
+  - hand_gloved    # 6
+  - hand_bare      # 7

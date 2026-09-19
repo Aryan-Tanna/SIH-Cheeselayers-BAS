@@ -20,8 +20,24 @@ one by default.
 **Decided list**, `bas_specimen_v1` / jar:
 
 ```
-case_open, case_closed, red_module, yellow_module, red_lid, yellow_lid, hand
+case_open, case_closed, red_module, yellow_module, red_lid, yellow_lid, hand_gloved, hand_bare
 ```
+
+`hand` was split into `hand_gloved`/`hand_bare` after the MediaPipe
+glove test (`models/hand_landmarker.task`) came back 26% detection on
+gloved hands vs 79% on bare — runtime needs to know per-hand which
+detection path to use, and it can't be resolved after the fact from a
+single undifferentiated `hand` box. A skin-tone heuristic to tell
+gloved from bare on the hand region was considered and rejected: it's
+the same signal that already failed for `clips.csv`'s `gloves` column
+(see `build_review_sheet.py` — white gloves and skin-toned background
+both defeat naive skin-tone thresholding). Since there's no reliable
+way to derive it after the box is drawn, it becomes an annotation
+class instead — same principle as `red_lid`/`yellow_lid` existing as
+their own classes: find the box, don't ask the classifier to also
+infer something appearance alone can't reliably answer, but the
+*existence and colour* of a glove genuinely is answerable from
+appearance in a single frame, unlike position or a continuum.
 
 **Method — apply this to any prop family, not just this one:**
 
@@ -85,7 +101,30 @@ position or a continuum?"
   (small, independently trackable) should use `lid_class_id` on it
   instead — this is a per-profile judgment call, not a fixed rule.
 - `detector_classes_not_role_bound` — classes needed for kinematics but
-  not bound to any protocol role (currently: `hand`).
+  not bound to any protocol role (currently: `hand_gloved`, `hand_bare`).
+
+## Objects in this corpus
+
+Concrete, `bas_specimen_v1` / jar specific — how the classes above map
+onto the physical props, for whoever is actually drawing boxes.
+
+- **Main container**: the white hinged case. Lid stays attached — it is
+  never removed, never its own box. One box only, class `case_open`
+  (any interior visible) or `case_closed` (lid fully seated). Never
+  draw a separate box for its lid.
+- **Modules**: red and yellow cylindrical jars with screw caps.
+- **Cap-on / cap-off rule**: cap seated on the jar → **one** box
+  (`red_module` / `yellow_module`) covering the whole jar. Cap removed
+  → **two** boxes: the body as `red_module` / `yellow_module`, the cap
+  as `red_lid` / `yellow_lid`.
+- **Label lids by their own colour, not by what they're sitting on.**
+  A yellow lid resting on the red body is still `yellow_lid`.
+  Wrong-lid arrangements are caught geometrically at runtime, not by
+  the label — labelling it by the body underneath would hide the exact
+  event the geometry is there to catch.
+- **Hands**: one box per hand. Latex/nitrile glove visible →
+  `hand_gloved`. Bare skin visible → `hand_bare`. If mixed on the same
+  hand, whichever dominates the visible area.
 
 ## Annotation edge-case rules
 
