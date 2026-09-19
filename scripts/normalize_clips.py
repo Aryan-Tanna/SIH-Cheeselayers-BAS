@@ -174,7 +174,21 @@ def decide_rotation(
 ) -> tuple[int, str]:
     """Returns (rotate_deg, source). Priority: human override > a real
     rotation tag > (portrait, no tag: default 90 clockwise, needs
-    verification) > 0 (landscape, nothing to do)."""
+    verification) > 0 (landscape, nothing to do).
+
+    "tag" is NOT trusted blindly, despite coming from real file metadata
+    -- confirmed wrong on this corpus (batch 2, Dataset6-62): 9 clips
+    (19,21,22,28,33,38,43,44,46) carry a Display Matrix rotation
+    side-data tag, but the RAW untouched frame (rotate_deg=0) already
+    shows a correctly-oriented overhead shot for every one of them
+    (checked all 9, not a sample), while applying the tag's rotation
+    turns a correct frame into a sideways one. Whatever produced this
+    batch (camera app, phone model, or a re-encode/rename step) appears
+    to attach a rotation tag that does not describe a correction its own
+    footage needs. See NEEDS_VERIFICATION below -- "tag" gets the same
+    "verify before trusting" treatment as "defaulted" now, not because
+    tags are never right, but because this corpus already proved they
+    can be confidently wrong."""
     if clip_id in overrides:
         return overrides[clip_id], "override"
     if tag_rotation_deg in (90, 180, 270):
@@ -182,6 +196,13 @@ def decide_rotation(
     if is_portrait:
         return 90, "defaulted"
     return 0, "none"
+
+
+# Sources whose rotate_deg is still applied (best available signal) but
+# must not be trusted without a human look -- see decide_rotation()'s
+# docstring for why "tag" is here despite coming from real file
+# metadata.
+NEEDS_VERIFICATION = {"defaulted", "tag"}
 
 
 def _transpose_filters(rotate_deg: int) -> list[str]:
@@ -262,20 +283,35 @@ def _write_rotation_manifest(changes: list[ClipChange], path: Path) -> None:
     sourced from a confirmed override -- see _read_rotation_overrides()'s
     docstring for why a freshly-computed "defaulted" or "tag" value must
     NOT be written back as confirmed. A human confirms a row by editing
-    this file directly (fill in the `confirmed` column, e.g. "yes")."""
+    this file directly (fill in the `confirmed` column, e.g. "yes").
+
+    Merges into any existing rows rather than replacing the file
+    wholesale -- a scoped run (--only) processes a subset of clips, and
+    a naive overwrite would silently drop every other clip's row from
+    the manifest."""
+    existing: dict[str, dict] = {}
+    if path.exists():
+        with open(path, newline="", encoding="utf-8") as f:
+            for row in csv.DictReader(f):
+                existing[row["clip_id"]] = row
+
+    for c in changes:
+        if c.error:
+            continue
+        clip_id = Path(c.filename).stem
+        existing[clip_id] = {
+            "clip_id": clip_id,
+            "rotate_deg": c.rotate_deg,
+            "source": c.rotation_source,
+            "confirmed": "yes" if c.rotation_source == "override" else "",
+        }
+
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=["clip_id", "rotate_deg", "source", "confirmed"])
         writer.writeheader()
-        for c in changes:
-            if c.error:
-                continue
-            writer.writerow({
-                "clip_id": Path(c.filename).stem,
-                "rotate_deg": c.rotate_deg,
-                "source": c.rotation_source,
-                "confirmed": "yes" if c.rotation_source == "override" else "",
-            })
+        for clip_id in sorted(existing):
+            writer.writerow(existing[clip_id])
 
 
 def main() -> int:
@@ -283,9 +319,21 @@ def main() -> int:
     ap.add_argument("--clips-dir", type=Path, default=CLIPS_DIR)
     ap.add_argument("--out-dir", type=Path, default=CLIPS_NORM_DIR)
     ap.add_argument("--rotation-manifest", type=Path, default=ROTATION_MANIFEST_PATH)
+    ap.add_argument(
+        "--only", type=str, default="",
+        help="comma-separated clip_id list -- process only these clips instead of "
+             "the whole clips-dir (e.g. re-applying a rotation.csv edit for a few "
+             "clips without re-transcoding the rest of the corpus)",
+    )
     args = ap.parse_args()
 
     clips = sorted(args.clips_dir.glob("*.mp4"))
+    if args.only:
+        only_ids = {c.strip() for c in args.only.split(",") if c.strip()}
+        clips = [c for c in clips if c.stem in only_ids]
+        missing = only_ids - {c.stem for c in clips}
+        if missing:
+            print(f"WARNING: --only named clips not found in {args.clips_dir}/: {sorted(missing)}")
     if not clips:
         print(f"No clips found in {args.clips_dir}/ - nothing to normalize.")
         return 0
@@ -302,20 +350,20 @@ def main() -> int:
         status = f"ERROR: {c.error}" if c.error else "ok"
         if c.dim_warning:
             status = c.dim_warning
-        note = "defaulted, verify" if c.rotation_source == "defaulted" else c.rotation_source
+        note = f"{c.rotation_source}, verify" if c.rotation_source in NEEDS_VERIFICATION else c.rotation_source
         print(
             f"{c.filename:<30} {c.src_fps_mode:<8} {f'{c.src_width}x{c.src_height}':<12} "
-            f"{str(c.was_portrait):<9} {c.rotate_deg:<10} {note:<10} {status}"
+            f"{str(c.was_portrait):<9} {c.rotate_deg:<10} {note:<15} {status}"
         )
 
     n_vfr = sum(1 for c in changes if c.src_fps_mode == "vfr")
     n_portrait = sum(1 for c in changes if c.was_portrait)
-    n_defaulted = sum(1 for c in changes if c.rotation_source == "defaulted")
+    n_needs_verification = sum(1 for c in changes if c.rotation_source in NEEDS_VERIFICATION)
     n_warnings = sum(1 for c in changes if c.dim_warning)
     n_errors = sum(1 for c in changes if c.error)
     print(
         f"\n{len(changes)} clips: {n_vfr} VFR, {n_portrait} portrait, "
-        f"{n_defaulted} rotation defaulted (verify in review), "
+        f"{n_needs_verification} rotation needs verification (defaulted or tag-based), "
         f"{n_warnings} dimension warnings, {n_errors} errors"
     )
     print(f"rotation manifest written to {args.rotation_manifest} - edit rotate_deg there to override on next run")

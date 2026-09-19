@@ -19,27 +19,26 @@ would waste the next session's time; open decisions awaiting the human;
 known-broken things not yet fixed.
 
 **Status:**
-- Decision point 2 (MediaPipe glove viability) RESOLVED: gloved
-  detection rate 26.1% (Dataset1+5), bare 79.0% (Dataset2+4) — well
-  under the 85% threshold, so fall back to YOLO hand boxes + motion
-  coherence, per CLAUDE.md's own rule. Dataset3 has MIXED hands (right
-  bare, left gloved), excluded from this split.
-- mediapipe pin now 1.0.1, not 0.10.18 (no cp313 wheel; 0.10.30 dropped
-  the needed API, has a broken native loader on Windows). New:
-  `models/hand_landmarker.task` vendored (Apache 2.0, see
-  models/README.md), never fetched at runtime. opencv pin is
-  opencv-contrib-python only now — installing opencv-python alongside
-  it corrupts the shared cv2 install.
-- Detector class list is FINAL (see
-  `configs/objects/LABELLING_GUIDANCE.md`): case_open, case_closed,
-  red_module, yellow_module, red_lid, yellow_lid, hand.
-- Next steps are the user's: fill `manifest/clips.csv` session_id +
-  confirm/correct `rotate_deg`, bring in the other 55 clips, start
-  hand-labelling.
-- prop_family/lid_type/gloves/camera_angle: "unimplemented" — no
-  phase-1 signal exists.
+- Rotation finalized for the 10 flagged clips (user's explicit call
+  after reviewing the actual footage, overriding my visual read): all
+  at 90° (tag trusted) except Dataset21 at 0°. All `confirmed=yes` in
+  `manifest/rotation.csv`. `normalize_clips.py`/`extract_frames.py` now
+  support `--only <clip_ids>` for scoped re-runs (touches just the
+  named clips; `_write_rotation_manifest()` merges, doesn't overwrite).
+- Full 62-clip corpus normalized/extracted/review-sheeted (10 rotation
+  clips via scoped re-run; other 52 untouched since the last full run).
+  Pilot 5 unchanged throughout (byte-identical re-encode).
+- `manifest/clips.csv` session_id/notes still blank, pending human
+  fill. Guessed columns (prop_family/lid_type/gloves/camera_angle)
+  remain "unimplemented" — no phase-1 signal exists for them.
+- Decision point 2 RESOLVED (MediaPipe): 26.1% gloved vs 79.0% bare
+  detection, falls back to YOLO+motion coherence. Detector class
+  list FINAL, see `configs/objects/LABELLING_GUIDANCE.md`.
+- Deferred ("later, not now"): `build_review_sheet.py` overwrites
+  `clips.csv` wholesale each run — needs a merge/preserve-human-edits fix.
+- Nothing committed since `5287a49` — today's work is uncommitted.
 - Env: `.venv/Scripts/python.exe` (python.org 3.13) only, never MSYS
-  ucrt64. git initialized. pytest 144/144, harness/run_all.py 9/9.
+  ucrt64. pytest 144/144, harness/run_all.py 9/9.
 
 
 ## Your role

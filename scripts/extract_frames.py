@@ -124,9 +124,23 @@ def main() -> int:
     ap.add_argument("--clips-dir", type=Path, default=CLIPS_NORM_DIR)
     ap.add_argument("--out-dir", type=Path, default=FRAMES_DIR)
     ap.add_argument("--fps", type=float, default=DEFAULT_SAMPLE_FPS)
+    ap.add_argument(
+        "--only", type=str, default="",
+        help="comma-separated clip_id list -- extract only these clips instead of "
+             "the whole clips-dir. Does NOT delete that clip's old frames first "
+             "(a fresh extraction can produce fewer frames than before, leaving "
+             "stale high-index leftovers) -- delete frames/{clip_id}_*.jpg yourself "
+             "before running this for a clip whose rotation/content changed.",
+    )
     args = ap.parse_args()
 
     clips = sorted(args.clips_dir.glob("*.mp4"))
+    if args.only:
+        only_ids = {c.strip() for c in args.only.split(",") if c.strip()}
+        clips = [c for c in clips if c.stem in only_ids]
+        missing = only_ids - {c.stem for c in clips}
+        if missing:
+            print(f"WARNING: --only named clips not found in {args.clips_dir}/: {sorted(missing)}")
     if not clips:
         print(f"No normalized clips found in {args.clips_dir}/ - nothing to extract.")
         return 0
