@@ -1,0 +1,4115 @@
+[
+  {
+    "image": "\/data\/upload\/4\/78f88981-Dataset10_glovebox_000054.jpg",
+    "id": 101,
+    "label": [
+      {
+        "x": 20.68836978131211,
+        "y": 40.954274353876755,
+        "width": 11.182902584493037,
+        "height": 20.67594433399605,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 54.038270377733255,
+        "y": 37.37574552683898,
+        "width": 15.096918489065688,
+        "height": 42.14711729622259,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_closed"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 60.61133200795227,
+        "y": 12.127236580516895,
+        "width": 27.712662381873166,
+        "height": 45.328031809145116,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 41.712226640158974,
+        "y": 37.17693836978127,
+        "width": 11.853876739562716,
+        "height": 45.725646123260326,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 45.84990059642146,
+        "y": 39.76143141153081,
+        "width": 17.109840954274354,
+        "height": 22.06759443339961,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 58.486580516898535,
+        "y": 41.749502982107316,
+        "width": 4.584990059642202,
+        "height": 20.07952286282309,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 20.80019880715706,
+        "y": 41.35188866799204,
+        "width": 10.064612326043724,
+        "height": 14.314115308151077,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 1,
+    "created_at": "2026-09-20T10:43:09.475252Z",
+    "updated_at": "2026-09-20T13:53:18.908707Z",
+    "lead_time": 3473.471
+  },
+  {
+    "image": "\/data\/upload\/4\/e8135563-Dataset11_glovebox_000021.jpg",
+    "id": 102,
+    "label": [
+      {
+        "x": 39.421427693245,
+        "y": 33.97060243988723,
+        "width": 15.320576540755443,
+        "height": 20.122661137403533,
+        "rotation": 12.136824455290139,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 47.889915646495254,
+        "y": 37.3413038363088,
+        "width": 6.933399602385607,
+        "height": 19.735572087550423,
+        "rotation": 10.619655276153765,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 45.72322685536053,
+        "y": 23.374464577960552,
+        "width": 11.85387673956268,
+        "height": 51.107951691905576,
+        "rotation": 350.34010692156136,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.72594610159026,
+        "y": 40.65441303231543,
+        "width": 9.400412730621266,
+        "height": 38.38616345938385,
+        "rotation": 352.80825722996883,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 69.06966717358222,
+        "y": 31.938666127771388,
+        "width": 4.469072310080964,
+        "height": 21.035480682068265,
+        "rotation": 37.07307331730897,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 59.49304174950299,
+        "y": 10.735586481113314,
+        "width": 27.733598409542644,
+        "height": 45.52683896620279,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 66.45994259537082,
+        "y": 35.530473138797134,
+        "width": 5.995272805182586,
+        "height": 9.530770076520565,
+        "rotation": 359.87391892815606,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": "motion_blur",
+    "annotator": 1,
+    "annotation_id": 2,
+    "created_at": "2026-09-20T12:22:28.451238Z",
+    "updated_at": "2026-09-20T14:00:17.371807Z",
+    "lead_time": 5152.282
+  },
+  {
+    "image": "\/data\/upload\/4\/9b83b6ad-Dataset11_glovebox_000054.jpg",
+    "id": 103,
+    "label": [
+      {
+        "x": 57.14463220675946,
+        "y": 0.9940357852882704,
+        "width": 34.89065606361828,
+        "height": 53.280318091451306,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 65.64363817097417,
+        "y": 34.791252485089444,
+        "width": 5.4796222664016145,
+        "height": 15.308151093439356,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 71.7942345924453,
+        "y": 19.880715705765404,
+        "width": 6.257772996722877,
+        "height": 17.296222664015897,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 46.0735586481113,
+        "y": 22.46520874751492,
+        "width": 11.630218687872771,
+        "height": 26.24254473161033,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 63.85437375745527,
+        "y": 45.7256461232604,
+        "width": 13.754970178926476,
+        "height": 41.74950298210733,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 71.80365296803653,
+        "y": 20.091324200913228,
+        "width": 12.442922374429203,
+        "height": 16.84424150177576,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 65.63926940639261,
+        "y": 35.31202435312029,
+        "width": 10.958904109589088,
+        "height": 14.003044140030449,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 3,
+    "created_at": "2026-09-20T12:32:31.035666Z",
+    "updated_at": "2026-09-20T13:47:51.005253Z",
+    "lead_time": 1968.7930000000001
+  },
+  {
+    "image": "\/data\/upload\/4\/cb3a94b4-Dataset12_glovebox_000014.jpg",
+    "id": 104,
+    "label": [
+      {
+        "x": 47.94520547945203,
+        "y": 40.38559107052256,
+        "width": 11.07305936073058,
+        "height": 15.423642820903085,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 60.95890410958904,
+        "y": 50.735667174023334,
+        "width": 6.392694063926939,
+        "height": 15.017757483510906,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 36.757990867579906,
+        "y": 54.38863521055302,
+        "width": 8.789954337899545,
+        "height": 33.89142567224758,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 52.05773139077222,
+        "y": 49.10549680837158,
+        "width": 9.309869564804359,
+        "height": 29.890914499805998,
+        "rotation": 334.0158586543505,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 25.08309648463794,
+        "y": 46.285581231162936,
+        "width": 21.15618017068805,
+        "height": 32.345166129905074,
+        "rotation": 328.5887570831861,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 61.0730593607305,
+        "y": 50.938609842719416,
+        "width": 6.27853881278535,
+        "height": 8.523592085235935,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "occlusion",
+      "motion_blur"
+    ],
+    "annotator": 1,
+    "annotation_id": 4,
+    "created_at": "2026-09-20T14:09:54.673586Z",
+    "updated_at": "2026-09-20T14:09:54.673606Z",
+    "lead_time": 330.078
+  },
+  {
+    "image": "\/data\/upload\/4\/661afd85-Dataset12_glovebox_000018.jpg",
+    "id": 105,
+    "label": [
+      {
+        "x": 25.71632444765571,
+        "y": 43.1955793504648,
+        "width": 21.013140329634673,
+        "height": 32.815908289875125,
+        "rotation": 334.35899417569556,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 29.45205479452053,
+        "y": 70.62404870624042,
+        "width": 9.132420091324194,
+        "height": 11.973617453069602,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 29.908675799086758,
+        "y": 70.82699137493658,
+        "width": 7.534246575342461,
+        "height": 10.755961440892946,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 46.577084978746726,
+        "y": 51.11129677289233,
+        "width": 8.3862071040169,
+        "height": 15.033797946926372,
+        "rotation": 34.989001950273575,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 60.0351839981857,
+        "y": 47.13255733349407,
+        "width": 3.0665138961383027,
+        "height": 14.100943511242662,
+        "rotation": 20.185803009463427,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 57.41523600236837,
+        "y": 47.75422687035289,
+        "width": 9.127931748866605,
+        "height": 34.29731100963979,
+        "rotation": 347.8325325819276,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 39.26940639269396,
+        "y": 57.63571790969044,
+        "width": 10.159817351598202,
+        "height": 25.5707762557078,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 5,
+    "created_at": "2026-09-20T14:15:00.710143Z",
+    "updated_at": "2026-09-20T14:15:00.710167Z",
+    "lead_time": 304.472
+  },
+  {
+    "image": "\/data\/upload\/4\/98ac2129-Dataset13_glovebox_000007.jpg",
+    "id": 106,
+    "label": [
+      {
+        "x": 32.924445863714396,
+        "y": 31.642382875020843,
+        "width": 23.421321718186856,
+        "height": 37.29154748799719,
+        "rotation": 358.4198275272023,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 43.79401822368501,
+        "y": 34.12629133827782,
+        "width": 8.19602712038781,
+        "height": 20.905585181134256,
+        "rotation": 7.006833732680207,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 45.2054794520548,
+        "y": 51.14155251141557,
+        "width": 9.589041095890359,
+        "height": 10.75596144089287,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 48.45753212063667,
+        "y": 46.96319306446211,
+        "width": 9.629439109576486,
+        "height": 28.0656404756208,
+        "rotation": 329.48609402048066,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 39.3835616438356,
+        "y": 51.54743784880764,
+        "width": 9.018264840182667,
+        "height": 34.50025367833584,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 6,
+    "created_at": "2026-09-20T14:19:45.389758Z",
+    "updated_at": "2026-09-20T14:19:45.389780Z",
+    "lead_time": 282.861
+  },
+  {
+    "image": "\/data\/upload\/4\/cbe0e3f5-Dataset13_glovebox_000008.jpg",
+    "id": 107,
+    "label": [
+      {
+        "x": 52.87835591471038,
+        "y": 34.145505253970754,
+        "width": 8.353042126420588,
+        "height": 20.90309487569774,
+        "rotation": 40.142050217909684,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 51.62558560647368,
+        "y": 51.44301954502313,
+        "width": 10.273972602739729,
+        "height": 30.644342973110138,
+        "rotation": 327.1480554611858,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 42.36207986999783,
+        "y": 49.08934889377352,
+        "width": 9.697370164705903,
+        "height": 31.896230142430067,
+        "rotation": 4.101838687670636,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 46.118721461187214,
+        "y": 38.55910705225774,
+        "width": 0.9132420091324178,
+        "height": 0.6088280060882809,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.29934338821321,
+        "y": 32.35219968502379,
+        "width": 23.17356158626003,
+        "height": 36.93275834758955,
+        "rotation": 359.19021958309247,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 32.87671232876712,
+        "y": 49.51801116184677,
+        "width": 0.7990867579908709,
+        "height": 0.6088280060882809,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "task_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 7,
+    "created_at": "2026-09-20T14:26:35.492104Z",
+    "updated_at": "2026-09-20T14:26:35.492127Z",
+    "lead_time": 407.603
+  },
+  {
+    "image": "\/data\/upload\/4\/c0ef920e-Dataset13_glovebox_000011.jpg",
+    "id": 108,
+    "label": [
+      {
+        "x": 31.292078936444735,
+        "y": 32.46124757248264,
+        "width": 23.276980975639574,
+        "height": 35.322588122793206,
+        "rotation": 355.21420045740166,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 54.1171415054852,
+        "y": 43.31870875147917,
+        "width": 10.294109518537022,
+        "height": 32.82465303288959,
+        "rotation": 337.9021078843137,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 40.29680365296803,
+        "y": 46.67681380010145,
+        "width": 9.931506849315085,
+        "height": 34.297311009639735,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 42.41090980328455,
+        "y": 51.76865630876903,
+        "width": 11.19416702196013,
+        "height": 11.359539460299487,
+        "rotation": 348.4353041474575,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 56.62178310183917,
+        "y": 33.21550825787554,
+        "width": 3.99543378995436,
+        "height": 18.670725520040584,
+        "rotation": 4.916566006009759,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "motion_blur",
+      "motion_blur",
+      "motion_blur"
+    ],
+    "annotator": 1,
+    "annotation_id": 8,
+    "created_at": "2026-09-20T14:33:49.594246Z",
+    "updated_at": "2026-09-20T14:33:49.594267Z",
+    "lead_time": 432.666
+  },
+  {
+    "image": "\/data\/upload\/4\/9ac36af3-Dataset13_glovebox_000012.jpg",
+    "id": 109,
+    "task_flags": "occlusion",
+    "label": [
+      {
+        "x": 31.2365796466467,
+        "y": 32.440640609149646,
+        "width": 22.849053004932156,
+        "height": 36.732623033992994,
+        "rotation": 355.25425205619877,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 41.65006709083763,
+        "y": 45.609610252354415,
+        "width": 12.065401347361666,
+        "height": 15.492227472802208,
+        "rotation": 347.9457579199144,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 50.1155717952312,
+        "y": 47.31673265976008,
+        "width": 9.799577083620763,
+        "height": 31.050228310502398,
+        "rotation": 328.7921363286125,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 38.54680218040593,
+        "y": 48.30020226243398,
+        "width": 10.615226772080923,
+        "height": 36.06577587857636,
+        "rotation": 4.174769891908738,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "motion_blur",
+      "motion_blur"
+    ],
+    "annotator": 1,
+    "annotation_id": 9,
+    "created_at": "2026-09-20T14:36:06.576987Z",
+    "updated_at": "2026-09-20T14:36:06.577056Z",
+    "lead_time": 133.851
+  },
+  {
+    "image": "\/data\/upload\/4\/f250349c-Dataset13_glovebox_000017.jpg",
+    "id": 110,
+    "label": [
+      {
+        "x": 44.90784111863082,
+        "y": 45.194551476584195,
+        "width": 10.30282860733308,
+        "height": 26.482090352272564,
+        "rotation": 346.6344789727966,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 30.76668323735711,
+        "y": 32.20189956501072,
+        "width": 22.590042967960912,
+        "height": 36.67146231019763,
+        "rotation": 353.9008601033534,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.39064966629198,
+        "y": 56.20993834506176,
+        "width": 9.059209876351803,
+        "height": 5.967486191235526,
+        "rotation": 351.4819263812956,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 50.14914014232497,
+        "y": 52.41472607580805,
+        "width": 10.964136524429685,
+        "height": 34.65712772820365,
+        "rotation": 331.48875370589195,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 38.58447488584474,
+        "y": 49.11212582445463,
+        "width": 12.671232876712295,
+        "height": 32.0649416539827,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 10,
+    "created_at": "2026-09-20T14:40:47.835235Z",
+    "updated_at": "2026-09-20T14:41:00.125298Z",
+    "lead_time": 287.35
+  },
+  {
+    "image": "\/data\/upload\/4\/db2bf6d7-Dataset13_glovebox_000019.jpg",
+    "id": 111,
+    "label": [
+      {
+        "x": 57.49826624664441,
+        "y": 21.073744611499553,
+        "width": 11.35043144843946,
+        "height": 19.866166196486017,
+        "rotation": 33.07067782276141,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 56.066577943729314,
+        "y": 41.94388555830677,
+        "width": 12.953848000680107,
+        "height": 29.39961026757853,
+        "rotation": 339.74936649071856,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 36.872146118721346,
+        "y": 49.72095383054291,
+        "width": 12.442922374429266,
+        "height": 36.93556570268895,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.48113949070371,
+        "y": 56.55262927407676,
+        "width": 7.657939146630316,
+        "height": 5.437738083678037,
+        "rotation": 351.6226606327006,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 30.82141772796026,
+        "y": 32.85563050617093,
+        "width": 23.213022636462,
+        "height": 36.13327735369584,
+        "rotation": 353.1797250515399,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": "motion_blur",
+    "annotator": 1,
+    "annotation_id": 11,
+    "created_at": "2026-09-20T14:45:31.775842Z",
+    "updated_at": "2026-09-20T14:45:31.775863Z",
+    "lead_time": 270.261
+  },
+  {
+    "image": "\/data\/upload\/4\/e53e05ab-Dataset13_glovebox_000023.jpg",
+    "id": 112,
+    "label": [
+      {
+        "x": 31.160434317229413,
+        "y": 31.45977922034584,
+        "width": 23.724692926603083,
+        "height": 37.596520899171935,
+        "rotation": 355.3071374944111,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 55.01283122276327,
+        "y": 19.664717827060308,
+        "width": 7.567413529692277,
+        "height": 21.135995375301807,
+        "rotation": 328.16827372519975,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 59.24657534246561,
+        "y": 27.194317605276463,
+        "width": 9.246575342465738,
+        "height": 26.58548959918819,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 36.872146118721474,
+        "y": 49.72095383054293,
+        "width": 13.127853881278492,
+        "height": 33.07965499746324,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.36051175622988,
+        "y": 56.318887821367,
+        "width": 8.576330024649339,
+        "height": 5.7359198802336655,
+        "rotation": 352.40535663140855,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 12,
+    "created_at": "2026-09-20T14:47:58.446333Z",
+    "updated_at": "2026-09-20T14:47:58.446380Z",
+    "lead_time": 145.315
+  },
+  {
+    "image": "\/data\/upload\/4\/4ff5fcde-Dataset13_glovebox_000028.jpg",
+    "id": 113,
+    "label": [
+      {
+        "x": 40.193654149786546,
+        "y": 36.0249935790059,
+        "width": 11.41956644094681,
+        "height": 27.800527879359205,
+        "rotation": 335.7120750910873,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 50.56371683139073,
+        "y": 46.9225052201186,
+        "width": 10.010034208236423,
+        "height": 37.183945986326606,
+        "rotation": 334.5439167886349,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 39.26940639269405,
+        "y": 43.02384576357177,
+        "width": 9.246575342465755,
+        "height": 35.920852359208524,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.56479869654666,
+        "y": 55.75857708096136,
+        "width": 9.410335299783606,
+        "height": 7.711821410451567,
+        "rotation": 348.1579238846734,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 30.951027881179222,
+        "y": 31.244200782051674,
+        "width": 22.798665955615473,
+        "height": 36.935565702689225,
+        "rotation": 354.10937358379675,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "motion_blur",
+      "motion_blur",
+      "occlusion"
+    ],
+    "annotator": 1,
+    "annotation_id": 13,
+    "created_at": "2026-09-20T14:51:16.245468Z",
+    "updated_at": "2026-09-20T14:51:16.245502Z",
+    "lead_time": 196.43
+  },
+  {
+    "image": "\/data\/upload\/4\/48a5fc95-Dataset13_glovebox_000032.jpg",
+    "id": 114,
+    "label": [
+      {
+        "x": 33.74674597858592,
+        "y": 30.22082841632534,
+        "width": 21.88731811148029,
+        "height": 37.1274316863247,
+        "rotation": 354.9390385568741,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 38.13324934339407,
+        "y": 31.840033154069904,
+        "width": 10.511917287602298,
+        "height": 32.59254166342639,
+        "rotation": 330.94539590092336,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 29.915877411664876,
+        "y": 53.35796737011545,
+        "width": 8.997120570596154,
+        "height": 35.5842079592551,
+        "rotation": 336.037511025422,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 25.81861531882187,
+        "y": 21.520056605372993,
+        "width": 11.376563245347517,
+        "height": 28.812406343924778,
+        "rotation": 333.183142763377,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 36.73538821113168,
+        "y": 53.70615428451539,
+        "width": 8.56164383561643,
+        "height": 5.556820963026012,
+        "rotation": 351.7536791855319,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "motion_blur",
+      "motion_blur",
+      "motion_blur"
+    ],
+    "annotator": 1,
+    "annotation_id": 14,
+    "created_at": "2026-09-20T14:55:30.034659Z",
+    "updated_at": "2026-09-20T14:55:30.034716Z",
+    "lead_time": 252.328
+  },
+  {
+    "image": "\/data\/upload\/4\/f53d0bb1-Dataset13_glovebox_000044.jpg",
+    "id": 115,
+    "label": [
+      {
+        "x": 29.850973884937147,
+        "y": 46.04654755182164,
+        "width": 23.342999897467003,
+        "height": 21.603926283634294,
+        "rotation": 350.4333140102868,
+        "rectanglelabels": [
+          "case_closed"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 57.022435281901664,
+        "y": 41.13300198350579,
+        "width": 7.519680346669462,
+        "height": 16.653637756436982,
+        "rotation": 8.16359358811178,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 76.02739726027401,
+        "y": 76.50938609842711,
+        "width": 9.474885844748853,
+        "height": 23.490613901572765,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 15,
+    "created_at": "2026-09-20T15:00:37.605049Z",
+    "updated_at": "2026-09-20T15:00:37.605095Z",
+    "lead_time": 306.131
+  },
+  {
+    "image": "\/data\/upload\/4\/cf41ea19-Dataset1_glovebox_000008.jpg",
+    "id": 116,
+    "task_flags": "motion_blur",
+    "label": [
+      {
+        "x": 32.839643588673006,
+        "y": 30.846528660019345,
+        "width": 23.24257716401882,
+        "height": 36.13823028048952,
+        "rotation": 357.9762561607654,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 31.004442196618946,
+        "y": 39.8996952382385,
+        "width": 10.332014855225072,
+        "height": 26.64657468239373,
+        "rotation": 305.4753320282109,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 46.13130851176453,
+        "y": 50.79566131340301,
+        "width": 8.829642757032982,
+        "height": 22.884219401932395,
+        "rotation": 297.10176409168093,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 32.89760348583874,
+        "y": 44.06158558262919,
+        "width": 10.130718954248387,
+        "height": 30.340653230143776,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 44.88017429193894,
+        "y": 52.95120372649298,
+        "width": 6.862745098039226,
+        "height": 5.604324482001031,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "region_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 16,
+    "created_at": "2026-09-20T15:06:54.296045Z",
+    "updated_at": "2026-09-20T15:06:54.296069Z",
+    "lead_time": 365.042
+  },
+  {
+    "image": "\/data\/upload\/4\/a5de5ab5-Dataset1_glovebox_000009.jpg",
+    "id": 117,
+    "task_flags": {
+      "choices": [
+        "occlusion",
+        "motion_blur"
+      ]
+    },
+    "label": [
+      {
+        "x": 36.21242272314845,
+        "y": 30.07766538023691,
+        "width": 21.899967263023203,
+        "height": 37.88579353682391,
+        "rotation": 0.8097804169075289,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 30.21628240203556,
+        "y": 41.91014974387312,
+        "width": 10.191626345324929,
+        "height": 26.82157942437355,
+        "rotation": 308.0143891655781,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 46.06695956202646,
+        "y": 51.70012500400123,
+        "width": 11.746391573676897,
+        "height": 26.230686603768955,
+        "rotation": 307.9285477796318,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 32.4618736383442,
+        "y": 46.18736383442265,
+        "width": 10.566448801742988,
+        "height": 32.466431481937214,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 17,
+    "created_at": "2026-09-20T15:08:46.478009Z",
+    "updated_at": "2026-09-20T15:08:46.478052Z",
+    "lead_time": 110.86
+  },
+  {
+    "image": "\/data\/upload\/4\/1686223a-Dataset1_glovebox_000012.jpg",
+    "id": 118,
+    "label": [
+      {
+        "x": 29.65132231421073,
+        "y": 45.75349016528891,
+        "width": 11.938879063796888,
+        "height": 29.216280414204498,
+        "rotation": 309.4889666576403,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 54.66813544485996,
+        "y": 40.837338402338176,
+        "width": 11.009868821565238,
+        "height": 14.599549352768445,
+        "rotation": 328.25895534327145,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 52.65097783825669,
+        "y": 37.72578473509549,
+        "width": 14.118650645428993,
+        "height": 30.91842133678684,
+        "rotation": 335.3948760820501,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 31.618371592277644,
+        "y": 41.77949709864604,
+        "width": 13.737637312506902,
+        "height": 34.042553191489326,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 33.98633368016293,
+        "y": 32.05072950930513,
+        "width": 23.339918517689984,
+        "height": 36.55670057591836,
+        "rotation": 357.9833761253781,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "region_flags": "motion_blur",
+    "task_flags": "motion_blur",
+    "annotator": 1,
+    "annotation_id": 18,
+    "created_at": "2026-09-20T15:11:48.812608Z",
+    "updated_at": "2026-09-20T15:11:48.812651Z",
+    "lead_time": 137.77700000000002
+  },
+  {
+    "image": "\/data\/upload\/4\/6194a7bd-Dataset1_glovebox_000022.jpg",
+    "id": 119,
+    "label": [
+      {
+        "x": 41.55783193042982,
+        "y": 41.40250033036146,
+        "width": 15.238616918655293,
+        "height": 20.673752568679944,
+        "rotation": 351.47907638262285,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 50.5918184230988,
+        "y": 33.324659657531186,
+        "width": 11.000449387009645,
+        "height": 40.402875603437934,
+        "rotation": 352.0232312124738,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 33.613411615041166,
+        "y": 42.32992685131718,
+        "width": 12.387702211605642,
+        "height": 40.24857510986804,
+        "rotation": 350.87710379462226,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 32.04137502349221,
+        "y": 32.784150937582,
+        "width": 22.75891395597636,
+        "height": 35.10045845018545,
+        "rotation": 352.43160297841393,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "task_flags": {
+      "choices": [
+        "occlusion",
+        "motion_blur"
+      ]
+    },
+    "region_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 19,
+    "created_at": "2026-09-20T15:24:33.770289Z",
+    "updated_at": "2026-09-20T15:24:33.770321Z",
+    "lead_time": 761.392
+  },
+  {
+    "image": "\/data\/upload\/4\/38eacd5d-Dataset2_glovebox_000002.jpg",
+    "id": 120,
+    "label": [
+      {
+        "x": 54.18244779029406,
+        "y": 55.33067460754335,
+        "width": 7.38521159795641,
+        "height": 18.58952712798494,
+        "rotation": 323.7811627343855,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 54.321591474548306,
+        "y": 55.648579584192184,
+        "width": 6.752500489019179,
+        "height": 9.516435273316754,
+        "rotation": 322.43140797117303,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 67.97385620915038,
+        "y": 55.74516184902596,
+        "width": 6.971677559912817,
+        "height": 8.889618143863778,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 68.62745098039214,
+        "y": 55.55190928068111,
+        "width": 2.832244008714625,
+        "height": 9.469375848898373,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 72.94887686189207,
+        "y": 33.117090182641654,
+        "width": 11.62495498685458,
+        "height": 29.9978850891048,
+        "rotation": 27.35589361215625,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 50.98125980803627,
+        "y": 51.547388781431295,
+        "width": 9.37648261012368,
+        "height": 28.820116054158607,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 61.3500362297534,
+        "y": 54.164692788985846,
+        "width": 6.439795905061846,
+        "height": 28.7256405617308,
+        "rotation": 333.34147781799425,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "task_flags": "motion_blur",
+    "annotator": 1,
+    "annotation_id": 20,
+    "created_at": "2026-09-20T15:27:39.931271Z",
+    "updated_at": "2026-09-20T15:27:39.931317Z",
+    "lead_time": 179.86399999999998
+  },
+  {
+    "image": "\/data\/upload\/4\/5dccb2b2-Dataset2_glovebox_000009.jpg",
+    "id": 121,
+    "label": [
+      {
+        "x": 54.496089424944905,
+        "y": 54.775543897384146,
+        "width": 7.363554533794768,
+        "height": 16.619720877658427,
+        "rotation": 336.0375110254225,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 54.54488073455654,
+        "y": 54.49953763701898,
+        "width": 7.349792711540405,
+        "height": 8.825121137215032,
+        "rotation": 337.7119712230257,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 72.14857608495322,
+        "y": 32.916250996163484,
+        "width": 11.61432085479759,
+        "height": 32.091167526576065,
+        "rotation": 27.436034782062904,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 67.32026143790853,
+        "y": 55.551909280681066,
+        "width": 7.734204793028258,
+        "height": 9.46937584889834,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 68.08278867102398,
+        "y": 55.93841441737085,
+        "width": 3.0501089324618658,
+        "height": 9.66262841724323,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 52.178649237472776,
+        "y": 51.493605345438965,
+        "width": 8.278867102396504,
+        "height": 31.693421208557808,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 60.17509460123601,
+        "y": 57.96113666525733,
+        "width": 6.71149707034298,
+        "height": 27.57619082518913,
+        "rotation": 333.83843355798194,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "task_flags": "motion_blur",
+    "annotator": 1,
+    "annotation_id": 21,
+    "created_at": "2026-09-20T15:30:10.597841Z",
+    "updated_at": "2026-09-20T15:30:10.597862Z",
+    "lead_time": 149.432
+  },
+  {
+    "image": "\/data\/upload\/4\/8e94103e-Dataset3_glovebox_000015.jpg",
+    "id": 122,
+    "label": [
+      {
+        "x": 20.53718207052249,
+        "y": 45.385188939881715,
+        "width": 33.60011098634677,
+        "height": 33.03725627299989,
+        "rotation": 316.9749340108804,
+        "rectanglelabels": [
+          "case_closed"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 24.90684183798585,
+        "y": 56.266599318440626,
+        "width": 11.481102293894097,
+        "height": 27.87171085149759,
+        "rotation": 57.22859073332347,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 15.795206971677558,
+        "y": 64.31117309778398,
+        "width": 0.871459694989106,
+        "height": 1.937083527041679,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 44.11764705882388,
+        "y": 49.20192158685916,
+        "width": 12.309368191721175,
+        "height": 20.53308538664194,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 47.16775599128552,
+        "y": 46.87742135440924,
+        "width": 14.488017429194189,
+        "height": 30.412211374554566,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 10.457516339869315,
+        "y": 60.630714396405104,
+        "width": 22.875816993464078,
+        "height": 24.213544088020925,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      }
+    ],
+    "task_flags": "motion_blur",
+    "annotator": 1,
+    "annotation_id": 22,
+    "created_at": "2026-09-20T15:32:00.740816Z",
+    "updated_at": "2026-09-20T15:32:00.740839Z",
+    "lead_time": 108.548
+  },
+  {
+    "image": "\/data\/upload\/4\/a65dbeaf-Dataset3_glovebox_000023.jpg",
+    "id": 123,
+    "label": [
+      {
+        "x": 20.759053377928335,
+        "y": 47.9505528118736,
+        "width": 33.80328388343142,
+        "height": 33.815592027545414,
+        "rotation": 312.4586054284996,
+        "rectanglelabels": [
+          "case_closed"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 57.29847494553376,
+        "y": 28.862544552921122,
+        "width": 8.496732026143796,
+        "height": 14.334418100108472,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 57.298474945534075,
+        "y": 29.056252905625417,
+        "width": 8.278867102396365,
+        "height": 13.17216798388344,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 21.90590996310805,
+        "y": 71.45848760391073,
+        "width": 10.30674107002531,
+        "height": 15.688988844869273,
+        "rotation": 323.5307656099503,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 47.35531463173579,
+        "y": 48.296859286079474,
+        "width": 5.1247848203313815,
+        "height": 18.3841747668363,
+        "rotation": 8.65254179111355,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 45.533769063181175,
+        "y": 44.940337827367664,
+        "width": 10.78431372549053,
+        "height": 30.79962807996315,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      },
+      {
+        "x": 20.80610021786497,
+        "y": 61.0181311018133,
+        "width": 17.86492374727674,
+        "height": 20.726793739346157,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 850,
+        "original_height": 478
+      }
+    ],
+    "task_flags": "motion_blur",
+    "annotator": 1,
+    "annotation_id": 23,
+    "created_at": "2026-09-20T15:34:49.985029Z",
+    "updated_at": "2026-09-20T15:34:49.985061Z",
+    "lead_time": 167.587
+  },
+  {
+    "image": "\/data\/upload\/4\/02fff152-Dataset4_glovebox_000012.jpg",
+    "id": 124,
+    "label": [
+      {
+        "x": 63.07189542483662,
+        "y": 16.233215740968614,
+        "width": 27.559912854030472,
+        "height": 39.42352394235234,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 41.1764705882353,
+        "y": 46.18736383442266,
+        "width": 8.714596949891067,
+        "height": 14.107437489175126,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 41.50326797385623,
+        "y": 45.60760612938806,
+        "width": 8.061002178649233,
+        "height": 16.81297344600313,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 36.0566448801743,
+        "y": 24.156571043108098,
+        "width": 29.302832244008776,
+        "height": 42.51556503587027,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 32.5708061002179,
+        "y": 47.540131812836705,
+        "width": 13.83442265795205,
+        "height": 32.273178913592396,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 55.11982570806108,
+        "y": 27.828369841660503,
+        "width": 12.52723311546841,
+        "height": 44.64134328766371,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 61.04753642005692,
+        "y": 30.691650989684906,
+        "width": 15.373495429344835,
+        "height": 33.34264658208962,
+        "rotation": 330.6569527657969,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "region_flags": [
+      "motion_blur",
+      "motion_blur"
+    ],
+    "annotator": 1,
+    "annotation_id": 24,
+    "created_at": "2026-09-20T15:39:12.910619Z",
+    "updated_at": "2026-09-20T15:39:12.910642Z",
+    "lead_time": 260.832
+  },
+  {
+    "image": "\/data\/upload\/4\/449c6459-Dataset4_glovebox_000025.jpg",
+    "id": 125,
+    "label": [
+      {
+        "x": 73.15275461362106,
+        "y": 21.634397066558613,
+        "width": 21.45969498910676,
+        "height": 27.87756634964433,
+        "rotation": 8.040624374558945,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 73.30338837354952,
+        "y": 21.739699068090044,
+        "width": 5.9978755937658805,
+        "height": 28.045941816328536,
+        "rotation": 7.576732322852251,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 63.51494028359546,
+        "y": 12.785756989169434,
+        "width": 19.19602527880882,
+        "height": 49.12034057501115,
+        "rotation": 7.016501744721495,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 33.442265795207,
+        "y": 47.34687924449182,
+        "width": 13.071895424836638,
+        "height": 35.75172514379996,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 41.6122004357298,
+        "y": 45.60760612938805,
+        "width": 8.278867102396466,
+        "height": 17.392731151037783,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 41.612200435729854,
+        "y": 46.18736383442268,
+        "width": 8.061002178649218,
+        "height": 13.720932352485365,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 36.77837612079319,
+        "y": 23.202444346723883,
+        "width": 30.515891914235826,
+        "height": 42.93497267406434,
+        "rotation": 1.8183029644430349,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 25,
+    "created_at": "2026-09-20T15:42:06.275290Z",
+    "updated_at": "2026-09-20T15:42:06.275314Z",
+    "lead_time": 168.287
+  },
+  {
+    "image": "\/data\/upload\/4\/869971f3-Dataset4_glovebox_000037.jpg",
+    "id": 126,
+    "label": [
+      {
+        "x": 36.64858869624939,
+        "y": 22.894257315177295,
+        "width": 29.193899782135073,
+        "height": 44.43943589690606,
+        "rotation": 0.658543177555714,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 51.264782663980725,
+        "y": 44.779824530696395,
+        "width": 4.379219346974421,
+        "height": 19.56510968340364,
+        "rotation": 28.448094664411485,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 38.192359634499944,
+        "y": 37.85793289395451,
+        "width": 9.555617191267713,
+        "height": 21.980480842227006,
+        "rotation": 46.94808500651499,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 55.99128540305004,
+        "y": 45.60760612938816,
+        "width": 8.169934640522934,
+        "height": 14.30069005751994,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 55.99128540305011,
+        "y": 45.41435356104325,
+        "width": 8.278867102396486,
+        "height": 17.006226014348076,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 28.758169934640527,
+        "y": 53.812636165577324,
+        "width": 13.507625272331154,
+        "height": 28.021622410005385,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 47.27668845315907,
+        "y": 44.92301802171358,
+        "width": 14.16122004357297,
+        "height": 36.91124055386912,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "region_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 26,
+    "created_at": "2026-09-20T15:44:44.456591Z",
+    "updated_at": "2026-09-20T15:44:44.456649Z",
+    "lead_time": 156.801
+  },
+  {
+    "image": "\/data\/upload\/4\/2ceadf20-Dataset58_glovebox_000040.jpg",
+    "id": 127,
+    "label": [
+      {
+        "x": 33.39668360148162,
+        "y": 78.66300308500416,
+        "width": 43.67572872970712,
+        "height": 77.8130194099585,
+        "rotation": 269.80456659224944,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.60714368317994,
+        "y": 29.79166796960736,
+        "width": 11.979232328307807,
+        "height": 34.31210631744228,
+        "rotation": 322.60464642891014,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 72.6074412767016,
+        "y": 84.60808927386816,
+        "width": 32.07537246676288,
+        "height": 48.69842697083872,
+        "rotation": 269.72898236073536,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 24.200913242009136,
+        "y": 63.72399797057331,
+        "width": 29.566210045662082,
+        "height": 36.27600202942663,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 80.365296803653,
+        "y": 69.44698060847126,
+        "width": 19.634703196347,
+        "height": 30.19786972131059,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 70.2054794520548,
+        "y": 90.10654490106545,
+        "width": 3.3105022831050093,
+        "height": 0.8117706747843698,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 27,
+    "created_at": "2026-09-20T15:47:32.634454Z",
+    "updated_at": "2026-09-20T15:47:32.634481Z",
+    "lead_time": 166.269
+  },
+  {
+    "image": "\/data\/upload\/4\/87fd2881-Dataset59_glovebox_000029.jpg",
+    "id": 128,
+    "label": [
+      {
+        "x": 33.67579908675799,
+        "y": 43.83561643835616,
+        "width": 18.0365296803653,
+        "height": 14.814814814814808,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 63.81278538812786,
+        "y": 5.479452054794521,
+        "width": 36.18721461187213,
+        "height": 79.75646879756466,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 57.1917808219178,
+        "y": 58.041603247082605,
+        "width": 39.15525114155247,
+        "height": 41.95839675291729,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 31.05022831050224,
+        "y": 4.667681380010147,
+        "width": 42.579908675799075,
+        "height": 64.73871131405377,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 28,
+    "created_at": "2026-09-20T15:48:47.325240Z",
+    "updated_at": "2026-09-20T15:48:47.325265Z",
+    "lead_time": 73.615
+  },
+  {
+    "image": "\/data\/upload\/4\/fcb70dc7-Dataset59_glovebox_000056.jpg",
+    "id": 129,
+    "label": [
+      {
+        "x": 35.15981735159817,
+        "y": 4.058853373921867,
+        "width": 42.237442922374434,
+        "height": 66.9710806697108,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 21.25298633187962,
+        "y": 46.548903112221915,
+        "width": 31.39269406392694,
+        "height": 26.1796042617961,
+        "rotation": 351.76103942436555,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 0.1141552511415525,
+        "y": 44.64738711314054,
+        "width": 28.424657534246574,
+        "height": 55.35261288685946,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 42.46575342465753,
+        "y": 38.964992389649886,
+        "width": 29.223744292237434,
+        "height": 59.665144596651444,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 52.968036529680454,
+        "y": 42.00913242009131,
+        "width": 21.461187214611876,
+        "height": 16.641298833079627,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 29,
+    "created_at": "2026-09-20T15:49:47.295454Z",
+    "updated_at": "2026-09-20T15:49:47.295477Z",
+    "lead_time": 56.115
+  },
+  {
+    "image": "\/data\/upload\/4\/4a02ff8c-Dataset59_glovebox_000059.jpg",
+    "id": 130,
+    "label": [
+      {
+        "x": 26.551326751835173,
+        "y": 25.41341411963748,
+        "width": 19.97296265739672,
+        "height": 55.94953132697834,
+        "rotation": 29.90970149534354,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 78.99543378995433,
+        "y": 72.24759005580923,
+        "width": 0.57077625570777,
+        "height": 1.0147133434804658,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 53.65296803652968,
+        "y": 41.80618975139523,
+        "width": 20.776255707762566,
+        "height": 19.076610857432776,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 0.1141552511415525,
+        "y": 43.83561643835616,
+        "width": 27.511415525114156,
+        "height": 56.16438356164384,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 18.607305936073075,
+        "y": 54.388635210553005,
+        "width": 35.616438356164366,
+        "height": 45.25621511922885,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 35.95890410958904,
+        "y": 5.682394723490614,
+        "width": 40.98173515981736,
+        "height": 64.1298833079655,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 30,
+    "created_at": "2026-09-20T15:51:08.126597Z",
+    "updated_at": "2026-09-20T15:51:08.126624Z",
+    "lead_time": 78.816
+  },
+  {
+    "image": "\/data\/upload\/4\/80a7e8e9-Dataset59_glovebox_000061.jpg",
+    "id": 131,
+    "task_flags": "occlusion",
+    "label": [
+      {
+        "x": 53.88127853881278,
+        "y": 41.80618975139523,
+        "width": 20.662100456621005,
+        "height": 16.641298833079652,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 20.4337899543379,
+        "y": 0.20294266869609334,
+        "width": 37.557077625570784,
+        "height": 99.7970573313039,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 10.388127853881278,
+        "y": 43.023845763571785,
+        "width": 25.45662100456621,
+        "height": 56.976154236428215,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.33333333333333,
+        "y": 6.0882800608828,
+        "width": 42.23744292237443,
+        "height": 62.10045662100456,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 31,
+    "created_at": "2026-09-20T15:54:14.193577Z",
+    "updated_at": "2026-09-20T15:54:14.193600Z",
+    "lead_time": 184.638
+  },
+  {
+    "image": "\/data\/upload\/4\/5a7dbceb-Dataset5_glovebox_000010.jpg",
+    "id": 132,
+    "label": [
+      {
+        "x": 39.523342870314664,
+        "y": 36.14501044712868,
+        "width": 21.787927114946196,
+        "height": 34.20570459704106,
+        "rotation": 355.84035770628975,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 35.403050108932455,
+        "y": 55.990829618690796,
+        "width": 9.58605664488018,
+        "height": 18.938751697796746,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 58.16993464052287,
+        "y": 51.54602054675892,
+        "width": 9.150326797385615,
+        "height": 11.981659237381601,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 54.68409586056643,
+        "y": 51.59843574807892,
+        "width": 5.664488017429139,
+        "height": 12.754669510761035,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 55.01089324618738,
+        "y": 51.984940884768605,
+        "width": 5.664488017429182,
+        "height": 9.276123280553504,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 57.304934126491716,
+        "y": 52.321083172146984,
+        "width": 12.538319769351538,
+        "height": 31.914893617021306,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 78.12944783037116,
+        "y": 80.36750483558993,
+        "width": 0.4361154702383061,
+        "height": 0.5802707930367603,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 34.95401627677822,
+        "y": 63.34622823984527,
+        "width": 13.083464107149375,
+        "height": 30.560928433268806,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 32,
+    "created_at": "2026-09-20T15:55:55.420573Z",
+    "updated_at": "2026-09-20T15:55:55.420621Z",
+    "lead_time": 96.961
+  },
+  {
+    "image": "\/data\/upload\/4\/ae58bcee-Dataset5_glovebox_000015.jpg",
+    "id": 133,
+    "label": [
+      {
+        "x": 39.3022535629832,
+        "y": 49.02498285088284,
+        "width": 21.56637199877371,
+        "height": 19.915408196598282,
+        "rotation": 355.8768939650728,
+        "rectanglelabels": [
+          "case_closed"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 37.145969498910674,
+        "y": 69.90501453952106,
+        "width": 8.061002178649233,
+        "height": 13.141174647450796,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      },
+      {
+        "x": 58.387799564270146,
+        "y": 69.32525683448645,
+        "width": 6.86274509803922,
+        "height": 8.889618143863785,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 848,
+        "original_height": 478
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 33,
+    "created_at": "2026-09-20T15:56:34.609402Z",
+    "updated_at": "2026-09-20T15:56:34.609430Z",
+    "lead_time": 38.063
+  },
+  {
+    "image": "\/data\/upload\/4\/e1df9a20-Dataset60_glovebox_000044.jpg",
+    "id": 134,
+    "label": [
+      {
+        "x": 40.93893799996711,
+        "y": 39.597078037250256,
+        "width": 20.376840640949524,
+        "height": 56.19210006849811,
+        "rotation": 348.0255878343123,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 50.000000000000014,
+        "y": 19.888381532217124,
+        "width": 35.38812785388133,
+        "height": 80.11161846778283,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 37.899543378995446,
+        "y": 59.05631659056317,
+        "width": 16.666666666666664,
+        "height": 40.94368340943678,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 34.70319634703195,
+        "y": 39.776763064434284,
+        "width": 21.118721461187214,
+        "height": 17.250126839167955,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 32.87671232876712,
+        "y": 3.65296803652968,
+        "width": 40.75342465753425,
+        "height": 64.12988330796549,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 34,
+    "created_at": "2026-09-20T15:58:38.585854Z",
+    "updated_at": "2026-09-20T15:58:38.585883Z",
+    "lead_time": 122.656
+  },
+  {
+    "image": "\/data\/upload\/4\/14181d5b-Dataset60_glovebox_000047.jpg",
+    "id": 135,
+    "label": [
+      {
+        "x": 33.21917808219178,
+        "y": 3.450025367833586,
+        "width": 40.52511415525114,
+        "height": 65.55048198883813,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 45.19418904803938,
+        "y": 45.08954024049247,
+        "width": 32.301432447985654,
+        "height": 38.08712116881395,
+        "rotation": 354.15543412261474,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 72.03196347031964,
+        "y": 35.10908168442415,
+        "width": 27.511415525114145,
+        "height": 64.89091831557585,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 23.74429223744293,
+        "y": 40.18264840182648,
+        "width": 35.95890410958903,
+        "height": 59.00558092338913,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 34.931506849315056,
+        "y": 39.16793505834604,
+        "width": 19.63470319634706,
+        "height": 15.626585489599194,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 11.757990867579908,
+        "y": 38.762049720953826,
+        "width": 1.4840182648401825,
+        "height": 2.6382546930492197,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 35,
+    "created_at": "2026-09-20T16:02:03.698015Z",
+    "updated_at": "2026-09-20T16:02:03.698048Z",
+    "lead_time": 204.047
+  },
+  {
+    "image": "\/data\/upload\/4\/e9638ed7-Dataset61_glovebox_000039.jpg",
+    "id": 136,
+    "label": [
+      {
+        "x": 20.93892224092019,
+        "y": 28.19332650193949,
+        "width": 21.688111122943923,
+        "height": 49.185140529777186,
+        "rotation": 350.4215770805406,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 63.545344437035126,
+        "y": 59.39965784986103,
+        "width": 25.490447587941773,
+        "height": 27.195482582606978,
+        "rotation": 339.2764170479519,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 69.52054794520544,
+        "y": 44.850329781836614,
+        "width": 21.118721461187253,
+        "height": 55.14967021816335,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 16.438356164383542,
+        "y": 43.8356164383562,
+        "width": 21.91780821917808,
+        "height": 56.1643835616438,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 34.246575342465704,
+        "y": 6.494165398274987,
+        "width": 36.75799086757986,
+        "height": 60.273972602739725,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 36,
+    "created_at": "2026-09-20T16:03:29.422489Z",
+    "updated_at": "2026-09-20T16:03:29.422529Z",
+    "lead_time": 84.473
+  },
+  {
+    "image": "\/data\/upload\/4\/3870c47b-Dataset61_glovebox_000041.jpg",
+    "id": 137,
+    "label": [
+      {
+        "x": 34.70488275340237,
+        "y": 4.746620061018259,
+        "width": 36.399934544137906,
+        "height": 61.49429736549138,
+        "rotation": 2.4835615197883385,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 66.3242009132419,
+        "y": 49.720953830542896,
+        "width": 26.02739726027395,
+        "height": 27.600202942668716,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 70.2054794520548,
+        "y": 34.29731100963977,
+        "width": 21.91780821917808,
+        "height": 65.70268899036023,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 26.48401826484018,
+        "y": 54.794520547945204,
+        "width": 22.146118721461193,
+        "height": 45.205479452054796,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 18.150684931506852,
+        "y": 59.05631659056314,
+        "width": 26.141552511415554,
+        "height": 40.18264840182646,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 37,
+    "created_at": "2026-09-20T16:04:28.821265Z",
+    "updated_at": "2026-09-20T16:04:28.821305Z",
+    "lead_time": 56.732
+  },
+  {
+    "image": "\/data\/upload\/4\/f680763a-Dataset62_glovebox_000033.jpg",
+    "id": 138,
+    "label": [
+      {
+        "x": 27.51141552511416,
+        "y": 1.8264840182648376,
+        "width": 48.5159817351598,
+        "height": 72.24759005580918,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 38.3783495675815,
+        "y": 57.332757250774634,
+        "width": 19.013876761390485,
+        "height": 22.932521562658582,
+        "rotation": 321.709494685587,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 68.77387283096853,
+        "y": 68.11538534598117,
+        "width": 26.792392446995407,
+        "height": 21.917808219178124,
+        "rotation": 344.8459319496884,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 61.5296803652968,
+        "y": 62.506341958396746,
+        "width": 27.96803652968036,
+        "height": 36.93556570268899,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 80.59360730593609,
+        "y": 48.706240487062416,
+        "width": 19.406392694063914,
+        "height": 48.74682840146974,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 38,
+    "created_at": "2026-09-20T16:05:35.883618Z",
+    "updated_at": "2026-09-20T16:05:35.883640Z",
+    "lead_time": 65.862
+  },
+  {
+    "image": "\/data\/upload\/4\/3225f35e-Dataset62_glovebox_000048.jpg",
+    "id": 139,
+    "label": [
+      {
+        "x": 67.46731369884256,
+        "y": 28.293293570301714,
+        "width": 7.955389830572431,
+        "height": 26.000681018083903,
+        "rotation": 48.32312044513526,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 51.859486201937386,
+        "y": 39.95538194944294,
+        "width": 38.9811084670971,
+        "height": 56.215119228817954,
+        "rotation": 359.2374038195469,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 81.05022831050228,
+        "y": 43.429731100963984,
+        "width": 18.94977168949771,
+        "height": 56.570268899036,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 47.48858447488578,
+        "y": 63.11516996448502,
+        "width": 28.08219178082187,
+        "height": 36.884830035515,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 31.735159817351576,
+        "y": 1.6235413495687467,
+        "width": 43.949771689497695,
+        "height": 74.88584474885846,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 39,
+    "created_at": "2026-09-20T16:06:57.848603Z",
+    "updated_at": "2026-09-20T16:06:57.848647Z",
+    "lead_time": 80.116
+  },
+  {
+    "image": "\/data\/upload\/4\/bd75452a-Dataset62_glovebox_000053.jpg",
+    "id": 140,
+    "label": [
+      {
+        "x": 28.538812785388114,
+        "y": 0.20294266869609334,
+        "width": 46.00456621004569,
+        "height": 76.30644342973108,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 43.32756251536228,
+        "y": 30.695190310752096,
+        "width": 32.48725119186721,
+        "height": 37.249288688592685,
+        "rotation": 341.44818256883815,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 72.03196347031962,
+        "y": 18.873668188736684,
+        "width": 27.96803652968038,
+        "height": 47.894469812278054,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 37.32876712328766,
+        "y": 51.54743784880773,
+        "width": 26.484018264840238,
+        "height": 47.69152714358192,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "task_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 40,
+    "created_at": "2026-09-20T16:08:06.165042Z",
+    "updated_at": "2026-09-20T16:08:06.165079Z",
+    "lead_time": 66.603
+  },
+  {
+    "image": "\/data\/upload\/4\/c29e5240-Dataset62_glovebox_000060.jpg",
+    "id": 141,
+    "label": [
+      {
+        "x": 34.76608412499156,
+        "y": 52.61254008873237,
+        "width": 43.26484018264823,
+        "height": 36.482517210841955,
+        "rotation": 327.9107115982855,
+        "rectanglelabels": [
+          "case_closed"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 43.721461187214594,
+        "y": 62.303399289700636,
+        "width": 24.315068493150697,
+        "height": 37.69660071029926,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": "motion_blur",
+    "annotator": 1,
+    "annotation_id": 41,
+    "created_at": "2026-09-20T16:08:40.251330Z",
+    "updated_at": "2026-09-20T16:08:40.251370Z",
+    "lead_time": 32.528
+  },
+  {
+    "image": "\/data\/upload\/4\/10fc31f3-Dataset6_glovebox_000010.jpg",
+    "id": 142,
+    "label": [
+      {
+        "x": 44.863013698630155,
+        "y": 29.832572298325687,
+        "width": 9.70319634703193,
+        "height": 38.356164383561634,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.33333333333332,
+        "y": 40.58853373921863,
+        "width": 10.159817351598127,
+        "height": 34.50025367833586,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 50.2283105022831,
+        "y": 78.13292744799594,
+        "width": 0.456621004566216,
+        "height": 1.2176560121765618,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 34.47488584474886,
+        "y": 37.74733637747336,
+        "width": 9.93150684931507,
+        "height": 14.408929477422632,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 41.66666666666666,
+        "y": 38.15322171486555,
+        "width": 2.8538812785388115,
+        "height": 13.597158802638267,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 64.5067140594176,
+        "y": 23.146974537650358,
+        "width": 12.001441917670514,
+        "height": 37.10037832175554,
+        "rotation": 24.775140568831887,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 59.58904109589028,
+        "y": 47.08269913749362,
+        "width": 7.191780821917856,
+        "height": 10.958904109589032,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 60.273972602739626,
+        "y": 48.097412480974114,
+        "width": 2.9680365296803686,
+        "height": 9.5383054287164,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "motion_blur",
+      "occlusion",
+      "occlusion"
+    ],
+    "annotator": 1,
+    "annotation_id": 42,
+    "created_at": "2026-09-20T16:15:35.760737Z",
+    "updated_at": "2026-09-20T16:15:35.760787Z",
+    "lead_time": 409.117
+  },
+  {
+    "image": "\/data\/upload\/4\/a49c2bbe-Dataset6_glovebox_000015.jpg",
+    "id": 143,
+    "label": [
+      {
+        "x": 27.397260273972602,
+        "y": 38.762049720953826,
+        "width": 14.611872146118717,
+        "height": 32.67376966007103,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 43.949771689497716,
+        "y": 33.282597666159305,
+        "width": 10.730593607305941,
+        "height": 33.282597666159305,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.5610620829893,
+        "y": 40.24903465467732,
+        "width": 8.87860326625501,
+        "height": 13.95601142263476,
+        "rotation": 18.0684562978405,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 40.530047835185734,
+        "y": 39.02642490120404,
+        "width": 5.48888274674647,
+        "height": 15.695443000986483,
+        "rotation": 348.33507963020946,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 67.74991166939353,
+        "y": 19.102143858902533,
+        "width": 11.067804207360334,
+        "height": 42.82090309487585,
+        "rotation": 29.64728243304546,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 59.24657534246571,
+        "y": 47.08269913749356,
+        "width": 3.9954337899543897,
+        "height": 11.161846778285103,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 59.36073059360728,
+        "y": 46.879756468797524,
+        "width": 8.105022831050224,
+        "height": 11.161846778285119,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "occlusion",
+      "occlusion"
+    ],
+    "annotator": 1,
+    "annotation_id": 43,
+    "created_at": "2026-09-20T16:17:52.466260Z",
+    "updated_at": "2026-09-20T16:17:52.466299Z",
+    "lead_time": 133.451
+  },
+  {
+    "image": "\/data\/upload\/4\/68b20893-Dataset6_glovebox_000018.jpg",
+    "id": 144,
+    "label": [
+      {
+        "x": 57.648401826484005,
+        "y": 48.706240487062395,
+        "width": 10.844748858447502,
+        "height": 24.961948249619486,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 50.68493150684934,
+        "y": 32.06494165398273,
+        "width": 10.844748858447485,
+        "height": 31.456113647894462,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 55.251141552511385,
+        "y": 31.05022831050227,
+        "width": 11.073059360730596,
+        "height": 13.597158802638223,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 55.13698630136985,
+        "y": 31.65905631659055,
+        "width": 6.05022831050228,
+        "height": 12.98833079654998,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 58.33333333333325,
+        "y": 46.47387113140533,
+        "width": 8.333333333333382,
+        "height": 10.147133434804658,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 59.703196347031884,
+        "y": 46.473871131405375,
+        "width": 3.3105022831049915,
+        "height": 9.741248097412452,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 57.67880336441311,
+        "y": 20.420592312879617,
+        "width": 16.1718835225385,
+        "height": 36.32673769660087,
+        "rotation": 16.1384185716322,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "motion_blur",
+      "occlusion",
+      "occlusion"
+    ],
+    "annotator": 1,
+    "annotation_id": 44,
+    "created_at": "2026-09-20T16:19:59.721498Z",
+    "updated_at": "2026-09-20T16:19:59.721523Z",
+    "lead_time": 124.922
+  },
+  {
+    "image": "\/data\/upload\/4\/66983256-Dataset6_glovebox_000032.jpg",
+    "id": 145,
+    "label": [
+      {
+        "x": 65.05941277506227,
+        "y": 21.30240538127134,
+        "width": 11.64383561643834,
+        "height": 32.327309625603526,
+        "rotation": 22.506311739807188,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 52.1689497716895,
+        "y": 32.26788432267884,
+        "width": 12.671232876712324,
+        "height": 37.34145104008118,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 36.5296803652968,
+        "y": 42.00913242009132,
+        "width": 12.671232876712331,
+        "height": 39.97970573313039,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 46.62408945903327,
+        "y": 39.71441629392605,
+        "width": 7.92243230863838,
+        "height": 19.458128993556915,
+        "rotation": 73.76397582602488,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 52.93212685600069,
+        "y": 31.67174645059848,
+        "width": 6.048838335462902,
+        "height": 13.670345726901134,
+        "rotation": 12.449996507805963,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 62.76029812890073,
+        "y": 39.33763099371978,
+        "width": 7.030167801410664,
+        "height": 10.705253922880424,
+        "rotation": 25.989115701234596,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "motion_blur",
+      "motion_blur",
+      "occlusion"
+    ],
+    "task_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 45,
+    "created_at": "2026-09-20T16:21:55.702800Z",
+    "updated_at": "2026-09-20T16:21:55.702824Z",
+    "lead_time": 107.737
+  },
+  {
+    "image": "\/data\/upload\/4\/8fa9e2af-Dataset7_glovebox_000013.jpg",
+    "id": 146,
+    "label": [
+      {
+        "x": 58.34992759105886,
+        "y": 42.22407230340207,
+        "width": 17.84505360239391,
+        "height": 25.773718924403845,
+        "rotation": 352.6295319968221,
+        "rectanglelabels": [
+          "hand_bare"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 47.22102078259649,
+        "y": 59.9115221741158,
+        "width": 15.198816338664875,
+        "height": 15.227801912343855,
+        "rotation": 311.64962966156446,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 64.32780945418163,
+        "y": 18.499227748300964,
+        "width": 12.33336652648931,
+        "height": 34.705933300481334,
+        "rotation": 28.71030698779589,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 63.14518812724038,
+        "y": 33.70816164167378,
+        "width": 11.067497825776082,
+        "height": 14.805826475494674,
+        "rotation": 5.394498760224792,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "task_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 46,
+    "created_at": "2026-09-20T16:23:17.774762Z",
+    "updated_at": "2026-09-20T16:23:17.774805Z",
+    "lead_time": 80.85
+  },
+  {
+    "image": "\/data\/upload\/4\/7e248180-Dataset8_glovebox_000006.jpg",
+    "id": 147,
+    "label": [
+      {
+        "x": 39.726027397260275,
+        "y": 37.54439370877727,
+        "width": 23.173515981735164,
+        "height": 35.92085235920852,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 45.31963470319635,
+        "y": 54.79452054794517,
+        "width": 6.8493150684931265,
+        "height": 16.23541349568746,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 55.25114155251136,
+        "y": 54.38863521055295,
+        "width": 7.420091324200988,
+        "height": 10.755961440892946,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 55.25114155251146,
+        "y": 54.185692541856945,
+        "width": 6.8493150684931505,
+        "height": 15.423642820903046,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 57.062954174395806,
+        "y": 38.38307729957304,
+        "width": 9.799405964674692,
+        "height": 32.24292946033172,
+        "rotation": 346.43683019949896,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 33.78995433789952,
+        "y": 62.30339928970064,
+        "width": 11.757990867579911,
+        "height": 36.88483003551495,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 45.433789954337904,
+        "y": 54.99746321664129,
+        "width": 6.963470319634702,
+        "height": 10.958904109589042,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "occlusion",
+      "occlusion",
+      "motion_blur"
+    ],
+    "annotator": 1,
+    "annotation_id": 47,
+    "created_at": "2026-09-20T16:25:36.906648Z",
+    "updated_at": "2026-09-20T16:25:36.906693Z",
+    "lead_time": 137.393
+  },
+  {
+    "image": "\/data\/upload\/4\/0d569e42-Dataset8_glovebox_000011.jpg",
+    "id": 148,
+    "label": [
+      {
+        "x": 24.297525864694144,
+        "y": 44.75669761382991,
+        "width": 21.795746912419588,
+        "height": 35.09121846384225,
+        "rotation": 329.1239505061627,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 35.84474885844749,
+        "y": 50.12683916793505,
+        "width": 6.735159817351597,
+        "height": 16.84424150177576,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 35.958904109589014,
+        "y": 50.532724505327245,
+        "width": 6.3926940639269585,
+        "height": 10.55301877219687,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 52.8145438918203,
+        "y": 55.85600868891759,
+        "width": 10.211835634209217,
+        "height": 14.967575465254345,
+        "rotation": 324.7436412870376,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 63.926940639269404,
+        "y": 50.532724505327245,
+        "width": 0.5707762557077558,
+        "height": 1.4205986808726507,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 55.36529680365297,
+        "y": 52.765093860984216,
+        "width": 12.671232876712285,
+        "height": 29.629629629629644,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 34.01826484018264,
+        "y": 50.53272450532723,
+        "width": 12.785388127853881,
+        "height": 36.935565702688976,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "region_flags": [
+      "occlusion",
+      "occlusion",
+      "motion_blur",
+      "motion_blur"
+    ],
+    "annotator": 1,
+    "annotation_id": 48,
+    "created_at": "2026-09-20T16:27:46.414617Z",
+    "updated_at": "2026-09-20T16:27:46.414644Z",
+    "lead_time": 127.468
+  },
+  {
+    "image": "\/data\/upload\/4\/e10ec2d7-Dataset8_glovebox_000013.jpg",
+    "id": 149,
+    "label": [
+      {
+        "x": 56.39269406392694,
+        "y": 34.29731100963978,
+        "width": 10.958904109589042,
+        "height": 17.453069507864022,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 25.291061425971694,
+        "y": 42.283529572146236,
+        "width": 21.212289967180435,
+        "height": 33.89767746940675,
+        "rotation": 333.43494882292487,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 21.91780821917808,
+        "y": 66.56519533231861,
+        "width": 0.4566210045662089,
+        "height": 2.029426686960946,
+        "rotation": 0,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 54.79452054794521,
+        "y": 42.415017757483476,
+        "width": 14.726027397260333,
+        "height": 30.64434297311006,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 36.87214611872146,
+        "y": 52.35920852359208,
+        "width": 8.105022831050228,
+        "height": 34.90613901572805,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 35.73059360730593,
+        "y": 50.53272450532721,
+        "width": 7.191780821917809,
+        "height": 9.944190766108552,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 36.187214611872136,
+        "y": 51.141552511415576,
+        "width": 6.278538812785393,
+        "height": 15.220700152207014,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "task_flags": "motion_blur",
+    "region_flags": "occlusion",
+    "annotator": 1,
+    "annotation_id": 49,
+    "created_at": "2026-09-20T16:29:12.027568Z",
+    "updated_at": "2026-09-20T16:29:12.027618Z",
+    "lead_time": 83.428
+  },
+  {
+    "image": "\/data\/upload\/4\/6696321f-Dataset8_glovebox_000031.jpg",
+    "id": 150,
+    "label": [
+      {
+        "x": 24.563955861901103,
+        "y": 44.22793880003741,
+        "width": 21.841814120701834,
+        "height": 34.16648915296236,
+        "rotation": 330.4824817140504,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 55.86525919372632,
+        "y": 40.81181201150372,
+        "width": 9.27574504374668,
+        "height": 19.61130137242702,
+        "rotation": 38.21695114479837,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 43.37899543378996,
+        "y": 42.2120750887874,
+        "width": 6.278538812785385,
+        "height": 8.726534753932015,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 43.37899543378993,
+        "y": 42.00913242009132,
+        "width": 6.050228310502296,
+        "height": 14.611872146118706,
+        "rotation": 0,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 56.106553789185966,
+        "y": 41.02516287841853,
+        "width": 8.673824707748286,
+        "height": 8.32064941653985,
+        "rotation": 41.128743768014374,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 56.39269406392693,
+        "y": 42.82090309487567,
+        "width": 10.616438356164384,
+        "height": 37.13850837138507,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 41.095890410958916,
+        "y": 50.126839167935024,
+        "width": 12.557077625570734,
+        "height": 34.70319634703195,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 50,
+    "created_at": "2026-09-20T16:32:47.025123Z",
+    "updated_at": "2026-09-20T16:32:47.025178Z",
+    "lead_time": 213.63
+  },
+  {
+    "image": "\/data\/upload\/4\/45222996-Dataset8_glovebox_000037.jpg",
+    "id": 151,
+    "label": [
+      {
+        "x": 37.20848386303708,
+        "y": 45.11979269920834,
+        "width": 24.019200316552496,
+        "height": 28.384505359861517,
+        "rotation": 354.5596679689956,
+        "rectanglelabels": [
+          "case_open"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 42.69406392694063,
+        "y": 53.77980720446468,
+        "width": 7.077625570776245,
+        "height": 14.205986808726607,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 42.8082191780822,
+        "y": 53.98274987316083,
+        "width": 6.849315068493139,
+        "height": 10.553018772196838,
+        "rotation": 0,
+        "rectanglelabels": [
+          "red_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 54.228963740422934,
+        "y": 50.866496824065855,
+        "width": 7.095601073516078,
+        "height": 14.812661064982974,
+        "rotation": 4.820766078091424,
+        "rectanglelabels": [
+          "yellow_module"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 54.86968896733866,
+        "y": 50.637758279080835,
+        "width": 7.151176115895865,
+        "height": 9.202974741796055,
+        "rotation": 13.81502534126082,
+        "rectanglelabels": [
+          "yellow_lid"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 60.61643835616434,
+        "y": 38.96499238964993,
+        "width": 8.675799086758044,
+        "height": 34.50025367833586,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      },
+      {
+        "x": 34.24657534246578,
+        "y": 43.023845763571785,
+        "width": 8.105022831050182,
+        "height": 34.50025367833589,
+        "rotation": 0,
+        "rectanglelabels": [
+          "hand_gloved"
+        ],
+        "original_width": 1920,
+        "original_height": 1080
+      }
+    ],
+    "annotator": 1,
+    "annotation_id": 51,
+    "created_at": "2026-09-20T16:34:34.504415Z",
+    "updated_at": "2026-09-20T16:34:34.504442Z",
+    "lead_time": 105.851
+  }
+]
