@@ -36,6 +36,7 @@ def split_by_session(
     val_fraction: float,
     seed: int,
     holdout_prop_family: str | None,
+    holdout_session: set[str] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     for row in rows:
         if not row.get("session_id", "").strip():
@@ -48,9 +49,12 @@ def split_by_session(
     rng = random.Random(seed)
     rng.shuffle(sessions)
 
-    holdout_sessions: set[str] = set()
+    holdout_sessions: set[str] = set(holdout_session or ())
+    unknown = holdout_sessions - set(sessions)
+    if unknown:
+        raise SplitError(f"--holdout-session {sorted(unknown)} not present in {MANIFEST_PATH}")
     if holdout_prop_family:
-        holdout_sessions = {
+        holdout_sessions |= {
             row["session_id"] for row in rows if row.get("prop_family") == holdout_prop_family
         }
 
@@ -80,6 +84,11 @@ def main() -> int:
     ap.add_argument("--val-fraction", type=float, default=0.2)
     ap.add_argument("--seed", type=int, default=1337)
     ap.add_argument("--holdout-prop-family", type=str, default=None)
+    ap.add_argument(
+        "--holdout-session", type=str, default=None,
+        help="Comma-separated session_id(s) to force into val regardless of "
+             "--val-fraction, e.g. 'S03' for a specific held-out shoot.",
+    )
     ap.add_argument("--out-dir", type=Path, default=Path("manifest"))
     args = ap.parse_args()
 
@@ -87,10 +96,15 @@ def main() -> int:
         print(f"{args.manifest} does not exist yet - nothing to split.")
         return 0
 
+    holdout_session = (
+        {s.strip() for s in args.holdout_session.split(",") if s.strip()}
+        if args.holdout_session else None
+    )
+
     rows = load_rows(args.manifest)
     try:
         train_rows, val_rows = split_by_session(
-            rows, args.val_fraction, args.seed, args.holdout_prop_family
+            rows, args.val_fraction, args.seed, args.holdout_prop_family, holdout_session
         )
     except SplitError as e:
         print(f"SPLIT FAILED: {e}", file=sys.stderr)

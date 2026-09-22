@@ -19,26 +19,32 @@ would waste the next session's time; open decisions awaiting the human;
 known-broken things not yet fixed.
 
 **Status:**
-- `clips.csv` 62/62 filled, `gloves` now literal `true`/`false`, notes
-  18/62. `clips2.csv` = human's backup, don't touch. S02 is in the
-  training set (not held out); S03 (real val) not shot yet.
-- 183 frames labelled: original 157 (4 exports) + 26 reviewed from the
-  auto-label pass (`labels/batch5_retrain.json`). Fixed
-  `convert_labels_to_yolo_obb.py`'s `parse_task()`: unreviewed tasks
-  now skipped, not silently treated as confirmed-empty.
-- `runs/yolo_dataset/` rebuilt to 183 pairs, val==train placeholder.
-  `bootstrap_v1` (157, 80ep) done; `bootstrap_v2` (183, 50ep,
-  fine-tuned from v1) done, no interruption. `runs/autolabel_
-  predictions/` is v1-era, stale now that v2 exists — not regenerated.
-- LS env var is `LOCAL_FILES_SERVING_ENABLED`/`LOCAL_FILES_DOCUMENT_ROOT`
-  (no `LABEL_STUDIO_` prefix). Server currently stopped (on request).
+- `clips.csv` 71 rows: 62 filled + 9 new (Dataset63-71, derived cols
+  only, session_id/prop_family/etc still blank). `clips2.csv`=backup,
+  don't touch.
+- 274 frames labelled (183+91 from `batch6_retrain3.json`), all
+  S00/S01/S02. Dataset63-71 normalized+extracted (585 frames in
+  `frames/`) but UNLABELLED — don't count them yet.
+- REAL split done: train=S00(196), val=S01+S02(78), via
+  `split_yolo_dataset.py --val-sessions S01,S02`. `bootstrap_v3`
+  trained FROM SCRATCH (not fine-tuned from v2, deliberate), 80/80ep,
+  REAL results: P=0.70 R=0.62 mAP50=0.68 mAP50-95=0.47. Per-class:
+  red_module .93, hand_bare .87, red_lid .80, yellow_module .78,
+  case_open .72, yellow_lid .53 (weak), case_closed .15 (only 4 val
+  examples, don't trust it), hand_gloved UNMEASURED (0 val examples —
+  every gloved clip is in S00, structural, needs a new non-S00 gloved
+  session to fix). Jar-class val is also narrow: only S01's 6 clips,
+  all overhead angle (S02 is all-slab, no jars). `v1`(157,80ep)/
+  `v2`(183,50ep) = older train==val-placeholder runs; v2's `best.pt`
+  already given to friend, see RESUME.md.
+- New: `split_yolo_dataset.py`, `train_yolo_obb.py` (reusable
+  train/resume wrapper, `--weights`-on-resume bug fixed),
+  `split.py --holdout-session`. Label Studio running for review.
 - Gotchas (`pyproject.toml`): vision install pulls `opencv-python`,
-  corrupts `cv2.aruco` — uninstall + force-reinstall contrib after.
-  ultralytics 8.3.28 + numpy2 needs `numpy.trapz = numpy.trapezoid`
-  shim before train/val.
+  corrupts `cv2.aruco` — reinstall contrib after. ultralytics8.3.28+
+  numpy2 needs `numpy.trapz=numpy.trapezoid` shim.
 - `build_review_sheet.py` overwrites `clips.csv` wholesale, don't
-  re-run. Uncommitted since `36f51bb`. Env: `.venv/Scripts/python.exe`
-  only, never MSYS ucrt64.
+  re-run. 169/169 tests. Uncommitted since `e1c53cb`.
 
 
 ## Your role
