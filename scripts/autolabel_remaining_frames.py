@@ -85,7 +85,7 @@ def already_labelled_filenames(train_images_dir: Path) -> set[str]:
 
 def run(
     weights: Path, frames_dir: Path, train_images_dir: Path,
-    out_dir: Path, conf_threshold: float,
+    out_dir: Path, conf_threshold: float, local_files_prefix: str,
 ) -> dict:
     import numpy
     numpy.trapz = numpy.trapezoid  # see CLAUDE.md session-status gotchas
@@ -95,6 +95,13 @@ def run(
     remaining = sorted(p for p in frames_dir.glob("*.jpg") if p.name not in labelled)
 
     out_labels_dir = out_dir / "labels"
+    if out_labels_dir.exists():
+        # Purge stale predictions from a prior run -- "remaining" shrinks
+        # over time as reviewed frames get merged into the training set,
+        # and a leftover .txt for a now-trained frame would wrongly keep
+        # it in the review queue as if it still needed attention.
+        for stale in out_labels_dir.glob("*.txt"):
+            stale.unlink()
     out_labels_dir.mkdir(parents=True, exist_ok=True)
 
     model = YOLO(str(weights))
@@ -150,7 +157,7 @@ def run(
                 low_conf_images.append((path.name, image_min_conf))
 
             ls_tasks.append({
-                "data": {"image": path.name},
+                "data": {"image": f"/data/local-files/?d={local_files_prefix}{path.name}"},
                 "predictions": [{
                     "model_version": weights.parent.parent.name,
                     "result": ls_result,
@@ -182,9 +189,18 @@ def main() -> int:
     ap.add_argument("--train-images-dir", type=Path, default=Path("runs/yolo_dataset/images/train"))
     ap.add_argument("--out-dir", type=Path, default=Path("runs/autolabel_predictions"))
     ap.add_argument("--conf", type=float, default=0.25)
+    ap.add_argument(
+        "--local-files-prefix", default="frames/",
+        help="Path prefix for Label Studio's Local Files storage, relative to "
+             "LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT (e.g. 'frames/' if that root "
+             "is set to the repo directory). Must end with '/' if non-empty.",
+    )
     args = ap.parse_args()
 
-    summary = run(args.weights, args.frames_dir, args.train_images_dir, args.out_dir, args.conf)
+    summary = run(
+        args.weights, args.frames_dir, args.train_images_dir, args.out_dir,
+        args.conf, args.local_files_prefix,
+    )
 
     print(f"remaining frames processed : {summary['n_remaining']}")
     print(f"images with zero detections: {summary['n_zero_detection']}")

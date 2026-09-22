@@ -93,7 +93,13 @@ def parse_task(task: dict) -> tuple[str, list[ObbAnnotation]] | None:
 
     annotations = task.get("annotations", [])
     if not annotations:
-        return filename, []
+        # No human has submitted this task yet (e.g. it's still just a
+        # pre-label prediction from a partial-review export) -- this is
+        # NOT the same as "reviewed and confirmed zero objects", which
+        # is a real annotations[0] entry with an empty result list.
+        # Conflating the two would silently teach the model "nothing is
+        # here" for frames nobody has actually looked at yet.
+        return None
 
     results = annotations[0].get("result", [])
     flags_by_region_id: dict[str, list[str]] = {}

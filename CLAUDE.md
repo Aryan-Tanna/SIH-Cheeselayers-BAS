@@ -20,25 +20,25 @@ known-broken things not yet fixed.
 
 **Status:**
 - `clips.csv` 62/62 filled, `gloves` now literal `true`/`false`, notes
-  18/62. `clips2.csv` = human's backup, don't touch. S00=48/S01=6/S02=8
-  — S02 is in the 157-frame training set; S03 (real val) not shot yet.
-- 157 frames labelled across 4 exports (`labels/batch-*_full.json`),
-  zero overlap, no pilot check ran.
-- New scripts: `convert_labels_to_yolo_obb.py`, `autolabel_remaining_
-  frames.py`, `src/perception/obb_reduce.py` (separate purposes).
-  `runs/yolo_dataset/` built, val==train placeholder (not a real eval).
-  `bootstrap_v1` trained 80/80 epochs (2 background kills from host
-  memory pressure, resumed both times, not a code bug). Ran on all
-  1899 unlabelled `frames/` → `runs/autolabel_predictions/` (YOLO txt
-  + LS-import JSON), review-ready, NOT merged into training. 161/161.
-- Gotchas (in `pyproject.toml`): vision install pulls `opencv-python`,
+  18/62. `clips2.csv` = human's backup, don't touch. S02 is in the
+  training set (not held out); S03 (real val) not shot yet.
+- 183 frames labelled: original 157 (4 exports) + 26 reviewed from the
+  auto-label pass (`labels/batch5_retrain.json`). Fixed
+  `convert_labels_to_yolo_obb.py`'s `parse_task()`: unreviewed tasks
+  now skipped, not silently treated as confirmed-empty.
+- `runs/yolo_dataset/` rebuilt to 183 pairs, val==train placeholder.
+  `bootstrap_v1` (157, 80ep) done; `bootstrap_v2` (183, 50ep,
+  fine-tuned from v1) done, no interruption. `runs/autolabel_
+  predictions/` is v1-era, stale now that v2 exists — not regenerated.
+- LS env var is `LOCAL_FILES_SERVING_ENABLED`/`LOCAL_FILES_DOCUMENT_ROOT`
+  (no `LABEL_STUDIO_` prefix). Server currently stopped (on request).
+- Gotchas (`pyproject.toml`): vision install pulls `opencv-python`,
   corrupts `cv2.aruco` — uninstall + force-reinstall contrib after.
   ultralytics 8.3.28 + numpy2 needs `numpy.trapz = numpy.trapezoid`
   shim before train/val.
-- `build_review_sheet.py` overwrites `clips.csv` wholesale — don't
-  re-run.
-- Uncommitted since `36f51bb`. Env: `.venv/Scripts/python.exe` only,
-  never MSYS ucrt64.
+- `build_review_sheet.py` overwrites `clips.csv` wholesale, don't
+  re-run. Uncommitted since `36f51bb`. Env: `.venv/Scripts/python.exe`
+  only, never MSYS ucrt64.
 
 
 ## Your role

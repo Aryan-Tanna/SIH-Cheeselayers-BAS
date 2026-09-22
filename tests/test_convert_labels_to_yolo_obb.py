@@ -70,6 +70,27 @@ def test_flag_linked_to_correct_region_by_shared_id():
     assert by_class[CLASS_TO_ID["hand_bare"]].flags == ()
 
 
+def test_unreviewed_task_is_skipped_not_treated_as_empty():
+    """A task with no annotations at all means nobody has reviewed it
+    yet (still just a prediction) -- must be skipped entirely, never
+    treated as a confirmed zero-object frame."""
+    task = {"data": {"image": "/data/upload/1/x-unreviewed.jpg"}, "annotations": []}
+    assert parse_task(task) is None
+
+
+def test_reviewed_but_genuinely_empty_annotation_is_kept():
+    """A submitted annotation with zero regions is a real, reviewed
+    'nothing here' example -- distinct from never-reviewed, and should
+    be kept (not skipped)."""
+    task = {
+        "data": {"image": "/data/upload/1/x-empty.jpg"},
+        "annotations": [{"result": []}],
+    }
+    filename, boxes = parse_task(task)
+    assert filename == "x-empty.jpg"
+    assert boxes == []
+
+
 def test_unknown_class_raises():
     task = {
         "data": {"image": "/data/upload/1/x-frame2.jpg"},
