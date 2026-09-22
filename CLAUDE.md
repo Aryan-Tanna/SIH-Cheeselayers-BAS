@@ -19,26 +19,26 @@ would waste the next session's time; open decisions awaiting the human;
 known-broken things not yet fixed.
 
 **Status:**
-- Rotation finalized for the 10 flagged clips (user's explicit call
-  after reviewing the actual footage, overriding my visual read): all
-  at 90° (tag trusted) except Dataset21 at 0°. All `confirmed=yes` in
-  `manifest/rotation.csv`. `normalize_clips.py`/`extract_frames.py` now
-  support `--only <clip_ids>` for scoped re-runs (touches just the
-  named clips; `_write_rotation_manifest()` merges, doesn't overwrite).
-- Full 62-clip corpus normalized/extracted/review-sheeted (10 rotation
-  clips via scoped re-run; other 52 untouched since the last full run).
-  Pilot 5 unchanged throughout (byte-identical re-encode).
-- `manifest/clips.csv` session_id/notes still blank, pending human
-  fill. Guessed columns (prop_family/lid_type/gloves/camera_angle)
-  remain "unimplemented" — no phase-1 signal exists for them.
-- Decision point 2 RESOLVED (MediaPipe): 26.1% gloved vs 79.0% bare
-  detection, falls back to YOLO+motion coherence. Detector class
-  list FINAL, see `configs/objects/LABELLING_GUIDANCE.md`.
-- Deferred ("later, not now"): `build_review_sheet.py` overwrites
-  `clips.csv` wholesale each run — needs a merge/preserve-human-edits fix.
-- Nothing committed since `5287a49` — today's work is uncommitted.
-- Env: `.venv/Scripts/python.exe` (python.org 3.13) only, never MSYS
-  ucrt64. pytest 144/144, harness/run_all.py 9/9.
+- `clips.csv` 62/62 filled, `gloves` now literal `true`/`false`, notes
+  18/62. `clips2.csv` = human's backup, don't touch. S00=48/S01=6/S02=8
+  — S02 is in the 157-frame training set; S03 (real val) not shot yet.
+- 157 frames labelled across 4 exports (`labels/batch-*_full.json`),
+  zero overlap, no pilot check ran.
+- New scripts: `convert_labels_to_yolo_obb.py`, `autolabel_remaining_
+  frames.py`, `src/perception/obb_reduce.py` (separate purposes).
+  `runs/yolo_dataset/` built, val==train placeholder (not a real eval).
+  `bootstrap_v1` trained 80/80 epochs (2 background kills from host
+  memory pressure, resumed both times, not a code bug). Ran on all
+  1899 unlabelled `frames/` → `runs/autolabel_predictions/` (YOLO txt
+  + LS-import JSON), review-ready, NOT merged into training. 161/161.
+- Gotchas (in `pyproject.toml`): vision install pulls `opencv-python`,
+  corrupts `cv2.aruco` — uninstall + force-reinstall contrib after.
+  ultralytics 8.3.28 + numpy2 needs `numpy.trapz = numpy.trapezoid`
+  shim before train/val.
+- `build_review_sheet.py` overwrites `clips.csv` wholesale — don't
+  re-run.
+- Uncommitted since `36f51bb`. Env: `.venv/Scripts/python.exe` only,
+  never MSYS ucrt64.
 
 
 ## Your role

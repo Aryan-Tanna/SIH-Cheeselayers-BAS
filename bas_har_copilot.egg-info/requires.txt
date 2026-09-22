@@ -1,0 +1,12 @@
+pyyaml==6.0.2
+jsonschema==4.23.0
+
+[dev]
+pytest==8.3.3
+pytest-cov==6.0.0
+
+[vision]
+opencv-contrib-python==5.0.0.93
+ultralytics==8.3.28
+mediapipe==1.0.1
+pillow==11.0.0

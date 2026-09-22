@@ -22,6 +22,16 @@ vision = [
     # cv2.imread disappears entirely).
     "opencv-contrib-python==5.0.0.93",
     "ultralytics==8.3.28",
+    # ultralytics' own dependency list pulls in opencv-python transitively
+    # -- pip has no way to see that it conflicts with opencv-contrib-python
+    # above (different PyPI names, same `cv2` import), so a plain
+    # `pip install -e ".[vision]"` WILL reintroduce the corruption
+    # described above. After installing this extra, always run:
+    #   pip uninstall -y opencv-python
+    #   pip install --force-reinstall --no-deps opencv-contrib-python==5.0.0.93
+    # and verify with `python -c "import cv2; cv2.imread(...); cv2.aruco"`
+    # before trusting the environment -- cv2.aruco (contrib-only) is the
+    # more likely casualty of the two, not cv2.imread.
     # 0.10.18 (original pin) has no Python 3.13 wheel. 0.10.30, the
     # oldest version that does, removed the classic mediapipe.solutions
     # API entirely (only the newer mediapipe.tasks API remains, which
