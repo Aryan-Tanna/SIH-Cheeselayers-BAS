@@ -11,3 +11,5 @@ labels_seed
 labels_seed.zip
 video
 video.zip
+test_clips/
+best.pt/

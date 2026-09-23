@@ -19,26 +19,28 @@ would waste the next session's time; open decisions awaiting the human;
 known-broken things not yet fixed.
 
 **Status:**
-- `clips.csv` 62/62 filled, `gloves` now literal `true`/`false`, notes
-  18/62. `clips2.csv` = human's backup, don't touch. S02 is in the
-  training set (not held out); S03 (real val) not shot yet.
-- 183 frames labelled: original 157 (4 exports) + 26 reviewed from the
-  auto-label pass (`labels/batch5_retrain.json`). Fixed
-  `convert_labels_to_yolo_obb.py`'s `parse_task()`: unreviewed tasks
-  now skipped, not silently treated as confirmed-empty.
-- `runs/yolo_dataset/` rebuilt to 183 pairs, val==train placeholder.
-  `bootstrap_v1` (157, 80ep) done; `bootstrap_v2` (183, 50ep,
-  fine-tuned from v1) done, no interruption. `runs/autolabel_
-  predictions/` is v1-era, stale now that v2 exists — not regenerated.
-- LS env var is `LOCAL_FILES_SERVING_ENABLED`/`LOCAL_FILES_DOCUMENT_ROOT`
-  (no `LABEL_STUDIO_` prefix). Server currently stopped (on request).
-- Gotchas (`pyproject.toml`): vision install pulls `opencv-python`,
-  corrupts `cv2.aruco` — uninstall + force-reinstall contrib after.
-  ultralytics 8.3.28 + numpy2 needs `numpy.trapz = numpy.trapezoid`
-  shim before train/val.
-- `build_review_sheet.py` overwrites `clips.csv` wholesale, don't
-  re-run. Uncommitted since `36f51bb`. Env: `.venv/Scripts/python.exe`
-  only, never MSYS ucrt64.
+- `clips.csv` 71/71. S03 = 9 held-out val clips `Dataset63-71_glovebox`,
+  588 frames, slab_prop/bare/overhead/fixed cam. S02 is IN training.
+- `runs/yolo_dataset/` rebuilt from `labels/*.json`: 183 frames, 973
+  boxes, val==train placeholder still. S03 verified 0 overlap with it.
+- `best.pt` was delivered UNZIPPED as a directory; re-zipped to
+  `runs/train/bootstrap_v2/weights/best.pt`, verified as bootstrap_v2.
+- `scripts/eval_heldout.py` NEW (`--emit-tasks`/`--diagnose`/
+  `--ground-truth`); 217 tests green.
+- S03 measured, no ground truth needed: hand_gloved 0 FP/588 frames;
+  red_lid 18 FP, yellow_lid 6 FP (all conf<0.5); case_open+case_closed
+  contradiction 10 frames; 0 zero-detection. conf .25->.50 cuts that
+  FP 24->6 and contradictions 10->1 at -8% boxes; recall cost UNMEASURED.
+- Detector 11.3 FPS CPU (88.7 ms mean, p95 111) vs 25+ FPS target;
+  uncompiled PyTorch path, no ONNX/OpenVINO export attempted yet.
+- OPEN: 63 sampled frames need hand-labelling in Label Studio
+  (`runs/eval_heldout/S03_annotation_tasks.json`) -> first real mAP50.
+  Do NOT `--prelabel` them; it anchors GT to the model's own boxes.
+- Gotchas: vision install pulls `opencv-python`, corrupts `cv2.aruco`
+  - uninstall + force-reinstall contrib. ultralytics 8.3.28 + numpy2
+  needs `numpy.trapz = numpy.trapezoid`. `build_review_sheet.py`
+  overwrites `clips.csv` wholesale, don't re-run. LS env vars carry
+  no prefix. Env: `.venv/Scripts/python.exe`, never MSYS ucrt64.
 
 
 ## Your role
