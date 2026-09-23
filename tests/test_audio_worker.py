@@ -293,3 +293,142 @@ def test_constructor_validation():
         _worker(RecordingSink(), queue_maxsize=0)
     with pytest.raises(ValueError):
         _worker(RecordingSink(), volume=1.5)
+
+
+# --- wake hold ----------------------------------------------------------------
+
+def _chime():
+    return AudioRequest(kind="system", earcon="wake", hold=True)
+
+
+def _release(replay_prompt=True):
+    return AudioRequest(kind="system", release=True, replay_prompt=replay_prompt)
+
+
+def _wait_played(sink, n):
+    for _ in range(400):
+        if len(sink.played) >= n:
+            return
+        threading.Event().wait(0.005)
+    raise AssertionError(f"only {len(sink.played)} clips played, wanted {n}")
+
+
+def _played_len(sink):
+    return [len(c) for c, _ in sink.played]
+
+
+def _hold_worker(hold_s=5.0):
+    sink = RecordingSink(block=True)
+    earcons = dict(EARCONS, wake=EarconSpec((1320.0,), 60, 0))
+    w = AudioWorker(CachedTTS(FakeTTS()), sink, earcons, printer=lambda _: None, hold_s=hold_s)
+    w.start()
+    return w, sink
+
+
+def test_hold_cuts_playing_prompt_and_release_replays_it():
+    w, sink = _hold_worker()
+    w.submit([_prompt("reseal", "s1")])
+    assert sink.playing.wait(2.0)
+    w.submit([_chime()])
+    _wait_played(sink, 2)          # prompt cut, chime playing
+    sink.release()                 # chime ends
+    w.submit([_caution("held")])   # arrives during the hold
+    threading.Event().wait(0.05)
+    assert len(sink.played) == 2 and w.holding()   # nothing plays while held
+    w.submit([_release()])
+    _wait_played(sink, 3); sink.release()
+    _wait_played(sink, 4); sink.release()
+    assert w.drain(2.0)
+    w.stop()
+    assert sink.completed[0] is False              # the prompt was cut
+    assert w.stats.replayed == 1 and not w.holding()
+    # order after release: queued caution first, then the cut prompt restarted
+    assert _played_len(sink)[3] == _played_len(sink)[0]
+
+
+def test_hold_times_out_and_carries_on_with_no_command():
+    w, sink = _hold_worker(hold_s=0.2)
+    w.submit([_prompt("reseal", "s1")])
+    assert sink.playing.wait(2.0)
+    w.submit([_chime()])
+    _wait_played(sink, 2); sink.release()
+    _wait_played(sink, 3)          # replayed on its own after hold_s
+    sink.release()
+    assert w.drain(2.0)
+    w.stop()
+    assert w.stats.replayed == 1 and sink.completed == [False, True, True]
+
+
+def test_release_without_prompt_replay_still_replays_cut_alert():
+    w, sink = _hold_worker()
+    w.submit([_caution("lid")])
+    assert sink.playing.wait(2.0)
+    w.submit([_chime()])
+    _wait_played(sink, 2); sink.release()
+    w.submit([_release(replay_prompt=False)])   # quiet mode: alerts still spoken
+    _wait_played(sink, 3); sink.release()
+    assert w.drain(2.0)
+    w.stop()
+    assert w.stats.replayed == 1
+
+
+def test_quiet_release_drops_cut_prompt():
+    w, sink = _hold_worker()
+    w.submit([_prompt("reseal", "s1")])
+    assert sink.playing.wait(2.0)
+    w.submit([_chime()])
+    _wait_played(sink, 2); sink.release()
+    w.submit([_release(replay_prompt=False)])
+    assert w.drain(2.0)
+    w.stop()
+    assert len(sink.played) == 2 and w.stats.replayed == 0
+
+
+def test_newer_prompt_during_hold_wins_over_cut_prompt():
+    w, sink = _hold_worker()
+    w.submit([_prompt("old", "s1")])
+    assert sink.playing.wait(2.0)
+    w.submit([_chime()])
+    _wait_played(sink, 2); sink.release()
+    w.submit([_prompt("new step prompt", "s2")])
+    w.submit([_release()])
+    _wait_played(sink, 3); sink.release()
+    assert w.drain(2.0)
+    w.stop()
+    assert len(sink.played) == 3 and w.stats.replayed == 0
+
+
+def test_pause_during_hold_drops_cut_clip():
+    w, sink = _hold_worker()
+    w.submit([_prompt("reseal", "s1")])
+    assert sink.playing.wait(2.0)
+    w.submit([_chime()])
+    _wait_played(sink, 2); sink.release()
+    w.submit([AudioRequest(kind="system", segments=("Paused.",), flush_all=True)])
+    _wait_played(sink, 3); sink.release()
+    w.submit([_release()])
+    assert w.drain(2.0)
+    w.stop()
+    assert len(sink.played) == 3 and w.stats.replayed == 0 and not w.holding()
+
+
+def test_cut_warning_is_replayed_first():
+    w, sink = _hold_worker()
+    w.submit([_warning("warn")])
+    assert sink.playing.wait(2.0)
+    w.submit([_chime()])
+    _wait_played(sink, 2); sink.release()
+    w.submit([_caution("c")])
+    w.submit([_release()])
+    _wait_played(sink, 3)
+    third = _played_len(sink)[2]
+    sink.release()
+    _wait_played(sink, 4); sink.release()
+    assert w.drain(2.0)
+    w.stop()
+    assert third == _played_len(sink)[0]   # the warning, before the caution
+
+
+def test_hold_s_must_be_positive():
+    with pytest.raises(ValueError):
+        AudioWorker(CachedTTS(FakeTTS()), RecordingSink(), dict(EARCONS), hold_s=0)

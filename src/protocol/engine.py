@@ -152,6 +152,10 @@ class ProtocolEngine:
         self.operator = operator
 
         self.complete: set[str] = set()
+        # Steps credited by operator confirmation, not perception. The camera
+        # may still see the action a moment later; that late sighting must
+        # not be judged as a new action (see _process_action).
+        self.confirmed_by_operator: set[str] = set()
         self.skipped: set[str] = set()
         self._suggested: set[str] = set()  # steps we've already announced
         self._skip_check_done = False
@@ -648,6 +652,23 @@ class ProtocolEngine:
             self._anomaly(event.ts, "foreign_object", event.target)
             return
 
+        late = next(
+            (s for s in self.parsed.order
+             if s in self.confirmed_by_operator and self._matches(self.parsed.nodes[s], event)),
+            None,
+        )
+        if late is not None:
+            # Already credited by the operator: log it, judge nothing. Else
+            # a late "remove module A" reads as wrong_object for module B.
+            self._emit(EngineEvent(
+                ts_monotonic=event.ts,
+                event_type="unmatched_action",
+                step_id=late,
+                target=event.target,
+                message=f"perception saw '{late}' after the operator confirmed it",
+            ))
+            return
+
         guard_msg = self._hard_ordering_violation(event)
         if guard_msg:
             self._emit(EngineEvent(
@@ -670,7 +691,13 @@ class ProtocolEngine:
             self._handle_unmatched(event)
             return
 
-        step_id = candidates[0]
+        self._complete_step(candidates[0], event, status="complete")
+
+    def _complete_step(self, step_id: str, event: ActionEvent, status: str) -> None:
+        """Credit a step: state effect, domain constraints, ordering check,
+        step_complete, newly unlocked steps, skip detection. Shared by
+        perceived actions and operator confirmation so the two can never
+        drift apart."""
         node = self.parsed.nodes[step_id]
         unmet = self.parsed.effective_after_leaf_ids(step_id) - (
             self.complete | self.skipped
@@ -696,7 +723,7 @@ class ProtocolEngine:
             ts_monotonic=event.ts,
             event_type="step_complete",
             step_id=step_id,
-            status="complete",
+            status=status,
             confidence=event.confidence,
             message=node.success,
         ))
@@ -705,6 +732,36 @@ class ProtocolEngine:
 
         if not self._has_dependent[step_id]:
             self._run_skip_detection()
+
+    def confirm_step(self, ts: float, step_id: str, note: str = "") -> bool:
+        """The operator says a step is done that perception did not see
+        (voice "next step"). The astronaut is the authority -- but only a
+        step that is due now (satisfiable) can be confirmed, so this can
+        never be used to skip ahead. The step's own state effect and
+        domain constraints run exactly as if it had been seen, so timers
+        and mutual exclusion stay honest. Logged twice over: an
+        operator_override naming the step, then step_complete with status
+        "operator_confirmed" -- the record shows the camera did not see it.
+        Returns False (nothing changed) if paused or the step is not due."""
+        if self.paused or step_id not in self.satisfiable_steps():
+            return False
+        self.check_timeouts(ts)
+        node = self.parsed.nodes[step_id]
+        self._emit(EngineEvent(
+            ts_monotonic=ts,
+            event_type="operator_override",
+            step_id=step_id,
+            target=node.target,
+            message=note or f"operator confirmed '{step_id}'",
+            operator=self.operator,
+        ))
+        event = ActionEvent(
+            ts=ts, action=node.action, target=node.target,
+            source=node.source, dest=node.dest, zone=node.zone, confidence=1.0,
+        )
+        self.confirmed_by_operator.add(step_id)
+        self._complete_step(step_id, event, status="operator_confirmed")
+        return True
 
     def _handle_unmatched(self, event: ActionEvent) -> None:
         action_used = any(
@@ -752,6 +809,8 @@ class ProtocolEngine:
             if e.event_type == "step_complete" and e.step_id:
                 self.complete.add(e.step_id)
                 self._suggested.add(e.step_id)
+                if e.status == "operator_confirmed":
+                    self.confirmed_by_operator.add(e.step_id)
         self._announce_newly_satisfiable()
 
     def resume_from_log(self, path: str) -> None:

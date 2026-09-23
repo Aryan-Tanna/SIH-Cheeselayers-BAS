@@ -48,9 +48,11 @@ SYNTHETIC_DIR = REPO_ROOT / "harness" / "synthetic"
 
 
 def _describe(r: AudioRequest) -> str:
+    if r.release:
+        return "system RELEASE: (speech resumes" + ("" if r.replay_prompt else ", cut prompt dropped") + ")"
     what = r.text if r.text else f"({r.earcon or 'silent'} tone)"
     sev = f" {r.severity}" if r.severity else ""
-    flag = " INTERRUPT" if r.interrupt else (" FLUSH" if r.flush_all else "")
+    flag = " INTERRUPT" if r.interrupt else (" FLUSH" if r.flush_all else (" HOLD" if r.hold else ""))
     return f"{r.kind}{sev}{flag}: {what}"
 
 
@@ -148,7 +150,7 @@ def run_stream(path: Path, runtime_cfg: dict[str, Any], stage: Any, args: argpar
             print(f"WARNING: {warn}")
         elif listener is not None:
             listener.start()
-            print('  [voice] listening -- say "Hey BAS, pause" / "resume" / "quiet mode" / "voice mode" / "repeat"')
+            print('  [voice] listening -- say "Hey BAS, pause" / "resume" / "quiet mode" / "voice mode" / "repeat" / "next step"')
 
     try:
         StreamPlayer(session, clock, args.speed, args.silent, hold_on_pause=listener is not None).play(stream)
@@ -210,7 +212,8 @@ def main() -> int:
         s = stage.worker.stats
         print(f"worker: played={s.played} interrupted={s.interrupted} "
               f"superseded_prompts={s.superseded_prompts} flushed={s.flushed_by_warning} "
-              f"dropped_overflow={s.dropped_overflow} text_only={s.text_only}")
+              f"dropped_overflow={s.dropped_overflow} text_only={s.text_only} "
+              f"wake_holds={s.held} replayed_after_hold={s.replayed}")
     return 0
 
 

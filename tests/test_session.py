@@ -136,3 +136,75 @@ def test_commands_and_events_from_two_threads_do_not_corrupt_state():
         t.join()
     assert s.engine.complete == set(s.engine.parsed.order)
     assert not [e for e in s.engine.out if e.event_type == "violation"]
+
+
+def test_wake_chime_holds_speech():
+    s, _, heard = _session()
+    s.command("wake")
+    assert heard[-1].hold
+
+
+def test_command_after_wake_releases_after_its_ack():
+    s, _, heard = _session()
+    s.command("wake")
+    heard.clear()
+    s.command("voice")
+    assert [r.release for r in heard] == [False, True]   # ack, then release
+    assert heard[-1].replay_prompt is True
+
+
+def test_quiet_after_wake_releases_without_prompt_replay():
+    s, _, heard = _session()
+    s.command("wake")
+    heard.clear()
+    s.command("quiet")
+    assert heard[-1].release and heard[-1].replay_prompt is False
+
+
+def test_command_without_wake_sends_no_release():
+    s, _, heard = _session()
+    heard.clear()
+    s.command("voice")
+    assert not any(r.release for r in heard)
+
+
+def test_wake_does_not_pause_engine_or_timers():
+    s, _, _ = _session()
+    s.command("wake")
+    assert not s.paused
+
+
+def test_next_step_marks_done_then_speaks_next_step(tmp_path):
+    s, _, heard = _session(tmp_path)
+    heard.clear()
+    s.command("next")
+    assert "open_container" in s.engine.complete
+    texts = [r.text for r in heard]
+    assert texts[0] == "Marked done."
+    assert heard[-1].kind == "prompt"
+    events = [e["event_type"] for e in load_events(tmp_path / "s.jsonl")]
+    assert "operator_override" in events
+
+
+def test_next_step_speaks_next_prompt_even_in_quiet_mode():
+    s, _, heard = _session()
+    s.command("quiet")
+    heard.clear()
+    s.command("next")
+    assert heard[0].text == "Marked done." and heard[-1].kind == "prompt"
+
+
+def test_next_step_while_paused_does_nothing():
+    s, _, heard = _session()
+    s.command("pause")
+    heard.clear()
+    s.command("next")
+    assert heard == [] and s.engine.complete == set()
+
+
+def test_next_after_wake_drops_cut_prompt_in_favour_of_new_one():
+    s, _, heard = _session()
+    s.command("wake")
+    heard.clear()
+    s.command("next")
+    assert heard[-1].release and heard[-1].replay_prompt   # worker drops the stale prompt

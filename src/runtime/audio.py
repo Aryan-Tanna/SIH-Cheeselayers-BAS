@@ -16,6 +16,13 @@ worse than none):
     behind it (the alert policy's rate cap keeps that rare).
   * flush_all (operator pause) silences everything, warnings included,
     before its own acknowledgement plays.
+  * hold (wake phrase) cuts whatever is playing, warnings included, plays
+    the wake chime, then plays nothing until a `release` request or
+    `hold_s` passes (no command heard). New requests keep queuing under
+    the rules above meanwhile. On release, the clip that was cut is
+    restarted from the top (pre-rendered clips can't sensibly resume
+    mid-word after a pause) -- a warning ahead of everything, a prompt
+    only if no newer prompt has queued since.
 
 Nothing here decides WHETHER to alert -- that already happened in
 AlertManager via the Announcer. This only decides what reaches the
@@ -26,6 +33,7 @@ from __future__ import annotations
 
 import sys
 import threading
+import time
 from collections import deque
 from dataclasses import dataclass
 from typing import Any, Callable
@@ -56,6 +64,8 @@ class AudioStats:
     dropped_overflow: int = 0
     superseded_prompts: int = 0
     flushed_by_warning: int = 0
+    held: int = 0  # wake holds started
+    replayed: int = 0  # clips cut by a hold and played again
     text_only: int = 0  # speech wanted, no TTS available -> printed
 
 
@@ -69,9 +79,13 @@ class AudioWorker:
         queue_maxsize: int = 4,
         printer: Callable[[str], None] = console_printer,
         echo_text: bool = False,
+        hold_s: float = 5.0,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         if queue_maxsize < 1:
             raise ValueError("queue_maxsize must be >= 1")
+        if hold_s <= 0:
+            raise ValueError("hold_s must be > 0")
         if not 0.0 <= volume <= 1.0:
             raise ValueError("volume must be within 0..1")
         self.tts = tts
@@ -84,6 +98,10 @@ class AudioWorker:
         # set when there is no audio device, so the session is still
         # followable from the console.
         self.echo_text = echo_text
+        # How long a wake chime holds speech with no command -- the voice
+        # control command window (configs/runtime.yaml).
+        self.hold_s = hold_s
+        self._clock = clock
         self.stats = AudioStats()
 
         self._pending: deque[AudioRequest] = deque()
@@ -93,6 +111,10 @@ class AudioWorker:
         # cancel set while the clip is still rendering is not lost.
         self._current_cancel = threading.Event()
         self._stopping = False
+        # Wake hold: speech is held until this monotonic time (None = not
+        # holding); _replay is the clip the hold cut off.
+        self._held_until: float | None = None
+        self._replay: AudioRequest | None = None
         self._thread: threading.Thread | None = None
         self._earcon_cache: dict[str, Any] = {}
 
@@ -107,9 +129,17 @@ class AudioWorker:
             self._cond.notify_all()
 
     def _enqueue_locked(self, req: AudioRequest) -> None:
+        if req.release:
+            self._release_locked(replay_prompt=req.replay_prompt)
+            return
+        if req.hold:
+            self._hold_locked(req)
+            return
         if req.flush_all:
             self.stats.flushed_by_warning += len(self._pending)
             self._pending.clear()
+            self._held_until = None
+            self._replay = None
             if self._current is not None:
                 self._current_cancel.set()
         elif req.interrupt:
@@ -124,14 +154,54 @@ class AudioWorker:
             self._pending = kept
 
         self._pending.append(req)
+        self._trim_locked()
+
+    def _trim_locked(self) -> None:
         while len(self._pending) > self.queue_maxsize:
-            self._pending.popleft()
+            # Oldest first, but never the wake chime waiting at the front.
+            i = 1 if self._pending[0].hold and len(self._pending) > 1 else 0
+            del self._pending[i]
             self.stats.dropped_overflow += 1
+
+    def _hold_locked(self, chime: AudioRequest) -> None:
+        cur = self._current
+        if cur is not None and not cur.hold:
+            if self._replay is None:  # a second wake keeps the first cut clip
+                self._replay = cur
+            self._current_cancel.set()
+        self._held_until = self._clock() + self.hold_s
+        self.stats.held += 1
+        # Drop a chime still waiting from an earlier wake; this one goes first.
+        self._pending = deque(r for r in self._pending if not r.hold)
+        self._pending.appendleft(chime)
+        self._trim_locked()
+
+    def _release_locked(self, replay_prompt: bool) -> None:
+        self._held_until = None
+        cut, self._replay = self._replay, None
+        if cut is None:
+            return
+        if cut.kind == "prompt" and (
+            not replay_prompt or any(r.kind == "prompt" for r in self._pending)
+        ):
+            return  # quiet mode, or a newer prompt already queued
+        self.stats.replayed += 1
+        if cut.interrupt:
+            self._pending.appendleft(cut)
+        else:
+            self._pending.append(cut)
+        self._trim_locked()
+
+    def holding(self) -> bool:
+        with self._cond:
+            return self._held_until is not None
 
     def flush(self) -> None:
         """Drop everything pending and cut what is playing."""
         with self._cond:
             self._pending.clear()
+            self._held_until = None
+            self._replay = None
             if self._current is not None:
                 self._current_cancel.set()
             self._cond.notify_all()
@@ -175,19 +245,29 @@ class AudioWorker:
     def _run(self) -> None:
         while True:
             with self._cond:
-                self._cond.wait_for(lambda: self._pending or self._stopping)
-                if self._stopping:
-                    return
+                while True:
+                    if self._stopping:
+                        return
+                    if self._held_until is not None and self._clock() >= self._held_until:
+                        # No command within the window: carry on where we were.
+                        self._release_locked(replay_prompt=True)
+                    if self._pending and (self._held_until is None or self._pending[0].hold):
+                        break
+                    wait = None if self._held_until is None else max(0.0, self._held_until - self._clock())
+                    self._cond.wait(wait)
                 req = self._pending.popleft()
                 self._current = req
                 cancel = threading.Event()
                 self._current_cancel = cancel
+            finished = False
             try:
-                self._play(req, cancel)
+                finished = self._play(req, cancel)
             except Exception as exc:  # noqa: BLE001 -- audio must never kill the session
                 self.printer(f"[audio] playback failed: {_ascii(repr(exc))}")
             finally:
                 with self._cond:
+                    if finished and self._replay is req:
+                        self._replay = None  # it ended just as the hold landed
                     self._current = None
                     self._cond.notify_all()
 
@@ -218,7 +298,8 @@ class AudioWorker:
             self._earcon_cache[key] = render_earcon(self.earcons[name], sample_rate)
         return self._earcon_cache[key]
 
-    def _play(self, req: AudioRequest, cancel: threading.Event) -> None:
+    def _play(self, req: AudioRequest, cancel: threading.Event) -> bool:
+        """True if the clip played to the end (or had nothing audible)."""
         if req.segments:
             no_voice = any(self.tts.get(p) is None for p in req.segments)
             if no_voice:
@@ -228,9 +309,10 @@ class AudioWorker:
                 self.printer(f"[{label}] {_ascii(req.text)}")
         clip = self.render(req)
         if clip is None:
-            return
+            return True
         finished = self.sink.play(clip, self.tts.sample_rate, cancel)
         if finished:
             self.stats.played += 1
         else:
             self.stats.interrupted += 1
+        return finished

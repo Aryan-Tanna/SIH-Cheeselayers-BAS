@@ -108,4 +108,7 @@ voice_control:
     resume: [resume, continue]
     quiet: [quiet mode, quiet]
     voice: [voice mode, voice prompts]
-    repeat: [repeat, next step]
+    repeat: [repeat]
+    # Marks the current step done when the camera missed it (logged as an
+    # operator override), then speaks the next step.
+    next: [next step]

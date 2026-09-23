@@ -49,6 +49,7 @@ RESUMED_TEXT = "Resuming."
 QUIET_TEXT = "Quiet mode. Alerts only."
 VOICE_TEXT = "Voice prompts on."
 NOTHING_PENDING_TEXT = "No step is pending."
+MARKED_DONE_TEXT = "Marked done."
 
 # Earcon keys beyond the three severities (configs/runtime.yaml).
 EARCON_STEP = "step"
@@ -69,6 +70,15 @@ class AudioRequest:
     interrupt: bool = False
     # Pause: silence everything, warnings included, then say this.
     flush_all: bool = False
+    # Wake phrase heard: cut whatever is playing (so the operator can
+    # speak and the recognizer isn't hearing our own voice), play this
+    # chime, then hold all speech until a `release` or the hold times out.
+    hold: bool = False
+    # Ends a hold (carries no audio). The clip the hold cut off is played
+    # again, restarted from the top -- unless it was a prompt and
+    # replay_prompt is False (quiet mode: prompts are not spoken).
+    release: bool = False
+    replay_prompt: bool = True
     step_id: str | None = None
     root_cause_id: str | None = None
     ts_monotonic: float | None = None
@@ -154,7 +164,7 @@ def speakable_phrases(resolved: ResolvedProtocol) -> list[str]:
     phrases = set(alert_text_by_code(resolved).values())
     phrases |= {
         FALLBACK_ALERT_TEXT, ANOMALY_TEXT, CONTINUE_TEXT, PAUSED_TEXT, RESUMED_TEXT,
-        QUIET_TEXT, VOICE_TEXT, NOTHING_PENDING_TEXT,
+        QUIET_TEXT, VOICE_TEXT, NOTHING_PENDING_TEXT, MARKED_DONE_TEXT,
     }
     order = resolved.parsed.order
     for sid in order:
@@ -256,7 +266,7 @@ class Announcer:
         return [AudioRequest(kind="prompt", segments=(self._open[sid],), step_id=sid)]
 
     def wake_ack(self) -> list[AudioRequest]:
-        return [AudioRequest(kind="system", earcon=EARCON_WAKE)]
+        return [AudioRequest(kind="system", earcon=EARCON_WAKE, hold=True)]
 
     # ------------------------------------------------------------------
     # Engine batches
@@ -282,6 +292,7 @@ class Announcer:
         session_over = False
         resumed = False
         anomaly = False
+        confirmed = False  # operator said "next step"
 
         for e in batch:
             if e.event_type == "session_paused":
@@ -300,6 +311,7 @@ class Announcer:
                 pending.append(e)
             elif e.event_type == "step_complete":
                 progressed = True
+                confirmed = confirmed or e.status == "operator_confirmed"
                 sid = e.step_id or ""
                 self._open.pop(sid, None)
                 # Anything this step depended on and that is still open was
@@ -344,7 +356,9 @@ class Announcer:
         # Resuming or recovering from an anomaly re-states where the
         # operator is, even in quiet mode: they asked to continue, or
         # were just interrupted, and should not have to guess the step.
-        force_prompt = resumed or (anomaly and self.mode == "voice")
+        # Likewise after "next step": the operator asked to move on and
+        # must hear where to, in quiet mode too.
+        force_prompt = resumed or confirmed or (anomaly and self.mode == "voice")
         if (
             self._open
             and self.settings.speak_next_step == "first"
@@ -387,6 +401,11 @@ class Announcer:
         terminal_line = (
             node is not None and node.success and (e.step_id in self._terminal)
         )
+        if e.status == "operator_confirmed" and not terminal_line:
+            # The operator's own command: always acknowledged in words, and
+            # short -- the next prompt follows straight after.
+            return [AudioRequest(kind="success", segments=(MARKED_DONE_TEXT,),
+                                 step_id=e.step_id, ts_monotonic=e.ts_monotonic)]
         if self.mode == "quiet" and not terminal_line:
             return [AudioRequest(kind="step", earcon=EARCON_STEP, step_id=e.step_id,
                                  ts_monotonic=e.ts_monotonic)]

@@ -172,6 +172,7 @@ def _recognize(text):
     ("Hey BAS, quiet mode.", "quiet"),
     ("Hey BAS, voice mode.", "voice"),
     ("Hey BAS, repeat.", "repeat"),
+    ("Hey BAS, next step.", "next"),
     ("Hey BAS.", WAKE),
 ])
 def test_recognizer_hears_commands(spoken, expected):

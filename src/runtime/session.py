@@ -12,6 +12,17 @@ Operator commands (see configs/runtime.yaml voice_control.commands):
   quiet   -- step prompts become a tick per completed step; alerts still spoken
   voice   -- step prompts spoken again
   repeat  -- speak the current step
+  next    -- mark the current step done (camera missed it) and move on;
+             logged as operator_override. Only the step due now: it can't
+             skip ahead, and it does nothing while paused.
+"Hey BAS" alone cuts off and holds all speech for the command window so
+the operator can talk (see AudioWorker hold). The next command ends the
+hold; with no command, the worker's hold times out on its own. Either
+way the cut-off clip is restarted -- except after pause (flushed; resume
+re-states the step) and quiet (prompts are not spoken; alerts still are).
+The engine and its timers keep running through a hold: only explicit
+pause stops them, because pausing also ignores perception events and an
+accidental wake must not cost the operator a step.
 Every command is logged. The operator's authority is absolute: commands
 are never refused.
 """
@@ -30,7 +41,7 @@ from src.runtime.announcer import Announcer, AnnouncerSettings, AudioRequest
 from src.runtime.clock import Clock, SystemClock
 from src.runtime.voice_control import WAKE
 
-COMMANDS = ("pause", "resume", "quiet", "voice", "repeat", WAKE)
+COMMANDS = ("pause", "resume", "quiet", "voice", "repeat", "next", WAKE)
 
 
 class Session:
@@ -60,6 +71,7 @@ class Session:
         self.event_listeners: list[Callable[[EngineEvent], None]] = list(event_listeners or [])
         self.audio_listeners: list[Callable[[AudioRequest], None]] = list(audio_listeners or [])
         self._seen = 0
+        self._holding = False  # a wake chime is holding speech
         with self._lock:
             self._flush()  # session_start + first prompt
 
@@ -91,6 +103,7 @@ class Session:
             ts = self.clock.now() if ts is None else ts
             extra: list[AudioRequest] = []
             if command == WAKE:
+                self._holding = True
                 extra = self.announcer.wake_ack()
             elif command == "pause":
                 self.engine.pause_session(ts)
@@ -102,6 +115,18 @@ class Session:
             elif command == "repeat":
                 self.engine.note_operator_command(ts, "repeat")
                 extra = [] if self.engine.paused else self.announcer.repeat()
+            elif command == "next":
+                sid = self.announcer.current_step()
+                if sid is None or not self.engine.confirm_step(ts, sid, note="voice: next step"):
+                    self.engine.note_operator_command(ts, "next_step_not_applied")
+                    if not self.engine.paused:
+                        extra = self.announcer.repeat()  # "No step is pending." / the step
+            if command != WAKE and self._holding:
+                # After the command's own acknowledgement, so the operator
+                # hears the command confirmed before the cut-off clip.
+                self._holding = False
+                extra.append(AudioRequest(kind="system", release=True,
+                                          replay_prompt=command != "quiet"))
             self._flush(extra)
 
     def reload_protocol(self, resolved: ResolvedProtocol) -> None:

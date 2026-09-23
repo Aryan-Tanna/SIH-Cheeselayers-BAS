@@ -121,5 +121,7 @@ def build_audio_stage(
         queue_maxsize=int(audio_cfg.get("queue_maxsize", 4)),
         printer=printer,
         echo_text=echo_text,
+        # A wake chime holds speech for the voice-command window.
+        hold_s=float(cfg.get("voice_control", {}).get("command_window_s", 5.0)),
     )
     return AudioStage(worker=worker, tts_backend=backend.name, sink_name=sink_name, warnings=warnings)
