@@ -1,0 +1,21 @@
+# configs/training/probe_gloved.yaml
+#
+# Clip-level holdout for hand_gloved. Every gloved clip is in S00 (train),
+# so the session-level val split has ZERO hand_gloved instances. These
+# whole clips are pulled out of train into images/probe_gloved and
+# evaluated separately.
+#
+# CAVEAT -- this is NOT a generalization measurement: same session as
+# train (same day, gloves, operator, lighting). It removes near-duplicate
+# frame leakage only. Expect it to OVERESTIMATE. Never merge into the
+# headline val metric. A real number needs gloved clips from a new session.
+#
+# Chosen for coverage, not score: 1 overhead + 3 angled camera, 2 jar +
+# 2 slab props, mid-sized clips (largest gloved clips stay in train).
+# 69 of 274 labelled gloved boxes (~25%) as of batch-1..batch8.
+name: probe_gloved
+clips:
+  - Dataset35_glovebox   # overhead, jar,  24 gloved boxes
+  - Dataset12_glovebox   # angled,   jar,  20
+  - Dataset36_glovebox   # angled,   slab, 15
+  - Dataset24_glovebox   # angled,   slab, 10

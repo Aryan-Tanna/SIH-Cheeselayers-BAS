@@ -49,7 +49,15 @@ def class_counts_for(labels_dir: Path) -> Counter:
 
 def split(
     dataset_dir: Path, manifest_path: Path, val_sessions: set[str],
+    probe_clips: set[str] | None = None, probe_name: str = "probe",
 ) -> dict:
+    """probe_clips: whole clips pulled out of TRAIN into images/<probe_name>
+    as a separate, clearly-labelled eval set (e.g. gloved hands, whose only
+    clips all share one session). Clip-level, never frame-level, so no
+    near-duplicate frame of a probe clip is ever trained on -- but it is
+    still the same session as train, so its metric overestimates and must
+    never be merged into the headline val number."""
+    probe_clips = probe_clips or set()
     images_train = dataset_dir / "images" / "train"
     labels_train = dataset_dir / "labels" / "train"
     images_val = dataset_dir / "images" / "val"
@@ -65,7 +73,24 @@ def split(
     images_val.mkdir(parents=True)
     labels_val.mkdir(parents=True)
 
+    images_probe = dataset_dir / "images" / probe_name
+    labels_probe = dataset_dir / "labels" / probe_name
+    for d in (images_probe, labels_probe):
+        if d.exists():
+            shutil.rmtree(d)
+    if probe_clips:
+        images_probe.mkdir(parents=True)
+        labels_probe.mkdir(parents=True)
+
     clip_sessions = load_clip_sessions(manifest_path)
+    bad_probe = sorted(c for c in probe_clips
+                       if c not in clip_sessions or clip_sessions[c] in val_sessions)
+    if bad_probe:
+        raise SystemExit(
+            f"refusing to split: probe clip(s) {bad_probe} are unknown to {manifest_path} "
+            f"or already in a val session -- a probe must come out of train"
+        )
+    probe_moved = 0
 
     moved = 0
     kept = 0
@@ -80,7 +105,12 @@ def split(
             continue
         label_path = labels_train / (img_path.stem + ".txt")
 
-        if session_id in val_sessions:
+        if clip_id in probe_clips:
+            shutil.move(str(img_path), str(images_probe / img_path.name))
+            if label_path.exists():
+                shutil.move(str(label_path), str(labels_probe / label_path.name))
+            probe_moved += 1
+        elif session_id in val_sessions:
             shutil.move(str(img_path), str(images_val / img_path.name))
             if label_path.exists():
                 shutil.move(str(label_path), str(labels_val / label_path.name))
@@ -101,6 +131,8 @@ def split(
         "val_session_counts": dict(session_counts),
         "train_class_counts": dict(class_counts_for(labels_train)),
         "val_class_counts": dict(class_counts_for(labels_val)),
+        "moved_to_probe": probe_moved,
+        "probe_class_counts": dict(class_counts_for(labels_probe)) if probe_clips else {},
     }
 
 
@@ -112,10 +144,21 @@ def main() -> int:
         "--val-sessions", required=True,
         help="Comma-separated session_id(s) to hold out as val, e.g. 'S01,S02'",
     )
+    ap.add_argument(
+        "--probe-config", type=Path, default=None,
+        help="YAML with 'name' and 'clips' (e.g. configs/training/probe_gloved.yaml): "
+             "whole train clips moved to images/<name> as a separate eval set.",
+    )
     args = ap.parse_args()
 
     val_sessions = {s.strip() for s in args.val_sessions.split(",") if s.strip()}
-    summary = split(args.dataset_dir, args.manifest, val_sessions)
+    probe_clips: set[str] = set()
+    probe_name = "probe"
+    if args.probe_config is not None:
+        import yaml
+        pc = yaml.safe_load(args.probe_config.read_text(encoding="utf-8"))
+        probe_clips, probe_name = set(pc["clips"]), pc["name"]
+    summary = split(args.dataset_dir, args.manifest, val_sessions, probe_clips, probe_name)
 
     print(f"val sessions        : {sorted(val_sessions)}")
     print(f"frames moved to val : {summary['moved_to_val']}")
@@ -129,6 +172,11 @@ def main() -> int:
         n = summary["val_class_counts"].get(c, 0)
         flag = "  <-- ZERO examples in val, metric for this class will be meaningless" if n == 0 else ""
         print(f"  {c:14s} {n}{flag}")
+    if probe_clips:
+        print(f"probe '{probe_name}': {len(probe_clips)} clips, {summary['moved_to_probe']} frames "
+              f"(SAME session as train -- report separately, overestimates)")
+        for c in CLASS_ORDER:
+            print(f"  {c:14s} {summary['probe_class_counts'].get(c, 0)}")
     return 0
 
 

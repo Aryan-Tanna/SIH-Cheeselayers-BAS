@@ -18,34 +18,24 @@ A living scratchpad so the next session is not re-briefed from scratch.
 would waste the next session's time; open decisions awaiting the human;
 known-broken things not yet fixed.
 
-**Status:**
-- `clips.csv` 71 rows: 62 filled + 9 new (Dataset63-71, derived cols
-  only, session_id/prop_family/etc still blank). `clips2.csv`=backup,
-  don't touch.
-- 274 frames labelled (183+91 from `batch6_retrain3.json`), all
-  S00/S01/S02. Dataset63-71 normalized+extracted (585 frames in
-  `frames/`) but UNLABELLED — don't count them yet.
-- REAL split done: train=S00(196), val=S01+S02(78), via
-  `split_yolo_dataset.py --val-sessions S01,S02`. `bootstrap_v3`
-  trained FROM SCRATCH (not fine-tuned from v2, deliberate), 80/80ep,
-  REAL results: P=0.70 R=0.62 mAP50=0.68 mAP50-95=0.47. Per-class:
-  red_module .93, hand_bare .87, red_lid .80, yellow_module .78,
-  case_open .72, yellow_lid .53 (weak), case_closed .15 (only 4 val
-  examples, don't trust it), hand_gloved UNMEASURED (0 val examples —
-  every gloved clip is in S00, structural, needs a new non-S00 gloved
-  session to fix). Jar-class val is also narrow: only S01's 6 clips,
-  all overhead angle (S02 is all-slab, no jars). `v1`(157,80ep)/
-  `v2`(183,50ep) = older train==val-placeholder runs; v2's `best.pt`
-  already given to friend, see RESUME.md.
-- New: `split_yolo_dataset.py`, `train_yolo_obb.py` (reusable
-  train/resume wrapper, `--weights`-on-resume bug fixed),
-  `split.py --holdout-session`. Label Studio running for review.
-- Gotchas (`pyproject.toml`): vision install pulls `opencv-python`,
-  corrupts `cv2.aruco` — reinstall contrib after. ultralytics8.3.28+
-  numpy2 needs `numpy.trapz=numpy.trapezoid` shim.
-- `build_review_sheet.py` overwrites `clips.csv` wholesale, don't
-  re-run. 169/169 tests. Uncommitted since `e1c53cb`.
-
+**Status:** (2026-09-24; handoff detail + rebuild steps in `RESUME.md`)
+- SPLIT OF WORK: Parth = Phase 2 CODE ONLY. Data, labelling and
+  detector training stay with Aryan (on Aryan's machine) -- do not rebuild
+  `clips/ frames/ runs/ .venv-train/`, label, or train here. Setup =
+  `.venv` + pytest only (`RESUME.md` step 1).
+- Labels batch-1..8 = 450 frames (0 dups). Detector = `models/
+  bootstrap_v4_best.pt` (val S01-S03: P.78 R.58 mAP50 .73; hand_gloved
+  unmeasured; yellow_module R fell .70->.43 vs v3, cause untested).
+- NOW (team decision 2026-09-24): Phase 2 runtime -- audio (earcons +
+  offline TTS on `alerts.py` severities) -> recorder/streamer -> GUI.
+  OPEN DECISION: TTS engine, Piper proposed vs pyttsx3 -- ask first.
+- Aryan (not this clone): batch9 -> v5 -> new `models/*.pt`. Runtime
+  must load weights by config path so v5 is a one-line swap.
+- ArUco/rack geometry NOT STARTED -- blocks kinematics on real video.
+- Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
+  after vision install; `numpy.trapz` shim; Windows eval workers=0;
+  never re-run `build_review_sheet.py`; Dataset22 gloves: leave as is.
+  183/183 tests.
 
 ## Your role
 

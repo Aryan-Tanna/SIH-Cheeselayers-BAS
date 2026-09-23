@@ -20,19 +20,23 @@ CLASS_ORDER = [
 LID_CLASS_IDS = {CLASS_ORDER.index("red_lid"), CLASS_ORDER.index("yellow_lid")}
 
 
-def summarize(labels_dir: Path) -> list[dict]:
+def summarize(labels_dir: Path, focus: set[str] | None = None) -> list[dict]:
+    focus = focus or set()
     rows = []
     for txt in sorted(labels_dir.glob("*.txt")):
         lines = [l for l in txt.read_text(encoding="utf-8").splitlines() if l.strip()]
         confs = []
         classes_present = set()
         has_lid = False
+        focus_confs = []
         for line in lines:
             parts = line.split()
             cls_id = int(parts[0])
             conf = float(parts[-1])
             confs.append(conf)
             classes_present.add(CLASS_ORDER[cls_id])
+            if CLASS_ORDER[cls_id] in focus:
+                focus_confs.append(conf)
             if cls_id in LID_CLASS_IDS:
                 has_lid = True
         rows.append({
@@ -42,6 +46,8 @@ def summarize(labels_dir: Path) -> list[dict]:
             "mean_conf": sum(confs) / len(confs) if confs else 0.0,
             "has_lid_detection": has_lid,
             "classes": ",".join(sorted(classes_present)),
+            "focus_classes": ",".join(sorted(classes_present & focus)),
+            "focus_min_conf": min(focus_confs) if focus_confs else "",
         })
     return rows
 
@@ -50,17 +56,42 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--labels-dir", type=Path, default=Path("runs/autolabel_predictions/labels"))
     ap.add_argument("--out", type=Path, default=Path("runs/autolabel_predictions/review_priority.csv"))
+    ap.add_argument(
+        "--focus-classes", default="",
+        help="Comma-separated weak classes to review first, e.g. "
+             "'yellow_module,yellow_lid,red_lid,case_closed'. Frames with a "
+             "predicted box of these classes go to the top, ascending by the "
+             "lowest confidence on a focus-class box.",
+    )
+    ap.add_argument("--manifest", type=Path, default=Path("manifest/clips.csv"))
     args = ap.parse_args()
 
-    rows = summarize(args.labels_dir)
+    focus = {c.strip() for c in args.focus_classes.split(",") if c.strip()}
+    unknown = focus - set(CLASS_ORDER)
+    if unknown:
+        raise SystemExit(f"unknown focus class(es): {sorted(unknown)}")
+    rows = summarize(args.labels_dir, focus)
+    # session_id tells the reviewer which pool a frame feeds: a train
+    # session grows the model; a val session only sharpens the metric.
+    with open(args.manifest, newline="", encoding="utf-8") as f:
+        sessions = {r["clip_id"]: r["session_id"] for r in csv.DictReader(f)}
+    for r in rows:
+        r["session_id"] = sessions.get(r["filename"][:-4].rsplit("_", 1)[0], "")
 
     # Zero-detection frames first (likely blind spots), then ascending
     # min_conf within each group -- worst single box first, not just
     # worst average, since one bad box can hide inside a good average.
-    rows.sort(key=lambda r: (r["n_detections"] > 0, r["min_conf"]))
+    # With --focus-classes, frames containing a focus class come first,
+    # ascending by their weakest focus-class box.
+    rows.sort(key=lambda r: (
+        r["focus_min_conf"] == "",
+        r["focus_min_conf"] if r["focus_min_conf"] != "" else 0.0,
+        r["n_detections"] > 0, r["min_conf"],
+    ))
 
     with open(args.out, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["filename", "n_detections", "min_conf", "mean_conf", "has_lid_detection", "classes"])
+        writer = csv.DictWriter(f, fieldnames=["filename", "session_id", "focus_classes", "focus_min_conf", "n_detections",
+                                               "min_conf", "mean_conf", "has_lid_detection", "classes"])
         writer.writeheader()
         writer.writerows(rows)
 

@@ -1,130 +1,163 @@
 # Resume brief — for whoever's picking this up next
 
-This is a bridge document, not a replacement for `CLAUDE.md`. Claude Code
-loads `CLAUDE.md` automatically at the start of any session in this repo —
-read that first, it's the authoritative project brief (mission context,
-architecture, the phase-0/1/2 plan, the non-negotiable rules). This file
-explains **where things actually stand right now** in plainer terms, and
-what your specific next steps are.
+Bridge document, not a replacement for `CLAUDE.md` (loaded automatically
+by Claude Code — it is the authoritative brief and rules). This file is
+**where things stand right now** and **how to rebuild what git doesn't
+carry**. Last updated 2026-09-24.
 
 ## What this project is
 
-SIH PS 26174 — an offline, edge-native AI co-pilot that watches a fixed
-camera over a glovebox rig, tracks a scientific protocol's steps, and
-alerts by voice on skipped/out-of-order steps. Three-way split: a
-lightweight object detector (this doc's subject), classical geometry for
-microgravity-safe positioning, and a deterministic constraint engine for
-sequence validation. Full detail in `CLAUDE.md`.
+SIH PS 26174 — offline, CPU-only AI co-pilot watching a fixed camera over
+a glovebox rig: tracks a protocol's steps, alerts by voice on skipped /
+out-of-order steps, writes a tamper-evident log. Detector + classical
+rack-space geometry + deterministic constraint engine. Detail in
+`CLAUDE.md`.
+
+## Who does what
+
+- **Parth: Phase 2 code only** — audio/TTS, recorder,
+  streamer, GUI, wiring. Needs **only** setup step 1 below (`.venv` +
+  `pytest`). No video, frames, labelling or training on Parth's side.
+- **Aryan: data, labelling, detector training** (batch9 → v5). New
+  weights arrive as a committed `models/*.pt` — so load the detector
+  from a config path, never hard-code `bootstrap_v4_best.pt`, and v5 is a
+  one-line swap.
 
 ## What's done
 
 - **Phase 0** (protocol engine, kinematics, debouncer, alert policy,
-  hash-chained logging, replay harness) — built, tested, green.
-- **Phase 1 data pipeline** — all 62 raw clips normalized, frames
-  extracted, `manifest/clips.csv` fully filled in by hand (prop_family,
-  lid_type, gloves as literal `true`/`false`, camera_angle, session_id,
-  partial notes). Sessions: `S00`=48 clips, `S01`=6, `S02`=8.
-- **Object detection labelling** — 8-class list finalized (see
-  `configs/objects/LABELLING_GUIDANCE.md` for the reasoning,
-  `configs/objects/LABELLING_RULINGS.md` for the quick-reference
-  annotation rules). **183 frames manually labelled** across
-  `labels/batch-{1,2,3,4}_full.json` (original 157) +
-  `labels/batch5_retrain.json` (26 more, reviewed from an auto-label
-  pass). Labelled in OBB (rotated box) format — Label Studio's
-  `(x, y, width, height, rotation)`, top-left-corner pivot, clockwise
-  degrees. `scripts/convert_labels_to_yolo_obb.py` converts this to
-  Ultralytics' 4-corner YOLO-OBB training format.
-- **Two bootstrap detectors trained** (CPU only, `yolov8n-obb`):
-  `bootstrap_v1` (157 frames, 80 epochs) → fine-tuned into
-  `bootstrap_v2` (183 frames, 50 more epochs). **`best.pt` you were
-  given is `bootstrap_v2`'s checkpoint** — put it at
-  `runs/train/bootstrap_v2/weights/best.pt` in your clone (that path is
-  what every script defaults to; recreate the directories, they're
-  gitignored).
-- **`frames/` you were given** — same folder as `frames/` in `.gitignore`,
-  2056 total extracted frames, of which 183 are the labelled ones above.
-  Drop it at the repo root as `frames/`.
-- 163 tests passing (`pytest -q` from repo root once your venv is set up).
+  hash-chained log, replay harness) — built, tested, green.
+- **Phase 1 data** — 71 clips normalized + frames extracted;
+  `manifest/clips.csv` hand-filled. Sessions: S00=48 clips (16 gloved),
+  S01=6, S02=8, S03=9 (Dataset63-71). All bare-handed outside S00.
+- **Labels** — 450 frames in `labels/batch-1..batch8` (Label Studio
+  exports, OBB). Checked: 0 duplicate frames across batches, 0
+  near-duplicates across sessions.
+- **Detector `bootstrap_v4`** — committed at `models/bootstrap_v4_best.pt`
+  (see `models/README.md`). Real held-out split by session:
 
-## The one number you should NOT trust yet
+  | on val S01+S02+S03 (117 frames) | P | R | mAP50 |
+  |---|---|---|---|
+  | v3 (old) | 0.72 | 0.58 | 0.67 |
+  | **v4** | 0.78 | 0.58 | 0.73 |
 
-Both models report mAP50 ≈ 0.98 on their own validation split — but that
-"val" split is currently **the same images as train** (a placeholder,
-because no genuinely held-out session existed when they were trained).
-That number measures memorization, not real-world accuracy. **Your test
-clips are what fixes this** — see below.
+  Per class v4 mAP50: red_module .92, hand_bare .86, case_closed .71
+  (only 13 val boxes — noisy), red_lid .70, yellow_module .68 (recall
+  dropped .70→.43 vs v3, cause untested), case_open .66, yellow_lid .56.
+  **hand_gloved: unmeasured** (no gloved clip outside S00).
+- **Training upgrades** — on-the-fly augmentation
+  (`configs/training/augment_v4.yaml`: rotation 180°, flips, blur,
+  contrast, CLAHE, sharpen, noise, JPEG via `scripts/photometric_aug.py`);
+  `--device 0` GPU training; gloved probe
+  (`configs/training/probe_gloved.yaml`, 4 whole S00 clips held out of
+  train, scored separately — same session, so it overestimates).
 
-## Setup steps
+## What's next (in order)
 
-1. `python -m venv .venv` (3.11+), then `pip install -e ".[vision]"`.
-2. Two environment bugs are already documented as comments right next to
-   the relevant lines in `pyproject.toml` — read them, they will bite you
-   otherwise:
-   - `ultralytics` transitively installs `opencv-python`, which corrupts
-     the pinned `opencv-contrib-python` (specifically breaks `cv2.aruco`).
-     Fix: `pip uninstall -y opencv-python && pip install --force-reinstall
-     --no-deps opencv-contrib-python==5.0.0.93`.
-   - `ultralytics==8.3.28` calls `numpy.trapz`, removed in numpy 2.x. Any
-     script that trains/validates needs `numpy.trapz = numpy.trapezoid`
-     monkey-patched before importing `ultralytics` — see the top of
-     `scripts/autolabel_remaining_frames.py` for the pattern.
-3. Place `frames/` and `best.pt` as described above.
-4. `pytest -q` — should be 163 passed before you touch anything else.
+1. **Phase 2 runtime code (Parth) — START HERE, no model or video needed.** The
+   team decided (2026-09-24) to build this now and train v5 later; the
+   detector is swapped by a single weights path. Order:
+   a. **Audio**: earcons + offline TTS behind `src/protocol/alerts.py`
+      (advisory = tone, caution = tone+speech, warning = tone+speech
+      that interrupts). Own thread, bounded queue. Engine choice was
+      proposed as **Piper** (natural voice, offline, ~60 MB voice model
+      committed like other weights) vs pyttsx3/SAPI5 — **not yet
+      confirmed by the team; ask before building.**
+   b. Recorder + RTSP/IP streamer. c. Monitoring GUI.
+   Drive all of it with `harness/synthetic/` streams, like phase 0.
+2. **(Aryan)** Label batch9 (80 train + 50 val frames aimed at the weak
+   classes) → train v5 with the gloved probe → report val AND probe
+   separately → commit to `models/`.
+3. **ArUco / rack geometry** — still not started (no `clips_aruco/`, no
+   `validate_rack.py`, `zones.yaml` null). Blocks kinematics on real
+   video, not the phase-2 items above.
 
-## Your task: turn your test clips into the first real validation set
+## Setup
 
-1. Put your raw clip(s) in `clips/` (gitignored, that's fine).
-2. `python scripts/normalize_clips.py --only <clip_id(s)>` then
-   `python scripts/extract_frames.py --only <clip_id(s)>` — `--only`
-   does a scoped run, won't touch the other 62 clips' state.
-3. Add a row per clip to `manifest/clips.csv` by hand: `session_id`
-   should be a new value (`S03` — S00/S01/S02 are taken), fill
-   `prop_family`/`lid_type`/`gloves`/`camera_angle` with `_conf: 1.0`
-   each since you're filling them as a human, not guessing. See
-   `manifest/clips.csv`'s existing rows for the exact value vocabulary
-   (`gloves` MUST be literal `true`/`false`, nothing else —
-   `scripts/test_mediapipe_gloves.py` exact-matches those strings).
-4. **Do not merge these frames into the training set.** The entire point
-   is that `bootstrap_v2` has never seen them. Run inference with
-   `best.pt` against them and compare against what you know is actually
-   in the frame — that gives a real precision/recall number for the
-   first time in this project. There isn't a script for this comparison
-   yet; `scripts/autolabel_remaining_frames.py` will run the inference
-   part (point `--frames-dir` at just your new clip's extracted frames),
-   but the "compare against ground truth and report accuracy" step needs
-   writing. Good first thing to ask your Claude Code session to build.
+Not in git: `clips/`, `clips_norm/`, `frames/`, `runs/`, `.venv/`,
+`.venv-train/`, Label Studio's database. **For Phase 2 coding (Parth) you need
+step 1 only.** Steps 2-7 are the data/training side (Aryan's machine) —
+kept here so it can be rebuilt anywhere if needed.
 
-## Other things worth knowing before you dig in
+1. **Runtime venv** (CPU; this is what the product runs on):
+   `python -m venv .venv` (3.11+; team uses 3.13), then
+   `pip install -e ".[vision,dev]"`, then fix the opencv clash
+   documented in `pyproject.toml`:
+   `pip uninstall -y opencv-python` and
+   `pip install --force-reinstall --no-deps opencv-contrib-python==5.0.0.93`.
+   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **183
+   passed**. Phase-2 work needs nothing beyond this step.
+2. **Video / frames** (only for labelling or training): get `clips/`
+   (71 mp4, ~6.6 GB) from the team, then `python scripts/normalize_clips.py`
+   and `python scripts/extract_frames.py`. Frame filenames must match the
+   label JSONs — step 4 fails loudly on any missing frame, which is your
+   check. If they don't match, ask the team for the `frames/` folder
+   (~108 MB) instead.
+3. **GPU training venv** (optional, ~11x faster than CPU; training only,
+   never the runtime): `python -m venv .venv-train`, then
+   `pip install torch==2.14.0 torchvision==0.29.0 --index-url
+   https://download.pytorch.org/whl/cu130` (~2 GB; cu128/cu129 have no
+   2.14 build), then `pip install ultralytics==8.3.28 pyyaml`.
+4. **Dataset** (list every `labels/batch*` file, add new batches):
+   `python scripts/convert_labels_to_yolo_obb.py --json labels/batch-1_full.json
+   labels/batch-2_full.json labels/batch-3_full.json labels/batch-4_sih.json
+   labels/batch5_retrain.json labels/batch6_retrain3.json labels/batch7
+   labels/batch8_retrain.json --out-images runs/yolo_dataset_v5/images/train
+   --out-labels runs/yolo_dataset_v5/labels/train`, then
+   `python scripts/split_yolo_dataset.py --dataset-dir runs/yolo_dataset_v5
+   --val-sessions S01,S02,S03 --probe-config configs/training/probe_gloved.yaml`.
+   Write `data.yaml` (train: images/train, val: images/val, 8 names in
+   `CLASS_ORDER` order) and `data_probe_gloved.yaml` (val:
+   images/probe_gloved). Always build into a **fresh** directory: re-running
+   the split on an already-split dir deletes the old val frames.
+5. **Train**: `.venv-train/Scripts/python scripts/train_yolo_obb.py
+   --weights yolov8n-obb.pt --data runs/yolo_dataset_v5/data.yaml
+   --augment-config configs/training/augment_v4.yaml --epochs 120
+   --patience 40 --name bootstrap_v5 --device 0 --workers 2`.
+   Then score it with `workers=0` on Windows (see gotchas).
+6. **Pre-labels + next batch**: `scripts/autolabel_remaining_frames.py
+   --weights models/bootstrap_v4_best.pt --labelled-images-dirs
+   <dataset>/images/train <dataset>/images/val <dataset>/images/probe_gloved
+   --out-dir runs/autolabel_predictions_v4`, then
+   `scripts/build_review_priority.py --labels-dir
+   runs/autolabel_predictions_v4/labels --out
+   runs/autolabel_predictions_v4/review_priority.csv --focus-classes
+   yellow_module,yellow_lid,red_lid,case_closed`, then
+   `scripts/select_label_batch.py --out-dir runs/label_batch9` →
+   `import_train.json` / `import_val.json` for Label Studio.
+7. **Label Studio** (separate install: `pip install label-studio`): set
+   `LABEL_STUDIO_LOCAL_FILES_SERVING_ENABLED=true` and
+   `LABEL_STUDIO_LOCAL_FILES_DOCUMENT_ROOT=<absolute repo path>` before
+   `label-studio start`; add Local Files storage at `<repo>/frames`.
+   Its database is per-machine — annotations only travel via exports
+   into `labels/`. Export often.
 
-- `scripts/convert_labels_to_yolo_obb.py`'s `parse_task()` distinguishes
-  "nobody has reviewed this frame yet" (skipped) from "reviewed and
-  confirmed zero objects" (kept as a real negative example) — this
-  matters if you ever export a partial Label Studio review batch.
-- `scripts/autolabel_remaining_frames.py` purges its own output directory
-  before writing, specifically so stale predictions from an older model
-  version don't linger in the review queue after a frame gets merged
-  into training. If you fork this script, keep that behavior.
-- `scripts/build_review_priority.py` turns the auto-label predictions
-  into a sorted CSV (zero-detection frames first, then ascending
-  confidence, lid-class detections flagged separately — lids are the
-  weakest class, fewest/smallest training examples).
-- Label Studio: install separately (`pip install label-studio`, not in
-  this project's venv). To review pre-labelled frames you'll need
-  `LOCAL_FILES_SERVING_ENABLED=true` and `LOCAL_FILES_DOCUMENT_ROOT=<your
-  clone's absolute path>` set **before** `label-studio start` — note
-  there is no `LABEL_STUDIO_` prefix on these, despite what you'd guess.
-- `manifest/clips2.csv` is a deliberate backup someone made of `clips.csv`
-  before a bulk value fix — leave it alone, don't merge or delete it.
-- `build_review_sheet.py` overwrites `clips.csv` wholesale if re-run —
-  do not run it again, it would destroy all the hand-filled columns.
+## Gotchas that will cost you time
+
+- `ultralytics==8.3.28` needs `numpy.trapz = numpy.trapezoid` before import
+  (numpy 2). `train_yolo_obb.py` does it; do it in your own scripts too.
+- Do **not** `pip install albumentations` — it drags in
+  opencv-python-headless and breaks `cv2.aruco`. Pixel augmentations live
+  in `scripts/photometric_aug.py` instead.
+- Windows: any ad-hoc Ultralytics val/predict script needs `workers=0`
+  (no `if __name__ == "__main__"` guard → dataloader workers hang).
+- Resuming a killed training run: re-pass `--augment-config` with
+  `--resume` (the augmentation hook is process state, not saved args).
+- Hue augmentation must stay tiny (`hsv_h` ≤ 0.02) and never grayscale:
+  red vs yellow classes are colour-only. A test enforces this.
+- Never split by frame. Never put S00 frames in val "to measure gloves" —
+  that's leakage; use the probe, or record gloved clips in a new session.
+- `build_review_sheet.py` overwrites `clips.csv` wholesale — never re-run.
+  `manifest/clips2.csv` is a deliberate backup — leave it alone.
+- Dataset22 has gloved boxes while `clips.csv` says `gloves=false`; the
+  team checked it and ruled it fine — leave both as they are.
+- `scripts/convert_labels_to_yolo_obb.py` treats "reviewed, zero objects"
+  as a real negative and "not reviewed" as skipped — matters for partial
+  exports.
 
 ## Where to go for more detail
 
-- `CLAUDE.md` — full project brief, architecture, phase plan, the
-  non-negotiable rules (anti-overfitting, no clip IDs in `src/`, etc.),
-  and a "Session status" scratchpad at the top with terser/denser notes
-  than this document.
-- `configs/objects/LABELLING_GUIDANCE.md` — why the class list is what it
-  is, the method for deciding a class for a new prop family.
-- `configs/objects/LABELLING_RULINGS.md` — one-page quick reference for
-  annotation rules if you end up labelling more frames.
+- `CLAUDE.md` — brief, architecture, phase plan, non-negotiable rules.
+- `configs/objects/LABELLING_GUIDANCE.md` / `LABELLING_RULINGS.md` —
+  class list reasoning and annotation rules.
+- `models/README.md` — what each committed weight file is.

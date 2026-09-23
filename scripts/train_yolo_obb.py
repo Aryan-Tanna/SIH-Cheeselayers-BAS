@@ -35,11 +35,33 @@ def main() -> int:
                      help="Resume an interrupted run at --name from its last.pt, "
                           "ignoring the other training args (Ultralytics reuses the "
                           "original run's saved args.yaml).")
+    ap.add_argument("--augment-config", type=Path, default=None,
+                     help="YAML with 'ultralytics' (train() augmentation hyps) and "
+                          "'photometric' (scripts/photometric_aug.py) sections, e.g. "
+                          "configs/training/augment_v4.yaml. Augmentation is on-the-fly; "
+                          "nothing is written to disk. Omit for Ultralytics defaults.")
+    ap.add_argument("--batch", type=int, default=16)
+    ap.add_argument("--device", default="cpu",
+                     help="'cpu' (default) or a CUDA index like '0'. GPU is for training "
+                          "only -- needs the CUDA torch in .venv-train; the runtime stays CPU.")
     args = ap.parse_args()
 
     import numpy
     numpy.trapz = numpy.trapezoid  # ultralytics 8.3.28 calls the numpy<2 API
     from ultralytics import YOLO
+
+    aug_hyps: dict = {}
+    if args.augment_config is not None:
+        import yaml
+        import photometric_aug
+        aug = yaml.safe_load(args.augment_config.read_text(encoding="utf-8"))
+        aug_hyps = aug.get("ultralytics", {})
+        # Must be installed before train() builds the dataset -- and on
+        # --resume too, since the hook is process state, not saved args.
+        photometric_aug.install(aug.get("photometric", {}))
+        print(f"augment config : {args.augment_config}")
+        print(f"  ultralytics  : {aug_hyps}")
+        print(f"  photometric  : {sorted(aug.get('photometric', {}))}")
 
     if args.resume:
         weights = Path("runs/train") / args.name / "weights" / "last.pt"
@@ -59,8 +81,8 @@ def main() -> int:
     model = YOLO(str(args.weights))
     model.train(
         data=str(args.data), epochs=args.epochs, patience=args.patience,
-        imgsz=args.imgsz, device="cpu", workers=args.workers,
-        project="runs/train", name=args.name, exist_ok=True,
+        imgsz=args.imgsz, device=args.device, workers=args.workers, batch=args.batch,
+        project="runs/train", name=args.name, exist_ok=True, **aug_hyps,
     )
     return 0
 

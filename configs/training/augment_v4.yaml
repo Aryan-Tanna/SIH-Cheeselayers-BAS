@@ -1,0 +1,48 @@
+# configs/training/augment_v4.yaml
+#
+# On-the-fly augmentation for bootstrap_v4. Nothing here writes augmented
+# copies to disk: every epoch Ultralytics re-draws a new random variant of
+# each TRAIN image. Val images are never augmented, so val mAP stays an
+# honest measure on real frames.
+#
+# Read by scripts/train_yolo_obb.py --augment-config.
+
+# Passed straight to Ultralytics model.train(). Only keys that differ
+# from the Ultralytics defaults used by bootstrap_v3 are listed with a
+# reason; the rest are pinned so the run is reproducible if defaults move.
+ultralytics:
+  # Hue MUST stay small: red_module vs yellow_module (and red_lid vs
+  # yellow_lid) are distinguished by colour alone. A large hue shift turns
+  # a red jar yellow while its label still says red = label noise.
+  hsv_h: 0.015
+  hsv_s: 0.6
+  hsv_v: 0.4
+  # Microgravity: no fixed up/down, and ~88% of our boxes are already
+  # rotated. v3 had degrees=0 / flipud=0. OBB boxes are rebuilt from the
+  # rotated corner points, so rotation is label-safe for OBB.
+  degrees: 180.0
+  flipud: 0.5
+  fliplr: 0.5
+  translate: 0.1
+  scale: 0.5
+  shear: 0.0
+  perspective: 0.0
+  mosaic: 1.0
+  close_mosaic: 10
+  mixup: 0.0
+  copy_paste: 0.0
+
+# Photometric (pixel-only, no geometry) transforms applied by
+# scripts/photometric_aug.py in place of Ultralytics' built-in
+# albumentations hook (whose defaults are p=0.01 -- effectively off --
+# and whose package would pull in opencv-python-headless and break
+# cv2.aruco, see pyproject.toml). Each entry fires independently with
+# probability p. No grayscale: it erases the red/yellow distinction.
+photometric:
+  motion_blur:   {p: 0.20, kernel: [3, 11]}   # moving hands / jars
+  gaussian_blur: {p: 0.10, kernel: [3, 7]}    # defocus
+  brightness_contrast: {p: 0.30, brightness: 0.20, contrast: 0.25}
+  clahe:         {p: 0.10, clip_limit: [1.0, 3.0]}
+  sharpen:       {p: 0.10, alpha: [0.2, 0.5]}
+  gaussian_noise: {p: 0.15, sigma: [3.0, 12.0]}  # sensor noise, low light
+  jpeg:          {p: 0.20, quality: [50, 95]}    # stream / recorder compression

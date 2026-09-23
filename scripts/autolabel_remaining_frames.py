@@ -9,9 +9,9 @@ accepted ground truth. Two output formats, same predictions:
      as pre-filled boxes in the labelling UI and correct/reject them,
      the same review workflow already used for the 157 manual frames.
 
-This model was trained on 157 frames with train==val (no real held-out
-set existed yet), and hand_gloved was already known to be a hard class
-(26% MediaPipe detection rate on gloved hands). Treat its output
+Default weights are bootstrap_v3 (196 train frames, real session
+split; see CLAUDE.md for per-class val numbers -- yellow_lid and
+case_closed are weak, hand_gloved is unmeasured). Treat its output
 accordingly -- confidence numbers here are the model's own, not a
 measure of correctness.
 
@@ -79,19 +79,22 @@ def xywhr_to_yolo_corners(
     return tuple(out)
 
 
-def already_labelled_filenames(train_images_dir: Path) -> set[str]:
-    return {p.name for p in train_images_dir.glob("*.jpg")}
+def already_labelled_filenames(labelled_dirs: list[Path]) -> set[str]:
+    # Must cover val too, not just train: since the real session split,
+    # labelled frames live in both, and excluding only train would
+    # re-queue every held-out val frame for review.
+    return {p.name for d in labelled_dirs for p in d.glob("*.jpg")}
 
 
 def run(
-    weights: Path, frames_dir: Path, train_images_dir: Path,
+    weights: Path, frames_dir: Path, labelled_dirs: list[Path],
     out_dir: Path, conf_threshold: float, local_files_prefix: str,
 ) -> dict:
     import numpy
     numpy.trapz = numpy.trapezoid  # see CLAUDE.md session-status gotchas
     from ultralytics import YOLO
 
-    labelled = already_labelled_filenames(train_images_dir)
+    labelled = already_labelled_filenames(labelled_dirs)
     remaining = sorted(p for p in frames_dir.glob("*.jpg") if p.name not in labelled)
 
     out_labels_dir = out_dir / "labels"
@@ -184,9 +187,12 @@ def run(
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--weights", type=Path, default=Path("runs/train/bootstrap_v1/weights/best.pt"))
+    ap.add_argument("--weights", type=Path, default=Path("runs/train/bootstrap_v3/weights/best.pt"))
     ap.add_argument("--frames-dir", type=Path, default=Path("frames"))
-    ap.add_argument("--train-images-dir", type=Path, default=Path("runs/yolo_dataset/images/train"))
+    ap.add_argument(
+        "--labelled-images-dirs", type=Path, nargs="+",
+        default=[Path("runs/yolo_dataset/images/train"), Path("runs/yolo_dataset/images/val")],
+    )
     ap.add_argument("--out-dir", type=Path, default=Path("runs/autolabel_predictions"))
     ap.add_argument("--conf", type=float, default=0.25)
     ap.add_argument(
@@ -198,7 +204,7 @@ def main() -> int:
     args = ap.parse_args()
 
     summary = run(
-        args.weights, args.frames_dir, args.train_images_dir, args.out_dir,
+        args.weights, args.frames_dir, args.labelled_images_dirs, args.out_dir,
         args.conf, args.local_files_prefix,
     )
 

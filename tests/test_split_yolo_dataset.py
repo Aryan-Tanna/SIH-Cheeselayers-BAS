@@ -79,3 +79,37 @@ def test_val_rebuilt_clean_each_run(tmp_path):
     # back empty again, not keep the stale file.
     split(dataset_dir, manifest, val_sessions=set())
     assert list((dataset_dir / "images" / "val").glob("*.jpg")) == []
+
+
+def test_probe_clips_leave_train_whole_and_skip_val(tmp_path):
+    dataset_dir = tmp_path / "yolo_dataset"
+    _make_dataset(dataset_dir, [
+        ("Dataset1_glovebox", 0, 6),
+        ("Dataset1_glovebox", 1, 6),
+        ("Dataset2_glovebox", 0, 6),
+        ("Dataset3_glovebox", 0, 7),
+    ])
+    manifest = tmp_path / "clips.csv"
+    _make_manifest(manifest, {"Dataset1_glovebox": "S00", "Dataset2_glovebox": "S00",
+                              "Dataset3_glovebox": "S01"})
+
+    summary = split(dataset_dir, manifest, val_sessions={"S01"},
+                    probe_clips={"Dataset1_glovebox"}, probe_name="probe_gloved")
+
+    probe = {p.name for p in (dataset_dir / "images" / "probe_gloved").glob("*.jpg")}
+    train = {p.name for p in (dataset_dir / "images" / "train").glob("*.jpg")}
+    val = {p.name for p in (dataset_dir / "images" / "val").glob("*.jpg")}
+    assert probe == {"Dataset1_glovebox_000000.jpg", "Dataset1_glovebox_000001.jpg"}
+    assert train == {"Dataset2_glovebox_000000.jpg"}
+    assert val == {"Dataset3_glovebox_000000.jpg"}
+    assert summary["moved_to_probe"] == 2
+    assert summary["probe_class_counts"] == {"hand_gloved": 2}
+
+
+def test_probe_clip_from_val_session_refused(tmp_path):
+    dataset_dir = tmp_path / "yolo_dataset"
+    _make_dataset(dataset_dir, [("Dataset3_glovebox", 0, 6)])
+    manifest = tmp_path / "clips.csv"
+    _make_manifest(manifest, {"Dataset3_glovebox": "S01"})
+    with pytest.raises(SystemExit):
+        split(dataset_dir, manifest, val_sessions={"S01"}, probe_clips={"Dataset3_glovebox"})
