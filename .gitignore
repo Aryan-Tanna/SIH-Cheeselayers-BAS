@@ -12,3 +12,4 @@ labels_seed
 labels_seed.zip
 video
 video.zip
+*.egg-info/
