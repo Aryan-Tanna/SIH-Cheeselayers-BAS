@@ -40,3 +40,42 @@ runtime, per `CLAUDE.md`).
 - **Committed** because `runs/` is gitignored and a fresh clone would
   otherwise have no detector at all. Superseded when v5 is trained.
 - **Created**: 2026-09-23. **Size**: 6445331 bytes. **MD5**: `04510d806a7e7885d94ebb1174b5694b`
+
+## `tts/en_US-lessac-medium.onnx` (+ `.onnx.json`)
+
+- **What**: Piper neural TTS voice (US English, "lessac", medium
+  quality, 22050 Hz), used by `src/runtime/tts.py`. Path set in
+  `configs/runtime.yaml` (`audio.tts.voice_model`); both files must sit
+  side by side.
+- **Source**: `https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/`
+  (the Piper project's official voice repository).
+- **Fetched**: 2026-09-24
+- **Size**: 63,201,294 bytes (`.onnx`), 4,885 bytes (`.onnx.json`)
+- **MD5**: `2fc642b535197b6305c7c8f92dc8b24f` (`.onnx`),
+  `c1f2b7bddefe113f3255ff9ef234cfd3` (`.onnx.json`) -- both match the
+  repo's published `voices.json` digests.
+- **Why this one**: every English Piper voice is >=63 MB ("low" quality
+  is no smaller), so medium costs nothing extra over low and sounds
+  better. Measured on a laptop CPU: ~3.6 s load, 0.4-0.9 s per phrase,
+  which is why every speakable phrase is pre-rendered at protocol load.
+- **License**: see the voice's MODEL_CARD in the source repository
+  (lessac dataset voice, distributed by the Piper project for
+  redistribution with attribution).
+
+## `asr/vosk-model-small-en-us-0.15/`
+
+- **What**: Vosk (Kaldi) small US-English speech model, used by
+  `src/runtime/voice_control.py` for offline "Hey BAS" commands.
+  Recognition is restricted to a fixed grammar at runtime, so the
+  small model is ample. Path set in `configs/runtime.yaml`
+  (`voice_control.model`).
+- **Source**: `https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip`
+  (the Vosk project's official model list), unzipped in place.
+- **Fetched**: 2026-09-24. **Zip MD5**: `09ab50ccd62b674cbaa231b825f9c1cb`
+  (41,205,931 bytes). Unzipped ~68 MB; largest file 24 MB
+  (`graph/Gr.fst`), all under GitHub's 100 MB per-file limit.
+- **Measured**: recognizes all five commands + bare wake phrase at
+  confidence 1.0 on Piper-synthesized speech, 22-48 ms per utterance;
+  rejects ordinary sentences (they decode with `[unk]`). Not yet
+  measured on live human speech or with fan noise.
+- **License**: Apache License 2.0 (Alpha Cephei).

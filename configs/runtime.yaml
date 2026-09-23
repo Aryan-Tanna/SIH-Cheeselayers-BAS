@@ -1,0 +1,111 @@
+# configs/runtime.yaml
+#
+# Phase 2 runtime settings: which weights to load, how the co-pilot
+# sounds. Protocol-level alert POLICY (cooldowns, rate cap, which
+# severities speak) is NOT here -- that lives in configs/defaults.yaml
+# and is resolved per protocol. This file only controls HOW an alert
+# that policy already decided to emit is rendered as sound.
+
+schema_version: 1
+
+detector:
+  # Swap to a new models/*.pt here when a new detector lands -- nothing
+  # in src/ names a weights file.
+  weights: models/bootstrap_v4_best.pt
+
+audio:
+  enabled: true
+
+  tts:
+    # "piper" = offline neural TTS (onnxruntime, Windows/macOS/Linux).
+    # "none"  = earcons only, spoken text printed to the console.
+    # If piper is selected but its package or voice model is missing, the
+    # runtime degrades to "none" with a printed warning -- it never stops
+    # the session.
+    backend: piper
+    # Piper voice: the .onnx and its .onnx.json must sit side by side.
+    voice_model: models/tts/en_US-lessac-medium.onnx
+    # >1.0 is slower speech. Slightly slow reads better through a
+    # headset over fan noise.
+    length_scale: 1.1
+    # Render every phrase the loaded protocol can speak (constraint
+    # alert lines, step prompts, success lines) once at load / hot
+    # reload, so speaking an alert never waits on synthesis competing
+    # with the detector for CPU.
+    prewarm: true
+
+  output:
+    # Master gain applied to earcons and speech, 0..1.
+    volume: 0.8
+    # null = OS default output device.
+    device: null
+
+  # Earcons: a distinct tone pattern per severity so the operator knows
+  # how urgent it is before a word is spoken. Advisory is tone-only by
+  # policy (defaults.yaml severity_tone_only).
+  earcons:
+    advisory:
+      notes_hz: [660]
+      note_ms: 120
+      gap_ms: 0
+    caution:
+      notes_hz: [660, 880]
+      note_ms: 110
+      gap_ms: 40
+    warning:
+      notes_hz: [988, 988, 988]
+      note_ms: 90
+      gap_ms: 60
+    # Quiet mode: one short soft tick per completed step, instead of
+    # speaking prompts. Deliberately unlike any severity pattern.
+    step:
+      notes_hz: [1320]
+      note_ms: 55
+      gap_ms: 0
+    # "Hey BAS" heard: listening for a command.
+    wake:
+      notes_hz: [880, 1320]
+      note_ms: 70
+      gap_ms: 15
+
+  prompts:
+    # Start-up mode. "voice" = prompts and success lines spoken;
+    # "quiet" = a tick per completed step, only alerts spoken. Switchable
+    # at runtime: "Hey BAS, quiet mode" / "Hey BAS, voice mode".
+    mode: voice
+    # When several steps become satisfiable at once (e.g. both modules
+    # after the container opens), speak only the first in protocol order.
+    # The GUI shows all of them. "first" | "none"
+    speak_next_step: first
+    # Speak a completed step's `success` line when the protocol defines
+    # one (e.g. "Experiment complete. Log written.").
+    speak_step_success: true
+    # A skip alert names this many missed steps ("Missed on the yellow
+    # module: Reseal the module."), then "And N more steps."
+    max_named_skips: 2
+
+  # Pending audio items beyond this are dropped oldest-first -- same rule
+  # as every other runtime queue: stale audio is worse than none.
+  queue_maxsize: 4
+
+# Hands-free control: "Hey BAS, <command>", or "Hey BAS" then the
+# command within command_window_s. Offline (Vosk small English model,
+# recognition restricted to the phrases below, so ordinary speech -- and
+# the co-pilot's own voice -- cannot trigger anything). A command is
+# accepted only if the WHOLE utterance matches: "pause the music" does
+# not pause. Degrades to disabled (with a startup warning) if the
+# package, model or microphone is missing.
+voice_control:
+  enabled: true
+  model: models/asr/vosk-model-small-en-us-0.15
+  # "bas" is not in the recognizer's vocabulary; "bass" is its homophone.
+  wake_phrase: hey bass
+  command_window_s: 5
+  # null = OS default microphone.
+  input_device: null
+  commands:
+    pause: [pause]
+    resume: [resume, continue]
+    quiet: [quiet mode, quiet]
+    voice: [voice mode, voice prompts]
+    repeat: [repeat, next step]

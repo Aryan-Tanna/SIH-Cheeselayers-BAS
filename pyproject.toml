@@ -45,6 +45,22 @@ vision = [
     "mediapipe==1.0.1",
     "pillow==11.0.0",
 ]
+# Voice + earcons (src/runtime/audio*.py, tts.py, earcons.py). Same rule
+# as `vision`: never imported at module level under src/. piper-tts ships
+# abi3 wheels (Windows/macOS/Linux, Python >=3.9) and needs only
+# onnxruntime; its voice model is vendored under models/tts/ (see
+# models/README.md), never fetched at runtime. sounddevice bundles
+# PortAudio on Windows/macOS; Linux needs the system libportaudio2.
+# vosk: offline "Hey BAS" voice commands (src/runtime/voice_control.py),
+# model vendored under models/asr/. Its own imports of requests/
+# websockets are for optional model download/server use, never called
+# here -- the model is loaded from a local path, no network at runtime.
+audio = [
+    "piper-tts==1.8.0",
+    "sounddevice==0.5.3",
+    "vosk==0.3.45",
+    "numpy>=2",
+]
 dev = [
     "pytest==8.3.3",
     "pytest-cov==6.0.0",

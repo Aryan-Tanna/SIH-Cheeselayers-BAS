@@ -51,6 +51,7 @@ from typing import Any
 
 from src.protocol.events import (
     ActionEvent,
+    AnomalyEvent,
     EngineEvent,
     OperatorOverrideEvent,
     SemanticEvent,
@@ -155,6 +156,12 @@ class ProtocolEngine:
         self._suggested: set[str] = set()  # steps we've already announced
         self._skip_check_done = False
         self.role_state: dict[str, RoleState] = {}
+
+        # Operator pause: while paused, perception events are dropped (not
+        # applied, not judged) and timeouts are frozen. See pause_session().
+        self.paused = False
+        self._paused_at: float | None = None
+        self._ignored_while_paused = 0
 
         self.out: list[EngineEvent] = []
         self._load(resolved)
@@ -327,6 +334,7 @@ class ProtocolEngine:
         target: str,
         message: str,
         step_id: str | None = None,
+        extra: dict[str, Any] | None = None,
     ) -> None:
         default = self.constraints_by_id.get(_CODE_TO_DEFAULT_ID.get(code, ""))
         severity = (
@@ -342,6 +350,61 @@ class ProtocolEngine:
             target=target,
             message=message,
             operator=self.operator,
+            extra=extra or {},
+        ))
+
+    # ------------------------------------------------------------------
+    # Operator pause / resume
+    # ------------------------------------------------------------------
+
+    def pause_session(self, ts: float, note: str = "") -> None:
+        """Operator paused the session. Until resume_session(): perception events
+        are ignored (counted, not applied) and no timeout can fire -- a
+        lid set down during a pause must not trip lid_unstowed the
+        instant the session resumes.
+
+        Known limit, stated rather than hidden: anything physically done
+        during the pause is invisible to the protocol. If the operator
+        finishes a step while paused, it will not be credited on resume.
+        """
+        if self.paused:
+            return
+        self.check_timeouts(ts)  # settle anything already due before freezing
+        self.paused = True
+        self._paused_at = ts
+        self._ignored_while_paused = 0
+        self._emit(EngineEvent(
+            ts_monotonic=ts, event_type="session_paused", message=note or "paused by operator",
+            operator=self.operator,
+        ))
+
+    def note_operator_command(self, ts: float, command: str) -> None:
+        """Log an operator command that changes no protocol state."""
+        self._emit(EngineEvent(
+            ts_monotonic=ts, event_type="operator_command", message=command,
+            operator=self.operator,
+        ))
+
+    def resume_session(self, ts: float, note: str = "") -> None:
+        if not self.paused:
+            return
+        paused_for = max(0.0, ts - (self._paused_at or ts))
+        # Shift every running timer by the pause length: the stow clock
+        # resumes where it stopped rather than counting the pause.
+        for rs in self.role_state.values():
+            if rs.lid_detached_ts is not None:
+                rs.lid_detached_ts += paused_for
+        self.paused = False
+        self._paused_at = None
+        self._emit(EngineEvent(
+            ts_monotonic=ts,
+            event_type="session_resumed",
+            message=note or (
+                f"resumed after {paused_for:.1f}s; "
+                f"{self._ignored_while_paused} perception event(s) ignored while paused"
+            ),
+            operator=self.operator,
+            extra={"paused_for_s": paused_for, "ignored_events": self._ignored_while_paused},
         ))
 
     # ------------------------------------------------------------------
@@ -349,6 +412,8 @@ class ProtocolEngine:
     # ------------------------------------------------------------------
 
     def check_timeouts(self, now: float) -> None:
+        if self.paused:
+            return
         lid_stow = self.constraints_by_id.get("lid_stow_required")
         if lid_stow is None or not lid_stow.enabled:
             return
@@ -528,8 +593,13 @@ class ProtocolEngine:
     # ------------------------------------------------------------------
 
     def process(self, event: SemanticEvent) -> None:
+        if self.paused and not isinstance(event, OperatorOverrideEvent):
+            self._ignored_while_paused += 1
+            return
         if isinstance(event, ActionEvent):
             self._process_action(event)
+        elif isinstance(event, AnomalyEvent):
+            self._anomaly(event.ts, event.kind, event.label)
         elif isinstance(event, StateEvent):
             self._process_state(event)
         elif isinstance(event, OperatorOverrideEvent):
@@ -553,8 +623,30 @@ class ProtocolEngine:
             message=f"state {event.key}={event.value!r} (no consumer wired yet)",
         ))
 
+    def _anomaly(self, ts: float, kind: str, label: str | None) -> None:
+        """Something outside the experiment. Logged and announced; no
+        protocol state changes, so the session continues from the step
+        it was on. root_cause_id is per kind, so the alert policy's
+        cooldown stops a lingering object being re-announced."""
+        self._emit(EngineEvent(
+            ts_monotonic=ts,
+            event_type="anomaly",
+            severity="caution",
+            root_cause_id=f"anomaly:{kind}",
+            target=label,
+            message=f"{kind}: {label or 'unidentified object'}",
+            extra={"kind": kind},
+        ))
+
     def _process_action(self, event: ActionEvent) -> None:
         self.check_timeouts(event.ts)
+
+        # An action on something that is not one of this protocol's roles
+        # is not a wrong_object (that is the wrong ROLE, e.g. module_b for
+        # module_a) -- the object is not part of the experiment at all.
+        if split_target(event.target)[0] not in self.parsed.roles:
+            self._anomaly(event.ts, "foreign_object", event.target)
+            return
 
         guard_msg = self._hard_ordering_violation(event)
         if guard_msg:
@@ -597,6 +689,7 @@ class ProtocolEngine:
                 target=node.target,
                 message=f"'{step_id}' attempted before prerequisites complete: {sorted(unmet)}",
                 step_id=step_id,
+                extra={"unmet": sorted(unmet)},
             )
 
         self._emit(EngineEvent(

@@ -37,6 +37,12 @@ detection-stream shapes are supported:
       ]
     }
 
+An "events" stream may also carry two non-action entry shapes:
+
+    {"t": 5.0, "command": "pause"}        -- operator pause / resume
+    {"t": 7.0, "anomaly": "foreign_object", "label": "pen"}
+                                          -- something outside the experiment
+
 A stream may use either key, not both. The engine, alerts, and logging
 downstream of debouncing are identical either way — only what produces
 the ActionEvent list differs.
@@ -62,7 +68,7 @@ from src.logging.session_log import SessionLogger, verify_chain  # noqa: E402
 from src.protocol.alerts import AlertManager  # noqa: E402
 from src.protocol.debounce import Debouncer  # noqa: E402
 from src.protocol.engine import ProtocolEngine  # noqa: E402
-from src.protocol.events import ActionEvent, EngineEvent  # noqa: E402
+from src.protocol.events import ActionEvent, AnomalyEvent, EngineEvent  # noqa: E402
 from src.protocol.loader import ResolvedProtocol, resolve  # noqa: E402
 from src.runtime.clock import VirtualClock  # noqa: E402
 
@@ -141,6 +147,15 @@ def _to_actual_shape(e: EngineEvent) -> dict[str, Any] | None:
             "target": e.target,
             "root_cause_id": e.root_cause_id,
         }
+    if e.event_type == "anomaly":
+        return {
+            "t": e.ts_monotonic,
+            "type": "anomaly",
+            "code": e.extra.get("kind"),
+            "target": e.target,
+        }
+    if e.event_type in ("session_paused", "session_resumed"):
+        return {"t": e.ts_monotonic, "type": e.event_type}
     return None
 
 
@@ -152,7 +167,9 @@ def _matches_expected(actual: dict[str, Any], expected: dict[str, Any]) -> bool:
         return False
     if expected["type"] == "step_complete":
         return actual["step"] == expected["step"]
-    if expected["type"] == "violation":
+    if expected["type"] in ("session_paused", "session_resumed"):
+        return True
+    if expected["type"] in ("violation", "anomaly"):
         if actual["code"] != expected["code"]:
             return False
         if "target" in expected and actual["target"] != expected["target"]:
@@ -201,8 +218,9 @@ def run_replay(
         for e in engine.out[seen_out_idx:]:
             if logger:
                 logger.log_event(e)
-            if e.event_type == "violation":
-                result.violations_logged += 1
+            if e.event_type in ("violation", "anomaly"):
+                if e.event_type == "violation":
+                    result.violations_logged += 1
                 t0 = time.perf_counter()
                 decision = alert_manager.decide(e.severity or "advisory", e.root_cause_id or "")
                 alert_latencies.append(time.perf_counter() - t0)
@@ -217,6 +235,19 @@ def run_replay(
     try:
         for raw in raw_events:
             clock.advance_to(raw["t"])
+            if "command" in raw:
+                if raw["command"] == "pause":
+                    engine.pause_session(raw["t"])
+                elif raw["command"] == "resume":
+                    engine.resume_session(raw["t"])
+                else:
+                    raise ValueError(f"replay supports pause/resume commands, got {raw['command']!r}")
+                drain()
+                continue
+            if "anomaly" in raw:
+                engine.process(AnomalyEvent(ts=raw["t"], kind=raw["anomaly"], label=raw.get("label")))
+                drain()
+                continue
             action_event = ActionEvent(
                 ts=raw["t"],
                 action=raw["action"],

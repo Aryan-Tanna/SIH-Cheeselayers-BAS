@@ -14,6 +14,7 @@ description: "Slab prop family: rectangular body, no lid."
 
 roles:
   container:
+    spoken_name: payload container
     # Same physical container as profile_jar.yaml's (mixed-profile
     # experiments point one role at each) -- kept consistent with it.
     # See configs/objects/LABELLING_GUIDANCE.md for why this is two
@@ -28,9 +29,11 @@ roles:
       lid_open_angle_deg: 35
 
   module_a:
+    spoken_name: first slab
     class_id: slab
     has_lid: false
 
   module_b:
+    spoken_name: second slab
     class_id: slab
     has_lid: false

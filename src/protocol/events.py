@@ -69,7 +69,25 @@ class OperatorOverrideEvent:
     note: str = ""
 
 
-SemanticEvent = ActionEvent | StateEvent | OperatorOverrideEvent
+@dataclass(frozen=True, slots=True)
+class AnomalyEvent:
+    """Something outside the experiment happened -- e.g. an object that
+    is not bound to any protocol role was detected or grasped.
+
+    Not a procedure violation: protocol state is untouched and the
+    session continues from the step it was on. It is logged and spoken
+    as a single generic "anomaly" alert (subject to the same root-cause
+    cooldown as violations, so a lingering object is not re-announced
+    every frame).
+    """
+
+    ts: float
+    kind: str = "foreign_object"
+    label: str | None = None  # detector label / target name, if any
+    confidence: float = 1.0
+
+
+SemanticEvent = ActionEvent | StateEvent | OperatorOverrideEvent | AnomalyEvent
 
 
 EngineEventType = Literal[
@@ -87,6 +105,14 @@ EngineEventType = Literal[
     # used an action/target pair this protocol never declares.
     "engine_anomaly",
     "unmatched_action",
+    # Operator-facing, not violations: something outside the experiment
+    # (see AnomalyEvent), and operator pause/resume of the session.
+    "anomaly",
+    "session_paused",
+    "session_resumed",
+    # Operator voice/GUI command that changes no protocol state (e.g.
+    # quiet mode) -- logged so the record shows why prompts went silent.
+    "operator_command",
 ]
 
 Severity = Literal["advisory", "caution", "warning"]

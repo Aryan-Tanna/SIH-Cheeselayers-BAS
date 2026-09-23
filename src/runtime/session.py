@@ -1,0 +1,129 @@
+"""One live session: engine + alert policy + announcer + log + audio,
+behind a single lock.
+
+Two threads drive it: the perception/fusion thread (semantic events,
+timeout ticks) and the voice-control thread (operator commands). The
+engine is not thread-safe, so every entry point here takes the same
+lock; nothing outside this class should touch the engine directly.
+
+Operator commands (see configs/runtime.yaml voice_control.commands):
+  pause   -- engine frozen (events ignored, timers stopped), voice silenced
+  resume  -- carry on from the same step; the current step is re-stated
+  quiet   -- step prompts become a tick per completed step; alerts still spoken
+  voice   -- step prompts spoken again
+  repeat  -- speak the current step
+Every command is logged. The operator's authority is absolute: commands
+are never refused.
+"""
+
+from __future__ import annotations
+
+import threading
+from typing import Callable
+
+from src.logging.session_log import SessionLogger
+from src.protocol.alerts import AlertManager
+from src.protocol.engine import ProtocolEngine
+from src.protocol.events import EngineEvent, SemanticEvent
+from src.protocol.loader import ResolvedProtocol
+from src.runtime.announcer import Announcer, AnnouncerSettings, AudioRequest
+from src.runtime.clock import Clock, SystemClock
+from src.runtime.voice_control import WAKE
+
+COMMANDS = ("pause", "resume", "quiet", "voice", "repeat", WAKE)
+
+
+class Session:
+    def __init__(
+        self,
+        resolved: ResolvedProtocol,
+        clock: Clock | None = None,
+        audio_submit: Callable[[list[AudioRequest]], None] | None = None,
+        settings: AnnouncerSettings | None = None,
+        logger: SessionLogger | None = None,
+        operator: str | None = None,
+        event_listeners: list[Callable[[EngineEvent], None]] | None = None,
+        audio_listeners: list[Callable[[AudioRequest], None]] | None = None,
+    ) -> None:
+        self.clock = clock or SystemClock()
+        self._lock = threading.RLock()
+        self._audio_submit = audio_submit
+        self.logger = logger
+        self.engine = ProtocolEngine(resolved, clock=self.clock, operator=operator)
+        self.announcer = Announcer(
+            resolved, AlertManager.from_policy(resolved.alert_policy, clock=self.clock), settings
+        )
+        # GUI hooks: called with every engine event / audio request, in
+        # order, under the session lock -- keep them fast (enqueue only).
+        # Passed at construction so they also see session_start and the
+        # first prompt.
+        self.event_listeners: list[Callable[[EngineEvent], None]] = list(event_listeners or [])
+        self.audio_listeners: list[Callable[[AudioRequest], None]] = list(audio_listeners or [])
+        self._seen = 0
+        with self._lock:
+            self._flush()  # session_start + first prompt
+
+    # ------------------------------------------------------------------
+
+    @property
+    def paused(self) -> bool:
+        return self.engine.paused
+
+    @property
+    def mode(self) -> str:
+        return self.announcer.mode
+
+    def on_event(self, event: SemanticEvent) -> None:
+        with self._lock:
+            self.engine.process(event)
+            self._flush()
+
+    def tick(self, now: float | None = None) -> None:
+        """Let timeouts fire with no new event (call every frame / ~1 s)."""
+        with self._lock:
+            self.engine.check_timeouts(self.clock.now() if now is None else now)
+            self._flush()
+
+    def command(self, command: str, ts: float | None = None) -> None:
+        if command not in COMMANDS:
+            raise ValueError(f"unknown command {command!r}; expected one of {COMMANDS}")
+        with self._lock:
+            ts = self.clock.now() if ts is None else ts
+            extra: list[AudioRequest] = []
+            if command == WAKE:
+                extra = self.announcer.wake_ack()
+            elif command == "pause":
+                self.engine.pause_session(ts)
+            elif command == "resume":
+                self.engine.resume_session(ts)
+            elif command in ("quiet", "voice"):
+                self.engine.note_operator_command(ts, f"{command}_mode")
+                extra = self.announcer.set_mode(command)
+            elif command == "repeat":
+                self.engine.note_operator_command(ts, "repeat")
+                extra = [] if self.engine.paused else self.announcer.repeat()
+            self._flush(extra)
+
+    def reload_protocol(self, resolved: ResolvedProtocol) -> None:
+        """Hot reload. The caller validates first (see engine.reload_protocol)."""
+        with self._lock:
+            self.announcer.set_protocol(resolved)
+            self.engine.reload_protocol(resolved)
+            self._flush()
+
+    # ------------------------------------------------------------------
+
+    def _flush(self, extra: list[AudioRequest] | None = None) -> None:
+        batch = self.engine.out[self._seen:]
+        self._seen = len(self.engine.out)
+        for e in batch:
+            if self.logger is not None:
+                self.logger.log_event(e)
+            for cb in self.event_listeners:
+                cb(e)
+        requests = self.announcer.plan(batch) + (extra or [])
+        for r in requests:
+            for cb in self.audio_listeners:
+                cb(r)
+        if requests and self._audio_submit is not None:
+            self._audio_submit(requests)

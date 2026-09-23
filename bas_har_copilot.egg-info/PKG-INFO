@@ -10,6 +10,10 @@ Requires-Dist: opencv-contrib-python==5.0.0.93; extra == "vision"
 Requires-Dist: ultralytics==8.3.28; extra == "vision"
 Requires-Dist: mediapipe==1.0.1; extra == "vision"
 Requires-Dist: pillow==11.0.0; extra == "vision"
+Provides-Extra: audio
+Requires-Dist: piper-tts==1.8.0; extra == "audio"
+Requires-Dist: sounddevice==0.5.3; extra == "audio"
+Requires-Dist: numpy>=2; extra == "audio"
 Provides-Extra: dev
 Requires-Dist: pytest==8.3.3; extra == "dev"
 Requires-Dist: pytest-cov==6.0.0; extra == "dev"

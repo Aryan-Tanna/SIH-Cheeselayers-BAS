@@ -1,0 +1,15 @@
+{
+  "clip_id": "pause_resume",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "Operator pauses 2 s after detaching module_a's lid and resumes 25 s later. The stow at t=8 happens while paused and is ignored (not credited). After resume the lid is stowed at t=31. Wall-clock since detach is 28 s, well past the 12 s lid_stow timeout -- but only 3 s of UNPAUSED time has passed, so no lid_unstowed may fire. Proves the engine freezes timers across a pause rather than counting it.",
+  "clip_duration_s": 35.0,
+  "events": [
+    { "t": 1.0, "action": "open", "target": "container" },
+    { "t": 2.0, "action": "remove_from", "target": "module_a", "source": "container" },
+    { "t": 3.0, "action": "open", "target": "module_a" },
+    { "t": 5.0, "command": "pause" },
+    { "t": 8.0, "action": "move_to_zone", "target": "module_a.lid", "zone": "stow_zone" },
+    { "t": 30.0, "command": "resume" },
+    { "t": 31.0, "action": "move_to_zone", "target": "module_a.lid", "zone": "stow_zone" }
+  ]
+}

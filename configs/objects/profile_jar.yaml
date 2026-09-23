@@ -32,8 +32,14 @@ schema_version: 1
 profile_id: jar
 description: "Jar prop family: cylindrical body, screw-cap lid."
 
+# spoken_name: how the voice refers to a role when it must say WHICH
+# object ("Missed on the yellow module: ..."). Colours are fine here --
+# the profile is where roles bind to physical props; the protocol itself
+# still never names a colour. Optional: a role without one is spoken as
+# its id ("module a").
 roles:
   container:
+    spoken_name: payload container
     # The container's own open/closed state is two directly-detected
     # WHOLE-SHAPE classes, not a separately tracked lid bbox + geometric
     # angle -- unlike a module's small screw-cap lid, the container's
@@ -52,6 +58,7 @@ roles:
       lid_open_angle_deg: 35
 
   module_a:
+    spoken_name: red module
     class_id: red_module
     # The lid IS its own detected bbox (unlike the container's), because
     # src/kinematics/lid_state.py already derives a continuous open/
@@ -66,6 +73,7 @@ roles:
       lid_open_travel_px: 18
 
   module_b:
+    spoken_name: yellow module
     class_id: yellow_module
     lid_class_id: yellow_lid
     has_lid: true

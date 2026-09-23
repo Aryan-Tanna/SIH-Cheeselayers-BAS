@@ -1,0 +1,11 @@
+{
+  "clip_id": "pause_resume",
+  "protocol_id": "bas_specimen_v1",
+  "expected_events": [
+    { "t": 5.0, "type": "session_paused", "tolerance_s": 0.1 },
+    { "t": 30.0, "type": "session_resumed", "tolerance_s": 0.1 },
+    { "t": 31.0, "type": "step_complete", "step": "stow_a_lid", "tolerance_s": 0.1 }
+  ],
+  "expected_alerts": 0,
+  "partial": true
+}

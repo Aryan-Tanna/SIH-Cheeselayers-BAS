@@ -1,0 +1,12 @@
+{
+  "clip_id": "foreign_object",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "Mid-protocol, an object that is not part of the experiment (a pen) drifts into view (perception anomaly at t=3) and the operator grasps it (an action on an undeclared target at t=4). Both are anomalies, not wrong_object: the pen is not a role at all. Only the first is spoken (same root cause, within cooldown). Protocol state is untouched: the next real step, unsealing module_a, completes normally.",
+  "events": [
+    { "t": 1.0, "action": "open", "target": "container" },
+    { "t": 2.0, "action": "remove_from", "target": "module_a", "source": "container" },
+    { "t": 3.0, "anomaly": "foreign_object", "label": "pen" },
+    { "t": 4.0, "action": "grasp", "target": "pen" },
+    { "t": 5.0, "action": "open", "target": "module_a" }
+  ]
+}

@@ -57,13 +57,44 @@ rack-space geometry + deterministic constraint engine. Detail in
 1. **Phase 2 runtime code (Parth) — START HERE, no model or video needed.** The
    team decided (2026-09-24) to build this now and train v5 later; the
    detector is swapped by a single weights path. Order:
-   a. **Audio**: earcons + offline TTS behind `src/protocol/alerts.py`
-      (advisory = tone, caution = tone+speech, warning = tone+speech
-      that interrupts). Own thread, bounded queue. Engine choice was
-      proposed as **Piper** (natural voice, offline, ~60 MB voice model
-      committed like other weights) vs pyttsx3/SAPI5 — **not yet
-      confirmed by the team; ask before building.**
-   b. Recorder + RTSP/IP streamer. c. Monitoring GUI.
+   a. **Audio — DONE.** Piper TTS (offline, Win/macOS/Linux; voice
+      `models/tts/en_US-lessac-medium.onnx`) + code-synthesized earcons,
+      settings in `configs/runtime.yaml`. Flow: engine batch →
+      `Announcer.plan()` (the one `AlertManager.decide()` call; spoken
+      text = constraint `alert` lines and protocol `prompt`/`success`,
+      never engine debug messages) → `AudioWorker` thread → sink.
+      Behaviour: warnings interrupt; newer prompts supersede queued
+      ones; one prompt per step, first in protocol order, preferring the
+      branch the operator is in; no prompts after the terminal step;
+      identical alert lines in one batch spoken once; cooldown-suppressed
+      violations fully silent. All phrases pre-rendered at load (Piper
+      measured 0.4-0.9 s/phrase — too slow at alert time). Persistent
+      WASAPI stream on Windows (22 ms vs 91 ms MME). Degrades to
+      earcons + printed text if the voice/device is missing. Listen:
+      `python scripts/audio_demo.py --all` (`--silent` for no device).
+      Hot reload: `Session.reload_protocol()`, then pre-warm the new
+      phrases (`speakable_phrases`).
+      **Session + voice control (2026-09-24):** `src/runtime/session.py`
+      is the single, locked entry point (engine is not thread-safe).
+      "Hey BAS, <cmd>" via Vosk (`models/asr/`, grammar-restricted,
+      whole-utterance match only): pause (engine frozen, timers stopped,
+      voice flushed; events during pause are ignored, NOT credited),
+      resume (re-states current step), quiet (tick per completed step,
+      alerts still spoken, end-of-experiment still spoken), voice,
+      repeat. Skip alerts name the step and object via the profile's
+      `spoken_name` ("Missed on the yellow module: Reseal the module.");
+      out_of_order names what was expected first, and is dropped when a
+      skip in the same instant already names it. Objects not bound to a
+      role -> `anomaly` ("Anomaly detected."), no state change, not a
+      violation. Harness covers pause/timer/anomaly (12/12). Live-mic
+      tested (`scripts/voice_test.py`): exact whole-utterance matching
+      accepted only 4/12 real wake utterances (breath/noise before the
+      wake phrase, stutters, repeats), so the parser now takes the LAST
+      "hey bass" and the command starting right after it; after that
+      change 13/17 utterances accepted, all five commands working in
+      both one-breath and wake-then-command form. Laptop mic echo
+      cancellation removes the co-pilot's own voice from the mic.
+   b. **NEXT:** Recorder + RTSP/IP streamer. c. Monitoring GUI.
    Drive all of it with `harness/synthetic/` streams, like phase 0.
 2. **(Aryan)** Label batch9 (80 train + 50 val frames aimed at the weak
    classes) → train v5 with the gloved probe → report val AND probe
@@ -81,11 +112,11 @@ kept here so it can be rebuilt anywhere if needed.
 
 1. **Runtime venv** (CPU; this is what the product runs on):
    `python -m venv .venv` (3.11+; team uses 3.13), then
-   `pip install -e ".[vision,dev]"`, then fix the opencv clash
+   `pip install -e ".[vision,audio,dev]"`, then fix the opencv clash
    documented in `pyproject.toml`:
    `pip uninstall -y opencv-python` and
    `pip install --force-reinstall --no-deps opencv-contrib-python==5.0.0.93`.
-   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **183
+   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **298
    passed**. Phase-2 work needs nothing beyond this step.
 2. **Video / frames** (only for labelling or training): get `clips/`
    (71 mp4, ~6.6 GB) from the team, then `python scripts/normalize_clips.py`

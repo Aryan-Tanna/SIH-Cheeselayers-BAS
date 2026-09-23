@@ -1,0 +1,14 @@
+{
+  "clip_id": "pause_timer_continues",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "Lid detached at t=3, paused at t=5 (2 s elapsed), resumed at t=30, never stowed. The 12 s timeout must resume where it stopped: it is due after t=40 of wall time (2 s before + 10 s after the pause), so it fires at the clip-end check at t=45, not at resume and not never.",
+  "clip_duration_s": 45.0,
+  "events": [
+    { "t": 1.0, "action": "open", "target": "container" },
+    { "t": 2.0, "action": "remove_from", "target": "module_a", "source": "container" },
+    { "t": 3.0, "action": "open", "target": "module_a" },
+    { "t": 5.0, "command": "pause" },
+    { "t": 30.0, "command": "resume" },
+    { "t": 38.0, "action": "open", "target": "container" }
+  ]
+}

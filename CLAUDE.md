@@ -26,16 +26,19 @@ known-broken things not yet fixed.
 - Labels batch-1..8 = 450 frames (0 dups). Detector = `models/
   bootstrap_v4_best.pt` (val S01-S03: P.78 R.58 mAP50 .73; hand_gloved
   unmeasured; yellow_module R fell .70->.43 vs v3, cause untested).
-- NOW (team decision 2026-09-24): Phase 2 runtime -- audio (earcons +
-  offline TTS on `alerts.py` severities) -> recorder/streamer -> GUI.
-  OPEN DECISION: TTS engine, Piper proposed vs pyttsx3 -- ask first.
-- Aryan (not this clone): batch9 -> v5 -> new `models/*.pt`. Runtime
-  must load weights by config path so v5 is a one-line swap.
+- Phase 2 runtime order: audio -> recorder/streamer -> GUI. AUDIO DONE
+  (Piper TTS + Vosk "Hey BAS" commands: pause/resume/quiet/voice/repeat;
+  anomaly events; named skip alerts). Entry point `src/runtime/session.py`
+  (engine is not thread-safe -- only touch it via Session). Hear it:
+  `scripts/audio_demo.py --all` (+ `--listen` for mic). NEXT: recorder.
+- "Hey BAS" live-mic tested by Parth (round 2: 13/17 accepted, all 5
+  commands; wake-then-command works). "next step" never recognised.
+- Detector weights = `configs/runtime.yaml` `detector.weights` (v5 swap).
 - ArUco/rack geometry NOT STARTED -- blocks kinematics on real video.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
   after vision install; `numpy.trapz` shim; Windows eval workers=0;
   never re-run `build_review_sheet.py`; Dataset22 gloves: leave as is.
-  183/183 tests.
+  Install `.[vision,audio,dev]`, then the opencv fix. 298/298 tests.
 
 ## Your role
 
