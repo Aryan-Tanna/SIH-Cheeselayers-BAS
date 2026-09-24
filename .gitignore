@@ -13,3 +13,5 @@ labels_seed.zip
 video
 video.zip
 *.egg-info/
+recordings/
+logs/

@@ -143,10 +143,14 @@ class AudioWorker:
             if self._current is not None:
                 self._current_cancel.set()
         elif req.interrupt:
-            kept = deque(r for r in self._pending if r.interrupt)
+            # Keep the wake chime: the hold stays active either way, so
+            # dropping or cutting the chime would leave the operator with
+            # silence and no sign they were heard. The warning plays after
+            # the hold, like everything else queued during it.
+            kept = deque(r for r in self._pending if r.interrupt or r.hold)
             self.stats.flushed_by_warning += len(self._pending) - len(kept)
             self._pending = kept
-            if self._current is not None and not self._current.interrupt:
+            if self._current is not None and not (self._current.interrupt or self._current.hold):
                 self._current_cancel.set()
         elif req.kind == "prompt":
             kept = deque(r for r in self._pending if r.kind != "prompt")

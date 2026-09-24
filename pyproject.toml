@@ -44,6 +44,10 @@ vision = [
     # scripts/test_mediapipe_gloves.py runs end-to-end against it.
     "mediapipe==1.0.1",
     "pillow==11.0.0",
+    # Recording + stream (src/runtime/recorder.py): a pinned ffmpeg binary
+    # with libx264 for Windows/macOS/Linux, so the demo machine needs no
+    # system ffmpeg. Offline once installed.
+    "imageio-ffmpeg==0.6.0",
 ]
 # Voice + earcons (src/runtime/audio*.py, tts.py, earcons.py). Same rule
 # as `vision`: never imported at module level under src/. piper-tts ships

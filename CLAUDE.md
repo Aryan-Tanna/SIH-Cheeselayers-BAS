@@ -26,19 +26,19 @@ known-broken things not yet fixed.
 - Labels batch-1..8 = 450 frames (0 dups). Detector = `models/
   bootstrap_v4_best.pt` (val S01-S03: P.78 R.58 mAP50 .73; hand_gloved
   unmeasured; yellow_module R fell .70->.43 vs v3, cause untested).
-- Phase 2 runtime order: audio -> recorder/streamer -> GUI. AUDIO DONE
-  (Piper TTS + Vosk "Hey BAS" commands: pause/resume/quiet/voice/repeat;
-  anomaly events; named skip alerts). Entry point `src/runtime/session.py`
-  (engine is not thread-safe -- only touch it via Session). Hear it:
-  `scripts/audio_demo.py --all` (+ `--listen` for mic). NEXT: recorder.
-- "Hey BAS" live-mic tested by Parth (round 2: 13/17 accepted, all 5
-  commands; wake-then-command works). "next step" never recognised.
+- Phase 2 runtime DONE except perception: audio (Piper + Vosk "Hey
+  BAS"), capture, recorder+UDP stream (.ts segments), Tk GUI, all wired
+  in `src/runtime/app.py`. Run: `scripts/run_gui.py [--events ...]`.
+  Engine only via `Session` (not thread-safe). Live checks:
+  `scripts/voice_test.py`, `scripts/record_test.py`.
+- MISSING: detections->events; meanwhile drive via "next step"/--events.
+- "Hey BAS" live-tested incl. "next step" (3/3 in the GUI session).
 - Detector weights = `configs/runtime.yaml` `detector.weights` (v5 swap).
 - ArUco/rack geometry NOT STARTED -- blocks kinematics on real video.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
   after vision install; `numpy.trapz` shim; Windows eval workers=0;
   never re-run `build_review_sheet.py`; Dataset22 gloves: leave as is.
-  Install `.[vision,audio,dev]`, then the opencv fix. 298/298 tests.
+  Install `.[vision,audio,dev]`, then the opencv fix. 374/374 tests.
 
 ## Your role
 

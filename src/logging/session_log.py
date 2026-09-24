@@ -50,6 +50,15 @@ class LogLine:
     root_cause_id: str | None
     operator: str | None
     geometry_status: str | None
+    # Added 2026-09-24: without these the log said an operator_command
+    # happened but not WHICH (quiet? a refused "next step"?), and a
+    # violation line had no target or severity -- an audit record that
+    # can't answer "what was said and to whom". Older logs lack them and
+    # still verify: verify_chain hashes whatever fields a line carries.
+    target: str | None
+    severity: str | None
+    message: str | None
+    extra: dict[str, Any]
     prev_hash: str
     hash: str
 
@@ -91,6 +100,10 @@ class SessionLogger:
             "root_cause_id": event.root_cause_id,
             "operator": event.operator,
             "geometry_status": event.geometry_status,
+            "target": event.target,
+            "severity": event.severity,
+            "message": event.message,
+            "extra": dict(event.extra),
             "prev_hash": self._prev_hash,
         }
         h = _line_hash(self._prev_hash, payload)
@@ -174,10 +187,10 @@ def load_events_for_resume(path: str | Path) -> list[EngineEvent]:
     """Read a session log back as the EngineEvent list ProtocolEngine.resume()
     expects — the log→resume round trip CLAUDE.md's "support session
     resume — reload a session log and pick up mid-protocol" describes.
-    Only the fields the JSONL schema actually carries are populated; a
-    resumed engine only needs event_type + step_id to reconstruct
-    `complete`, so the rest (violation_type, target, message, ...) are
-    intentionally left None rather than guessed.
+    A resumed engine only needs event_type + step_id (+ status) to
+    reconstruct `complete`; the other fields are carried through when the
+    log has them (logs written before 2026-09-24 lack target, severity,
+    message and extra -- those come back as None / {}).
     """
     return [
         EngineEvent(
@@ -190,6 +203,10 @@ def load_events_for_resume(path: str | Path) -> list[EngineEvent]:
             root_cause_id=rec.get("root_cause_id"),
             operator=rec.get("operator"),
             geometry_status=rec.get("geometry_status"),
+            target=rec.get("target"),
+            severity=rec.get("severity"),
+            message=rec.get("message"),
+            extra=rec.get("extra") or {},
         )
         for rec in load_events(path)
     ]

@@ -94,8 +94,35 @@ rack-space geometry + deterministic constraint engine. Detail in
       change 13/17 utterances accepted, all five commands working in
       both one-breath and wake-then-command form. Laptop mic echo
       cancellation removes the co-pilot's own voice from the mic.
-   b. **NEXT:** Recorder + RTSP/IP streamer. c. Monitoring GUI.
-   Drive all of it with `harness/synthetic/` streams, like phase 0.
+   b. **Capture + recorder + stream -- DONE** (`src/runtime/capture.py`,
+      `recorder.py`). One libx264 encode (bundled imageio-ffmpeg) feeds
+      local MPEG-TS segments + a UDP stream (`stream.url` in
+      `configs/runtime.yaml`, default loopback). Measured: TS survives an
+      encoder kill (96/105 frames) where MP4 did not (69/105, or 0 when
+      teed); an RTSP output inside the encoder stalls it on an
+      unreachable server (0-byte recording), so rtsp:// goes through an
+      isolated relay process. Video is constant-rate on capture
+      timestamps: video offset = log ts_monotonic - t0 (`video.json`).
+      Webcam 640x480/720p: encoder 12-15% of one core, 0 frames lost.
+   c. **GUI -- DONE** (`src/runtime/gui.py`, Tkinter: no extra deps).
+      Live video, checklist naming each step's object, NOW banner,
+      events feed, buttons = voice commands (Space/N/R/Q/F5).
+   d. **App wiring -- DONE** (`src/runtime/app.py`): validates + prints
+      the resolved constraints at start, hash-chained log in `logs/`,
+      hot reload on file save (invalid edits rejected, old protocol
+      kept), scripted `--events` start at the first camera frame.
+      `scripts/run_gui.py` / `scripts/run_copilot.py` (headless).
+   e. **NEXT (needs perception):** detections -> semantic events
+      (tracker + kinematics + debouncer -> ActionEvent/AnomalyEvent),
+      loading `detector.weights` from config. Blocked for real video on
+      ArUco/rack geometry (item 3).
+   Log schema (2026-09-24): each JSONL line now also carries `target`,
+   `severity`, `message` and `extra` (e.g. out_of_order's unmet steps,
+   pause length, anomaly kind) -- before, an operator_command line did
+   not say which command. Older logs lack them and still verify.
+   Loader fix (2026-09-24): protocol config paths now resolve from the
+   repo root; launched from another folder, the object profile silently
+   failed to load and all six lid steps vanished.
 2. **(Aryan)** Label batch9 (80 train + 50 val frames aimed at the weak
    classes) → train v5 with the gloved probe → report val AND probe
    separately → commit to `models/`.
@@ -116,7 +143,7 @@ kept here so it can be rebuilt anywhere if needed.
    documented in `pyproject.toml`:
    `pip uninstall -y opencv-python` and
    `pip install --force-reinstall --no-deps opencv-contrib-python==5.0.0.93`.
-   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **298
+   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **374
    passed**. Phase-2 work needs nothing beyond this step.
 2. **Video / frames** (only for labelling or training): get `clips/`
    (71 mp4, ~6.6 GB) from the team, then `python scripts/normalize_clips.py`

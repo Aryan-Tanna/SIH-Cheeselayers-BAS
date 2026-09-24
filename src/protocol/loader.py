@@ -30,7 +30,20 @@ from typing import Any
 
 import yaml
 
-DEFAULT_DEFAULTS_PATH = Path("configs/defaults.yaml")
+# Config paths inside protocol files ("configs/objects/profile_jar.yaml")
+# are relative to the repo root, never to the process's working
+# directory. Resolving them against the CWD meant that launching from
+# any other folder silently loaded no object profile -- and with no
+# profile every `condition: target.has_lid` is false, so all six lid steps
+# of bas_specimen_v1 vanished without a word (found 2026-09-24).
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+DEFAULT_DEFAULTS_PATH = REPO_ROOT / "configs" / "defaults.yaml"
+
+
+def repo_path(path: str | Path) -> Path:
+    """A config path as written in a protocol/config file -> absolute."""
+    p = Path(path)
+    return p if p.is_absolute() else REPO_ROOT / p
 
 # ids from configs/defaults.yaml whose `overridable: false` marks them as
 # tier-2 (non-overridable). Kept as a derived set, not hardcoded, in
@@ -435,10 +448,15 @@ def resolve(
     apply_force_module_order(parsed)
 
     if protocol_raw.get("object_profile"):
-        try:
-            parsed.object_profile = load_yaml(protocol_raw["object_profile"])
-        except FileNotFoundError:
-            parsed.object_profile = None
+        profile_path = repo_path(protocol_raw["object_profile"])
+        if not profile_path.is_file():
+            # Fail loudly: a missing profile does not break loading, it
+            # silently changes the protocol (conditional steps vanish).
+            raise ProtocolLoadError(
+                f"object_profile not found: {protocol_raw['object_profile']} "
+                f"(looked for {profile_path})"
+            )
+        parsed.object_profile = load_yaml(profile_path)
 
     constraints, warnings = resolve_constraints(defaults, protocol_raw)
     alert_policy = resolve_alert_policy(defaults, protocol_raw)

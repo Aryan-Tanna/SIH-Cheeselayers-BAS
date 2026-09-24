@@ -429,6 +429,28 @@ def test_cut_warning_is_replayed_first():
     assert third == _played_len(sink)[0]   # the warning, before the caution
 
 
+def test_warning_during_hold_keeps_queued_chime():
+    w = AudioWorker(CachedTTS(FakeTTS()), RecordingSink(), dict(EARCONS, wake=EarconSpec((1320.0,), 60, 0)),
+                    printer=lambda _: None)
+    w.submit([_chime()])
+    w.submit([_warning("warn")])
+    assert [r.hold for r in w.pending()] == [True, False]
+
+
+def test_warning_does_not_cut_playing_chime():
+    w, sink = _hold_worker()
+    w.submit([_chime()])
+    assert sink.playing.wait(2.0)
+    w.submit([_warning("warn")])
+    threading.Event().wait(0.05)
+    sink.release()                                  # chime ends normally
+    w.submit([_release()])
+    _wait_played(sink, 2); sink.release()
+    assert w.drain(2.0)
+    w.stop()
+    assert sink.completed == [True, True]
+
+
 def test_hold_s_must_be_positive():
     with pytest.raises(ValueError):
         AudioWorker(CachedTTS(FakeTTS()), RecordingSink(), dict(EARCONS), hold_s=0)
