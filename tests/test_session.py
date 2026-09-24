@@ -208,3 +208,16 @@ def test_next_after_wake_drops_cut_prompt_in_favour_of_new_one():
     heard.clear()
     s.command("next")
     assert heard[-1].release and heard[-1].replay_prompt   # worker drops the stale prompt
+
+
+def test_log_names_every_operator_command(tmp_path):
+    # Live session 2026-09-24: four operator_command lines, none saying which
+    s, clock, _ = _session(tmp_path)
+    s.command("quiet")
+    s.command("pause")
+    s.command("next")          # refused while paused
+    s.command("resume")
+    s.logger.close()
+    cmds = [e["message"] for e in load_events(tmp_path / "s.jsonl")
+            if e["event_type"] == "operator_command"]
+    assert cmds == ["quiet_mode", "next_step_not_applied"]

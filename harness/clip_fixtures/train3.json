@@ -1,0 +1,35 @@
+{
+  "clip_id": "train3",
+  "protocol_id": "bas_specimen_v1",
+  "object_profile": "configs/objects/profile_mixed.yaml",
+  "split": "tune",
+  "_note": "Aryan's setup, top-down. The red jar is lifted and unscrewed directly ABOVE the box and never leaves its outline, so image-space containment cannot see its removal; red and lid steps are not asserted (partial). Timeline hand-drafted from 1 fps strips -- times +/- 1 s. Not in v4's training data (v4 trained on S00 only -- Aryan, 2026-09-24): same setup as S00, new recordings.",
+  "expected_events": [
+    {
+      "t": 5.0,
+      "type": "step_complete",
+      "step": "open_container",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 18.0,
+      "type": "step_complete",
+      "step": "remove_b",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 25.5,
+      "type": "step_complete",
+      "step": "return_b",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 35.0,
+      "type": "step_complete",
+      "step": "close_container",
+      "tolerance_s": 2.0
+    }
+  ],
+  "partial": true,
+  "expected_missed_steps_note": "not asserted for real clips yet (lid steps need operator confirmation)"
+}

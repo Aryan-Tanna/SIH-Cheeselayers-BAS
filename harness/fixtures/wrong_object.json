@@ -2,8 +2,15 @@
   "clip_id": "wrong_object",
   "protocol_id": "bas_specimen_v1",
   "expected_events": [
-    { "t": 3.0, "type": "violation", "code": "wrong_object", "target": "module_a", "tolerance_s": 0.5 }
+    {
+      "t": 3.0,
+      "type": "violation",
+      "code": "wrong_object",
+      "target": "module_a",
+      "tolerance_s": 0.5
+    }
   ],
   "expected_alerts": 1,
+  "expected_missed_steps": [],
   "partial": true
 }

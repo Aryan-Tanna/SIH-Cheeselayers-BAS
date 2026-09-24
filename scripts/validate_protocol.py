@@ -302,7 +302,8 @@ def check_reachable(parsed: ParsedProtocol, idx: LineIndex, profile: dict | None
     return findings
 
 
-def validate(protocol_path: Path, defaults_path: Path) -> list[Finding]:
+def validate(protocol_path: Path, defaults_path: Path,
+             object_profile: str | Path | None = None) -> list[Finding]:
     # This is the live hot-reload path (CLAUDE.md: "protocols reloadable
     # at runtime without restart... a judge edits the JSON, we reload").
     # A bad comma or a typo'd path must produce a clean FAIL finding,
@@ -330,9 +331,10 @@ def validate(protocol_path: Path, defaults_path: Path) -> list[Finding]:
 
     parsed = parse_protocol(raw)
     profile = None
-    if raw.get("object_profile"):
+    profile_ref = object_profile if object_profile is not None else raw.get("object_profile")
+    if profile_ref:
         try:
-            profile = load_yaml(REPO_ROOT / raw["object_profile"])
+            profile = load_yaml(REPO_ROOT / profile_ref)
         except FileNotFoundError:
             profile = None
 

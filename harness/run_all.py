@@ -77,9 +77,12 @@ def print_report(results: list[ReplayResult]) -> bool:
     print(f"alerts fired/expected: {total_actual_alerts}/{total_expected_alerts}")
     print(
         f"violations logged vs alerts spoken: {total_violations_logged} logged, "
-        f"{total_actual_alerts} spoken, {total_suppressed} suppressed by alert policy "
-        f"(cooldown/rate-cap - log completeness and alert restraint are separate concerns)"
+        f"{total_actual_alerts} spoken utterances, {total_suppressed} not spoken separately "
+        f"(merged into another utterance, same root cause, cooldown or rate cap - "
+        f"log completeness and alert restraint are separate concerns)"
     )
+    covered = sum(len(r.missed_steps_spoken) for r in results)
+    print(f"missed steps covered by spoken alerts: {covered}")
     print(f"mean alert decision latency: {mean_alert_ms:.3f} ms (in-process, not glass-to-alert)")
     print(f"mean events/sec (replay, not real-time): {mean_fps:.0f}")
     if smoke:

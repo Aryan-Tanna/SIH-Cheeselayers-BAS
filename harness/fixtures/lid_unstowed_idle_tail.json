@@ -3,8 +3,15 @@
   "protocol_id": "bas_specimen_v1",
   "_note": "The engine timestamps the violation at the moment check_timeouts() runs (clock advanced to clip_duration_s=20.0 in the idle tail), not at the moment the 12s threshold was actually crossed (t=15.0) -- replay only evaluates timeouts when something asks it to.",
   "expected_events": [
-    { "t": 20.0, "type": "violation", "code": "lid_unstowed", "target": "module_a", "tolerance_s": 0.5 }
+    {
+      "t": 20.0,
+      "type": "violation",
+      "code": "lid_unstowed",
+      "target": "module_a",
+      "tolerance_s": 0.5
+    }
   ],
   "expected_alerts": 1,
+  "expected_missed_steps": [],
   "partial": true
 }

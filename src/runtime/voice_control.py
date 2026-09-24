@@ -177,15 +177,51 @@ class VoiceCommandListener:
             self.on_command(parsed)
         return parsed
 
+    # Mic health. Found live (2026-09-24): installing the DroidCam PC
+    # client made its virtual "DroidCam Audio" mic the Windows default,
+    # and the co-pilot silently listened to nothing. Measured over 3 s of
+    # a quiet room: that virtual mic's samples were only -1/0/+1 (dither,
+    # peak 1); the laptop's real mic peaked at 32 with 63 distinct values.
+    # So "peak never above SILENT_PEAK" marks a dead input -- well below
+    # any real microphone's noise floor, and it needs no loudness tuning.
+    SILENT_PEAK = 2
+    device_name: str | None = None
+    _heard_signal: bool = False
+    _started_at: float | None = None
+
+    def mic_silent_for(self, now: float | None = None) -> float:
+        """Seconds of effective silence since start (0 once any sample
+        above SILENT_PEAK has arrived)."""
+        if self._heard_signal or self._started_at is None:
+            return 0.0
+        return (time.monotonic() if now is None else now) - self._started_at
+
+    def note_audio(self, chunk: bytes) -> None:
+        if not self._heard_signal:
+            import numpy as np
+
+            a = np.frombuffer(chunk, dtype=np.int16)
+            if a.size and int(np.abs(a.astype(np.int32)).max()) > self.SILENT_PEAK:
+                self._heard_signal = True
+
     def start(self) -> None:
         import sounddevice as sd
 
+        self.device = resolve_input_device(sd, self.device)
+        try:
+            self.device_name = str(sd.query_devices(self.device, kind="input")["name"])
+        except Exception:  # noqa: BLE001 -- name is informational only
+            self.device_name = None
+
         def callback(indata: Any, _frames: int, _time: Any, _status: Any) -> None:
+            chunk = bytes(indata)
+            self.note_audio(chunk)
             try:
-                self._audio.put_nowait(bytes(indata))
+                self._audio.put_nowait(chunk)
             except queue.Full:
                 pass  # recognizer fell behind: drop audio, never block the mic
 
+        self._started_at = time.monotonic()
         self._stream = sd.RawInputStream(
             samplerate=self.SAMPLE_RATE, blocksize=1600, dtype="int16", channels=1,
             device=self.device, callback=callback,
@@ -216,6 +252,28 @@ class VoiceCommandListener:
             self._stream = None
         if self._thread is not None:
             self._thread.join(timeout=2.0)
+
+
+def resolve_input_device(sd: Any, device: int | str | None) -> int | str | None:
+    """A name in config ("Microphone Array") usually matches the same mic
+    once per host API (MME, DirectSound, WASAPI, WDM-KS on Windows), and
+    PortAudio refuses an ambiguous name. Pick the match on the host API
+    of the system default input -- the one the OS itself would use."""
+    if not isinstance(device, str):
+        return device
+    want = device.lower()
+    matches = [i for i, d in enumerate(sd.query_devices())
+               if d["max_input_channels"] > 0 and want in d["name"].lower()]
+    if not matches:
+        raise ValueError(f"no input device matching {device!r}")
+    try:
+        default_api = sd.query_devices(kind="input")["hostapi"]
+    except Exception:  # noqa: BLE001
+        default_api = None
+    for i in matches:
+        if sd.query_devices(i)["hostapi"] == default_api:
+            return i
+    return matches[0]
 
 
 def build_listener(

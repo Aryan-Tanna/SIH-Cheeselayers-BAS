@@ -141,3 +141,32 @@ def test_module_order_reports_strict_when_forced(tmp_path):
     r = resolve(p, DEFAULTS)
     assert r.module_order.startswith("strict")
     assert "handle_a" in r.module_order
+
+
+# --- config paths are repo-relative, not CWD-relative -------------------------
+# Regression (2026-09-24): launched from another folder, the object
+# profile silently failed to load and all six lid steps were skipped.
+
+def test_resolve_from_another_working_directory_keeps_profile(tmp_path, monkeypatch):
+    from src.protocol.engine import ProtocolEngine
+    from src.protocol.loader import REPO_ROOT, resolve
+
+    monkeypatch.chdir(tmp_path)
+    r = resolve(REPO_ROOT / "configs" / "protocols" / "bas_specimen_v1.json")
+    assert r.parsed.object_profile is not None
+    assert ProtocolEngine(r).skipped == set()
+
+
+def test_missing_object_profile_fails_loudly(tmp_path):
+    import json
+
+    import pytest
+
+    from src.protocol.loader import REPO_ROOT, ProtocolLoadError, resolve
+
+    raw = json.loads((REPO_ROOT / "configs" / "protocols" / "bas_specimen_v1.json").read_text(encoding="utf-8"))
+    raw["object_profile"] = "configs/objects/no_such_profile.yaml"
+    bad = tmp_path / "p.json"
+    bad.write_text(json.dumps(raw), encoding="utf-8")
+    with pytest.raises(ProtocolLoadError, match="object_profile not found"):
+        resolve(bad)

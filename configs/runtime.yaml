@@ -10,8 +10,14 @@ schema_version: 1
 
 detector:
   # Swap to a new models/*.pt here when a new detector lands -- nothing
-  # in src/ names a weights file.
+  # in src/ names a weights file. Classes are matched by NAME, and the
+  # model is checked at load against the classes the object profile
+  # binds, so a model that renamed/dropped a class fails at startup.
   weights: models/bootstrap_v4_best.pt
+  conf: 0.25                   # re-tune per model, on the tuning clips only
+  iou: 0.5
+  imgsz: 640                   # the size v4 was trained at
+  device: cpu
 
 audio:
   enabled: true
@@ -112,3 +118,77 @@ voice_control:
     # Marks the current step done when the camera missed it (logged as an
     # operator override), then speaks the next step.
     next: [next step]
+
+# Local recording + live stream share ONE H.264 encode (src/runtime/recorder.py).
+# Local segments are MPEG-TS: measured to survive an encoder crash far
+# better than MP4 (96/105 vs 69/105 frames recovered). Play with VLC or
+# ffplay; remux to .mp4 losslessly with `ffmpeg -i seg_000.ts -c copy x.mp4`.
+recording:
+  enabled: true
+  out_dir: recordings          # <out_dir>/<session_id>/seg_000.ts + video.json
+  fps: 15                      # constant-rate output, aligned to capture timestamps
+  segment_s: 300
+  crf: 28
+  max_bitrate_kbps: 1000       # caps the stream too: restricted downlink
+  preset: ultrafast            # the detector needs the CPU more than we need bits
+  # "auto" = the ffmpeg bundled by imageio-ffmpeg (pinned, has libx264 on
+  # every OS), else ffmpeg on PATH. Or an explicit path.
+  ffmpeg: auto
+  queue_maxsize: 8
+
+# The PS's "streams video to a configurable IP". Push-only (no server, no
+# inbound port); a receiver being down costs nothing and never stops the
+# local recording. This and nothing else leaves the machine at runtime --
+# it goes only to the address set here, never to the internet. Default is
+# loopback: set the ground-station IP for a real deployment.
+#   udp://<ip>:<port>?pkt_size=1316   MPEG-TS over UDP. View: ffplay udp://@:<port>
+#   rtsp://<server>:8554/bas          push to an RTSP server (e.g. mediamtx)
+stream:
+  enabled: true
+  url: udp://127.0.0.1:5000?pkt_size=1316
+
+# Where frames come from (src/runtime/capture.py). Every frame is stamped
+# with the monotonic time at acquisition.
+capture:
+  # int = camera index; or a video file path (replayed at its own fps,
+  # like a live camera); or a stream URL (rtsp://, udp://, http://).
+  source: 0
+  # auto | dshow | msmf (Windows) | v4l2 (Linux) | avfoundation (macOS)
+  backend: auto
+  width: null                  # requests only; the device may ignore them
+  height: null
+  fps: null
+  realtime: true               # files: pace to their own fps
+  loop: false                  # files: restart at end
+  reconnect_s: 2.0             # camera lost: reopen at this interval
+  max_read_failures: 10        # consecutive failed reads before reopening
+
+# The running session (src/runtime/app.py).
+session:
+  # Hot-reloaded: edit and save this file while the co-pilot runs; a valid
+  # edit is enforced within ~1 s, an invalid one is rejected with the
+  # validator's line-numbered findings and the running protocol is kept.
+  protocol: configs/protocols/bas_specimen_v1.json
+  # null = the protocol's own object_profile (jar props). Swap to match
+  # the props on the rig -- same protocol, lid steps skipped where the
+  # props have no lid:
+  #   configs/objects/profile_rect.yaml   red + yellow slabs (no lids)
+  #   configs/objects/profile_mixed.yaml  red jar (screw cap) + yellow slab
+  object_profile: null
+  log_dir: logs                # logs/<session_id>.jsonl, hash-chained
+  operator: null               # written into every log line when set
+
+# Detections -> step events (src/perception/fusion.py). Debounce k-of-n
+# comes from the protocol's timing (configs/defaults.yaml), per object.
+# TUNE THESE ON harness/clip_fixtures "split: tune" CLIPS ONLY.
+perception:
+  enabled: true
+  # A module counts as inside the container when this fraction of its
+  # box lies inside the container's box (image space until ArUco).
+  # Swept on the tuning clips: 0.6-0.8 equal (10/12), 0.9 worse (8/12).
+  containment_min_overlap: 0.8
+  # Votes older than this (no evidence for the object) are discarded.
+  stale_s: 1.5
+  # Per-class minimum confidence on top of detector.conf, e.g. to damp a
+  # class the model over-fires on:  {red_lid: 0.5}
+  min_conf: {}

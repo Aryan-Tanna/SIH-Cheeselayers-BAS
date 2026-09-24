@@ -24,22 +24,21 @@ known-broken things not yet fixed.
 - Labels batch-1..8 = 450 frames (0 dups). Detector = `models/
   bootstrap_v4_best.pt` (val S01-S03: P.78 R.58 mAP50 .73; hand_gloved
   unmeasured; yellow_module R fell .70->.43 vs v3, cause untested).
-- Phase 2 order: audio -> recorder/streamer -> GUI. AUDIO DONE: Piper
-  TTS + Vosk "Hey BAS" pause/resume/quiet/voice/repeat/next step. Entry
-  `src/runtime/session.py` (engine not thread-safe: only via Session).
-  Demo: `scripts/audio_demo.py --all` (+`--listen` mic). NEXT: recorder.
-- Wake = HOLD: cuts speech, holds 5 s (`command_window_s`), then replays
-  the cut clip (not after pause; quiet drops prompts). Engine/timers keep
-  running -- deliberate (pause drops perception events).
-- "next step" = `engine.confirm_step`: credits the DUE step only, logs
-  operator_override + status operator_confirmed; late camera sighting of
-  it is ignored. Live mic 2026-09-24: 12/13, 0 false alerts; loud noise
-  and other voices still untested.
-- Weights path: runtime.yaml `detector.weights`. ArUco/rack NOT STARTED.
+- Phase 2 runtime DONE except perception: audio (Piper + Vosk "Hey
+  BAS"), capture, recorder+UDP stream (.ts segments), Tk GUI, all wired
+  in `src/runtime/app.py`. Run: `scripts/run_gui.py [--events ...]`.
+  Engine only via `Session` (not thread-safe). Live checks:
+  `scripts/voice_test.py`, `scripts/record_test.py`.
+- Perception v1 live (detector+fusion, container/module events; lids not yet).
+- Wake = HOLD 5 s then replay cut speech; engine/timers keep running.
+  "next step" = `engine.confirm_step` (DUE step only, logged override).
+  Live mic 12/13 + 3/3 GUI; loud noise/other voices untested.
+- Detector weights = `configs/runtime.yaml` `detector.weights` (v5 swap).
+- ArUco/rack geometry NOT STARTED -- blocks kinematics on real video.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
   after vision install; `numpy.trapz` shim; Windows eval workers=0;
   never re-run `build_review_sheet.py`; Dataset22 gloves: leave as is.
-  Install `.[vision,audio,dev]`, then the opencv fix. 322/322 tests.
+  Install `.[vision,audio,dev]`, then the opencv fix. 413/413 tests.
 
 ## Your role
 

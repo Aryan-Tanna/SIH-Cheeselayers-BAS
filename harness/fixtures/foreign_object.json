@@ -2,10 +2,28 @@
   "clip_id": "foreign_object",
   "protocol_id": "bas_specimen_v1",
   "expected_events": [
-    { "t": 3.0, "type": "anomaly", "code": "foreign_object", "target": "pen", "tolerance_s": 0.1 },
-    { "t": 4.0, "type": "anomaly", "code": "foreign_object", "target": "pen", "tolerance_s": 0.1 },
-    { "t": 5.0, "type": "step_complete", "step": "open_a_lid", "tolerance_s": 0.1 }
+    {
+      "t": 3.0,
+      "type": "anomaly",
+      "code": "foreign_object",
+      "target": "pen",
+      "tolerance_s": 0.1
+    },
+    {
+      "t": 4.0,
+      "type": "anomaly",
+      "code": "foreign_object",
+      "target": "pen",
+      "tolerance_s": 0.1
+    },
+    {
+      "t": 5.0,
+      "type": "step_complete",
+      "step": "open_a_lid",
+      "tolerance_s": 0.1
+    }
   ],
   "expected_alerts": 1,
+  "expected_missed_steps": [],
   "partial": true
 }

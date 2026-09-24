@@ -49,6 +49,20 @@ the ActionEvent list differs.
 
 Fixture format (harness/fixtures/*.json) — see CLAUDE.md for the full
 spec: expected_events with tolerance_s, expected_alerts, partial.
+
+Alerts are planned by the SAME Announcer the live runtime uses
+(src/runtime/announcer.py), once per engine batch, so the harness counts
+what the operator actually hears -- after root-cause cooldown, the rate
+cap, and merging (all steps missed at the end of a run are ONE
+utterance). Two separate assertions:
+
+  expected_alerts        spoken alert utterances. Guards alert restraint:
+                         a regression back to one alert per missed step
+                         fails here even if coverage is complete.
+  expected_missed_steps  union of step_ids across spoken alerts must equal
+                         this set exactly. Guards coverage: every missed
+                         step is covered by something spoken, whatever the
+                         grouping.
 """
 
 from __future__ import annotations
@@ -70,6 +84,7 @@ from src.protocol.debounce import Debouncer  # noqa: E402
 from src.protocol.engine import ProtocolEngine  # noqa: E402
 from src.protocol.events import ActionEvent, AnomalyEvent, EngineEvent  # noqa: E402
 from src.protocol.loader import ResolvedProtocol, resolve  # noqa: E402
+from src.runtime.announcer import Announcer, AnnouncerSettings  # noqa: E402
 from src.runtime.clock import VirtualClock  # noqa: E402
 
 DEFAULT_PROTOCOL_ROOT = REPO_ROOT
@@ -87,7 +102,8 @@ class ReplayResult:
     passed: bool | None  # None when run with no fixture (smoke mode)
     mismatches: list[Mismatch] = field(default_factory=list)
     expected_alerts: int | None = None
-    actual_alerts: int = 0  # SPOKEN — passed the alert manager's suppression
+    actual_alerts: int = 0  # SPOKEN utterances (after suppression and merging)
+    missed_steps_spoken: list[str] = field(default_factory=list)  # union of step_ids
     violations_logged: int = 0  # LOGGED — every violation, always, per "log completeness is unconditional"
     n_events_in: int = 0
     n_engine_events: int = 0
@@ -191,10 +207,14 @@ def run_replay(
     ppath = protocol_path or (DEFAULT_PROTOCOL_ROOT / "configs" / "protocols" / f"{protocol_id}.json")
     dpath = defaults_path or (DEFAULT_PROTOCOL_ROOT / "configs" / "defaults.yaml")
 
-    resolved = resolve(ppath, dpath)
+    # Optional: the props on the rig (same protocol, profile swap) -- clip
+    # streams from real video carry the profile they were recorded with.
+    resolved = resolve(ppath, dpath, detection_stream.get("object_profile"))
     clock = VirtualClock()
     engine = ProtocolEngine(resolved, clock=clock, operator=operator)
-    alert_manager = AlertManager.from_policy(resolved.alert_policy, clock=clock)
+    announcer = Announcer(
+        resolved, AlertManager.from_policy(resolved.alert_policy, clock=clock), AnnouncerSettings()
+    )
 
     logger = SessionLogger(log_path, session_id=clip_id) if log_path else None
 
@@ -213,24 +233,32 @@ def run_replay(
     seen_out_idx = 0
     alert_latencies: list[float] = []
 
+    missed_spoken: set[str] = set()
+
     def drain() -> None:
         nonlocal seen_out_idx
-        for e in engine.out[seen_out_idx:]:
+        batch = engine.out[seen_out_idx:]
+        seen_out_idx = len(engine.out)
+        alertable = False
+        for e in batch:
             if logger:
                 logger.log_event(e)
+            if e.event_type == "violation":
+                result.violations_logged += 1
             if e.event_type in ("violation", "anomaly"):
-                if e.event_type == "violation":
-                    result.violations_logged += 1
-                t0 = time.perf_counter()
-                decision = alert_manager.decide(e.severity or "advisory", e.root_cause_id or "")
-                alert_latencies.append(time.perf_counter() - t0)
-                if decision.speak:
-                    result.actual_alerts += 1
+                alertable = True
             if e.event_type == "engine_anomaly":
                 result.n_anomalies += 1
             if e.event_type == "unmatched_action":
                 result.n_unmatched += 1
-        seen_out_idx = len(engine.out)
+        t0 = time.perf_counter()
+        requests = announcer.plan(batch)
+        if alertable:
+            alert_latencies.append(time.perf_counter() - t0)
+        for r in requests:
+            if r.kind == "alert" and r.segments:
+                result.actual_alerts += 1
+                missed_spoken.update(r.step_ids)
 
     try:
         for raw in raw_events:
@@ -283,6 +311,7 @@ def run_replay(
     result.mean_alert_processing_ms = (
         1000 * sum(alert_latencies) / len(alert_latencies) if alert_latencies else 0.0
     )
+    result.missed_steps_spoken = sorted(missed_spoken)
     result.actual_events = [
         s for s in (_to_actual_shape(e) for e in engine.out) if s is not None
     ]
@@ -325,6 +354,16 @@ def run_replay(
                     result.passed = False
                     if act["type"] == "violation":
                         result.false_alarms += 1
+
+        if "expected_missed_steps" in fixture:
+            expected_missed = set(fixture["expected_missed_steps"])
+            if missed_spoken != expected_missed:
+                result.mismatches.append(Mismatch(
+                    "missing" if expected_missed - missed_spoken else "unexpected",
+                    f"missed steps covered by spoken alerts {sorted(missed_spoken)} "
+                    f"!= expected_missed_steps {sorted(expected_missed)}",
+                ))
+                result.passed = False
 
         if result.expected_alerts is not None and result.actual_alerts != result.expected_alerts:
             result.mismatches.append(Mismatch(

@@ -34,10 +34,10 @@ from typing import Callable
 
 from src.logging.session_log import SessionLogger
 from src.protocol.alerts import AlertManager
-from src.protocol.engine import ProtocolEngine
+from src.protocol.engine import ProtocolEngine, split_target
 from src.protocol.events import EngineEvent, SemanticEvent
 from src.protocol.loader import ResolvedProtocol
-from src.runtime.announcer import Announcer, AnnouncerSettings, AudioRequest
+from src.runtime.announcer import Announcer, AnnouncerSettings, AudioRequest, role_spoken_name
 from src.runtime.clock import Clock, SystemClock
 from src.runtime.voice_control import WAKE
 
@@ -128,6 +128,48 @@ class Session:
                 extra.append(AudioRequest(kind="system", release=True,
                                           replay_prompt=command != "quiet"))
             self._flush(extra)
+
+    def snapshot(self) -> dict:
+        """Read-only view of protocol state for a GUI, taken under the
+        lock so it is consistent. Each step's status is one of:
+        done, confirmed (operator said "next step"), missed (skip
+        violation), not_applicable (condition false), open (due now),
+        pending."""
+        with self._lock:
+            eng = self.engine
+            open_steps = eng.satisfiable_steps()
+            missed = {
+                e.step_id for e in eng.out
+                if e.event_type == "violation" and e.violation_type == "skip"
+            }
+            steps = []
+            for sid in eng.parsed.order:
+                node = eng.parsed.nodes[sid]
+                if sid in eng.confirmed_by_operator:
+                    status = "confirmed"
+                elif sid in eng.complete:
+                    status = "done"
+                elif sid in eng.skipped:
+                    status = "not_applicable"
+                elif sid in missed:
+                    status = "missed"
+                elif sid in open_steps:
+                    status = "open"
+                else:
+                    status = "pending"
+                role = split_target(node.target)[0]
+                steps.append({"id": sid, "prompt": node.prompt or sid, "status": status,
+                              "target": node.target,
+                              "object": role_spoken_name(self.announcer.resolved, role)})
+            return {
+                "protocol_id": eng.parsed.protocol_id,
+                "title": eng.parsed.raw.get("title", eng.parsed.protocol_id),
+                "steps": steps,
+                "current_step": self.announcer.current_step(),
+                "mode": self.announcer.mode,
+                "paused": eng.paused,
+                "violations": sum(1 for e in eng.out if e.event_type == "violation"),
+            }
 
     def reload_protocol(self, resolved: ResolvedProtocol) -> None:
         """Hot reload. The caller validates first (see engine.reload_protocol)."""
