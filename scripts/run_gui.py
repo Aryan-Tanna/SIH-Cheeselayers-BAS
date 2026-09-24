@@ -44,6 +44,10 @@ def main() -> int:
             if args.screenshot is not None:
                 from PIL import ImageGrab
 
+                root.attributes("-topmost", True)  # grab the window, not whatever is on top
+                root.lift()
+                root.update()
+                root.after(300)
                 root.update()
                 x, y = root.winfo_rootx(), root.winfo_rooty()
                 w, h = root.winfo_width(), root.winfo_height()

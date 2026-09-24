@@ -126,10 +126,30 @@ rack-space geometry + deterministic constraint engine. Detail in
       hot reload on file save (invalid edits rejected, old protocol
       kept), scripted `--events` start at the first camera frame.
       `scripts/run_gui.py` / `scripts/run_copilot.py` (headless).
-   e. **NEXT (needs perception):** detections -> semantic events
-      (tracker + kinematics + debouncer -> ActionEvent/AnomalyEvent),
-      loading `detector.weights` from config. Blocked for real video on
-      ArUco/rack geometry (item 3).
+   e. **Perception -> events -- BUILT (v1, 2026-09-24).**
+      `src/perception/detector.py` (weights from config, classes checked
+      BY NAME against the profile at load: v5 = one-line swap, fails
+      loudly if it drops a class), `src/perception/fusion.py` (per-object
+      k-of-n; container open/close + module remove/return; image-space
+      containment), `src/runtime/perception_stage.py` (newest frame only,
+      capture timestamps). On by default with a camera; `--no-perception`.
+      GUI draws boxes ([D]) + DET badge. Same protocol on any props:
+      `--profile configs/objects/profile_rect.yaml` (slabs, 6 steps) or
+      `profile_mixed.yaml` (red jar + yellow slab, 9 steps).
+      Scored on real clips (`scripts/replay_clip.py`, fixtures in
+      `harness/clip_fixtures/`, clips in gitignored `test_clips/`):
+      tune (Aryan's train1-3) 10/12 events, held-out (Parth's test1-2)
+      5/13 -- v4 barely detects an OPEN container in Parth's oblique
+      view (13% of frames vs 80% in Aryan's). test2's two-objects-out
+      breach IS detected. Live on test2: 9.8 det-fps / 115 ms with 1080p
+      recording, 16.7 / 74 ms without. Known limits: top-down returns up
+      to ~3 s early (module hovering above box; a hand-off rule was
+      tried and reverted: no gain); lid open/close/stow not perceived
+      (operator "next step"). NEEDS: v5 trained with frames from Parth's
+      setup (not test1/test2); Parth to confirm the test fixture times.
+      train1-3 were NOT in v4's training data (S00 only, per Aryan):
+      the high scores on Aryan's setup are real generalization to new
+      recordings of the same setup; the gap on Parth's is the viewpoint.
    Harness (2026-09-24): alerts are planned by the live Announcer, so
    `expected_alerts` = SPOKEN utterances (cascade 4 -> 1, skipped_step
    3 -> 2), plus `expected_missed_steps` == union of the alerts'
@@ -164,7 +184,7 @@ kept here so it can be rebuilt anywhere if needed.
    documented in `pyproject.toml`:
    `pip uninstall -y opencv-python` and
    `pip install --force-reinstall --no-deps opencv-contrib-python==5.0.0.93`.
-   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **385
+   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **413
    passed**. Phase-2 work needs nothing beyond this step.
 2. **Video / frames** (only for labelling or training): get `clips/`
    (71 mp4, ~6.6 GB) from the team, then `python scripts/normalize_clips.py`

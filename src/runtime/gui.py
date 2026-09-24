@@ -48,6 +48,12 @@ STATUS_STYLE = {
     "pending": ("·", MUTED, ""),
 }
 SEVERITY_COLOUR = {"warning": BAD, "caution": WARN, "advisory": ACCENT}
+DET_BGR = {  # overlay colours per detector class (OpenCV BGR)
+    "case_open": (255, 255, 255), "case_closed": (170, 170, 170),
+    "red_module": (60, 60, 255), "yellow_module": (0, 220, 255),
+    "red_lid": (200, 60, 255), "yellow_lid": (0, 150, 255),
+    "hand_bare": (80, 220, 80), "hand_gloved": (255, 200, 0),
+}
 
 
 # ----------------------------------------------------------------------
@@ -98,6 +104,14 @@ def current_step_text(snapshot: dict[str, Any]) -> str:
     ):
         return "Experiment complete."
     return "Waiting..."
+
+
+def det_badge(st: Any) -> tuple[str, str]:
+    """Detector rate and camera-to-detections latency, measured live."""
+    if not getattr(st, "perception", False):
+        return "DET off", PANEL_2
+    return (f"DET {st.detector_fps:4.1f} fps  {st.frame_latency_ms:4.0f} ms  [D]",
+            WARN if st.detector_fps and st.detector_fps < 5 else PANEL_2)
 
 
 def mic_badge(st: Any) -> tuple[str, str]:
@@ -189,7 +203,8 @@ class CopilotGUI:
         self.title_lbl = tk.Label(header, text="", bg=PANEL, fg=FG, font=FONT_BOLD)
         self.title_lbl.pack(side="left", padx=12, pady=8)
         self.badges: dict[str, tk.Label] = {}
-        for key in ("stream", "rec", "mic", "paused", "mode"):
+        self.show_dets = True
+        for key in ("stream", "rec", "det", "mic", "paused", "mode"):
             lbl = tk.Label(header, text="", bg=PANEL_2, fg=FG, font=FONT_BOLD, padx=8, pady=2)
             lbl.pack(side="right", padx=4, pady=8)
             self.badges[key] = lbl
@@ -260,6 +275,7 @@ class CopilotGUI:
         self.root.bind("<r>", lambda _e: self.app.command("repeat"))
         self.root.bind("<q>", lambda _e: self._toggle_mode())
         self.root.bind("<F5>", lambda _e: self.app.reload_protocol())
+        self.root.bind("<d>", lambda _e: setattr(self, "show_dets", not self.show_dets))
 
     # --- actions ----------------------------------------------------------------
 
@@ -295,7 +311,20 @@ class CopilotGUI:
         tw, th = fit_size(w, h, self.video_box.winfo_width(), self.video_box.winfo_height())
         if tw < 2 or th < 2:
             return
-        rgb = cv2.cvtColor(cv2.resize(img, (tw, th), interpolation=cv2.INTER_AREA), cv2.COLOR_BGR2RGB)
+        small = cv2.resize(img, (tw, th), interpolation=cv2.INTER_AREA)
+        latest = getattr(self.app, "latest_detections", None)
+        if self.show_dets and latest is not None:
+            import numpy as np
+
+            sx, sy = tw / w, th / h
+            for d in latest()[1]:
+                c = DET_BGR.get(d.cls, (255, 0, 255))
+                pts = np.array([(x * sx, y * sy) for x, y in d.corners], dtype=np.int32)
+                cv2.polylines(small, [pts.reshape(-1, 1, 2)], True, c, 2)
+                x0, y0 = int(pts[:, 0].min()), int(pts[:, 1].min())
+                cv2.putText(small, f"{d.cls} {d.conf:.2f}", (x0, max(14, y0 - 4)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.45, c, 1, cv2.LINE_AA)
+        rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
         self._photo = ImageTk.PhotoImage(Image.fromarray(rgb))
         self.video.configure(image=self._photo, text="")
 
@@ -313,6 +342,7 @@ class CopilotGUI:
         self._badge("mode", "QUIET" if snap["mode"] == "quiet" else "VOICE", PANEL_2)
         self._badge("paused", "PAUSED" if snap["paused"] else "RUNNING", WARN if snap["paused"] else OK)
         self._badge("mic", *mic_badge(st))
+        self._badge("det", *det_badge(st))
         self._badge("rec", f"● REC  {st.capture_fps:4.1f} fps" if st.recording else "REC off",
                     BAD if st.recording else PANEL_2)
         self._badge("stream", f"STREAM {st.stream_url.split('?')[0]}" if st.stream_url else "STREAM off",

@@ -207,7 +207,9 @@ def run_replay(
     ppath = protocol_path or (DEFAULT_PROTOCOL_ROOT / "configs" / "protocols" / f"{protocol_id}.json")
     dpath = defaults_path or (DEFAULT_PROTOCOL_ROOT / "configs" / "defaults.yaml")
 
-    resolved = resolve(ppath, dpath)
+    # Optional: the props on the rig (same protocol, profile swap) -- clip
+    # streams from real video carry the profile they were recorded with.
+    resolved = resolve(ppath, dpath, detection_stream.get("object_profile"))
     clock = VirtualClock()
     engine = ProtocolEngine(resolved, clock=clock, operator=operator)
     announcer = Announcer(

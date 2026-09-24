@@ -2,7 +2,8 @@
 
     camera/file --> VideoSource --+--> Recorder (local segments + stream)
                                   +--> latest frame (GUI)
-                                  '--> [perception -> semantic events: NOT BUILT YET]
+                                  '--> PerceptionStage (newest frame only):
+                                       detector -> fusion -> step events
     scripted events (--events)  ---> Session  <--- "Hey BAS" commands / GUI buttons
                                         |  \\---> JSONL hash-chained log
                                         '-----> announcer -> AudioWorker -> speaker
@@ -13,10 +14,11 @@ All timestamps are time.monotonic(): capture stamps frames with it and
 the session clock is the same clock, so the log's ts_monotonic and the
 recording's video offset (video.json: ts - t0) line up exactly.
 
-Detections -> semantic events (the perception/fusion layer) does not
-exist yet. Until it does, the session is driven by the operator ("Hey
-BAS, next step" / the GUI) and, for demos and tests, by a scripted
-event stream (harness/synthetic format) replayed in real time.
+Perception emits container open/close and module remove/return
+(src/perception/fusion.py). Lid steps are not perceived yet: the
+operator confirms them ("Hey BAS, next step" / the GUI). A scripted
+event stream (harness/synthetic format) can still drive the session for
+demos and tests, with or without perception.
 
 Every optional part -- voice, microphone, camera, recording, stream --
 degrades with a printed warning; none of them can stop a session.
@@ -49,6 +51,7 @@ from src.runtime.audio import console_printer
 from src.runtime.capture import CaptureConfig, VideoSource
 from src.runtime.clock import SystemClock
 from src.runtime.config import AudioStage, build_audio_stage
+from src.runtime.perception_stage import PerceptionStage, build_perception
 from src.runtime.pipeline import Frame
 from src.runtime.recorder import Recorder, RecorderConfig
 from src.runtime.session import Session
@@ -59,18 +62,19 @@ class ProtocolInvalid(ValueError):
     pass
 
 
-def load_validated(protocol_path: Path, defaults_path: Path = DEFAULT_DEFAULTS_PATH) -> ResolvedProtocol:
+def load_validated(protocol_path: Path, defaults_path: Path = DEFAULT_DEFAULTS_PATH,
+                   object_profile: str | Path | None = None) -> ResolvedProtocol:
     """Validator first (line-numbered findings), then resolve. A malformed
     protocol fails loudly here -- at load or hot reload, never mid-run."""
     from scripts.validate_protocol import validate
 
-    findings = validate(protocol_path, defaults_path)
+    findings = validate(protocol_path, defaults_path, object_profile)
     if findings:
         raise ProtocolInvalid(
             f"{protocol_path} failed validation ({len(findings)} finding(s)):\n"
             + "\n".join(str(f) for f in findings)
         )
-    return resolve(protocol_path, defaults_path)
+    return resolve(protocol_path, defaults_path, object_profile)
 
 
 @dataclass
@@ -84,6 +88,8 @@ class AppOptions:
     audio: bool = True
     session_id: str | None = None
     stream_url: str | None = None  # override stream.url (e.g. udp://<phone-ip>:5000)
+    object_profile: str | None = None  # override session.object_profile / the protocol's
+    perception: bool = True  # detector + fusion on camera frames (needs capture)
 
 
 @dataclass
@@ -100,6 +106,10 @@ class AppStatus:
     listening_armed: bool
     mic_name: str | None = None
     mic_silent: bool = False
+    perception: bool = False
+    detector_fps: float = 0.0
+    frame_latency_ms: float = 0.0
+    perception_states: dict[str, str] = field(default_factory=dict)
     recent_events: list[dict[str, Any]] = field(default_factory=list)
     recent_speech: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -125,7 +135,10 @@ class CopilotApp:
             self.opts.protocol or sess_cfg.get("protocol", "configs/protocols/bas_specimen_v1.json")
         )
         self.defaults_path = DEFAULT_DEFAULTS_PATH
-        self.resolved = load_validated(self.protocol_path, self.defaults_path)
+        # Which props are on the rig: the same protocol runs on jar, slab
+        # or mixed props by swapping only the profile.
+        self.object_profile = self.opts.object_profile or sess_cfg.get("object_profile")
+        self.resolved = load_validated(self.protocol_path, self.defaults_path, self.object_profile)
         # CLAUDE.md: the resolved constraint set is printed at startup,
         # [default] vs [protocol], so nothing is enforced invisibly.
         self.printer(format_resolved_report(self.resolved, IMPLEMENTED_CONSTRAINT_IDS))
@@ -176,6 +189,17 @@ class CopilotApp:
 
         self._latest_frame: Frame | None = None
         self._frame_lock = threading.Lock()
+
+        # --- perception ---------------------------------------------------------
+        self.perception: PerceptionStage | None = None
+        if self.opts.perception and self.opts.capture:
+            self.perception, why = build_perception(
+                cfg, self.resolved, REPO_ROOT, self.session.on_event, printer)
+            if why:
+                self._warn(why)
+            else:
+                self.printer(f"perception: {self.perception.detector.weights_path.name}, "
+                             f"classes checked against the object profile")
         self.capture: VideoSource | None = None
         if self.opts.capture:
             cap_cfg = CaptureConfig.from_config(cfg)
@@ -203,7 +227,11 @@ class CopilotApp:
         self.recorder.submit(frame.payload, frame.ts_monotonic)
         with self._frame_lock:
             self._latest_frame = frame
-        # perception would be fed here (bounded, dropping queue)
+        if self.perception is not None:
+            self.perception.submit(frame)
+
+    def latest_detections(self) -> tuple[int, list]:
+        return self.perception.latest_detections() if self.perception else (-1, [])
 
     def _on_voice(self, parsed: Any) -> None:
         if parsed.command == "wake":
@@ -251,6 +279,10 @@ class CopilotApp:
             mic_name=self.listener.device_name if self.listener else None,
             mic_silent=bool(self.listener
                             and self.listener.mic_silent_for() > self.MIC_SILENCE_WARN_S),
+            perception=self.perception is not None,
+            detector_fps=self.perception.stats.detector_fps if self.perception else 0.0,
+            frame_latency_ms=self.perception.stats.frame_latency_ms if self.perception else 0.0,
+            perception_states=self.perception.fusion.states() if self.perception else {},
             recent_events=list(self._recent_events),
             recent_speech=list(self._recent_speech),
             warnings=list(self.warnings),
@@ -267,6 +299,8 @@ class CopilotApp:
             self.audio.worker.start()
             self.audio.prewarm_async(speakable_phrases(self.resolved))
         self.recorder.start()
+        if self.perception is not None:
+            self.perception.start()
         if self.capture is not None:
             self.capture.start()
         if self.listener is not None:
@@ -318,12 +352,18 @@ class CopilotApp:
 
     def reload_protocol(self) -> bool:
         try:
-            resolved = load_validated(self.protocol_path, self.defaults_path)
+            resolved = load_validated(self.protocol_path, self.defaults_path, self.object_profile)
         except Exception as exc:  # noqa: BLE001 -- ProtocolInvalid, JSON errors, missing profile
             self._warn(f"protocol reload REJECTED, keeping the running protocol:\n{exc}")
             return False
         self.session.reload_protocol(resolved)
         self.resolved = resolved
+        if self.perception is not None:
+            # roles/profile may have changed: rebuild the fusion (keeps the model)
+            from src.perception.fusion import FusionConfig, SceneFusion, binding_for
+
+            self.perception.fusion = SceneFusion(
+                binding_for(resolved), FusionConfig.from_config(self.cfg, resolved.timing))
         self.audio.prewarm_async(speakable_phrases(resolved))
         self.printer("protocol reloaded:\n" + format_resolved_report(resolved, IMPLEMENTED_CONSTRAINT_IDS))
         return True
@@ -377,6 +417,8 @@ class CopilotApp:
             self.listener.stop()
         if self.capture is not None:
             self.capture.stop()
+        if self.perception is not None:
+            self.perception.stop()
         side = self.recorder.stop()
         if self.audio.worker is not None:
             self.audio.worker.drain(10.0)
@@ -393,6 +435,10 @@ class CopilotApp:
             "steps_total": sum(s["status"] != "not_applicable" for s in snap["steps"]),
             "violations": snap["violations"],
             "frames_captured": self.capture.stats.frames if self.capture else 0,
+            "frames_detected": self.perception.stats.frames_processed if self.perception else 0,
+            "detector_fps": round(self.perception.stats.detector_fps, 1) if self.perception else 0,
+            "frame_latency_ms": round(self.perception.stats.frame_latency_ms) if self.perception else 0,
+            "perceived_events": self.perception.stats.events if self.perception else 0,
             "video_frames": self.recorder.stats.frames_written,
             "recording_dir": str(self.recorder.dir) if side.t0_monotonic is not None else None,
             "recording_error": side.error,

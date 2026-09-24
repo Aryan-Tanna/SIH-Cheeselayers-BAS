@@ -1,0 +1,43 @@
+# configs/objects/profile_mixed.yaml
+#
+# Mixed props, one lidded and one not -- the addendum's "strongest single
+# demonstration that conditional execution is real": module_a is the red
+# cylindrical jar with a screw cap, module_b the yellow slab with no lid.
+# With bas_specimen_v1 unchanged, module_a's open/stow/close-lid steps
+# run and module_b's are skipped silently. This is Aryan's recording
+# setup (test_clips/train*.mp4, 2026-09-24).
+
+schema_version: 1
+profile_id: mixed
+description: "Mixed props: red jar with screw cap (module_a), yellow slab without lid (module_b)."
+
+roles:
+  container:
+    spoken_name: payload container
+    state_class_ids:
+      open: case_open
+      closed: case_closed
+    has_lid: true
+    lid_type: hinged
+    thresholds:
+      grasp_distance_px: 40
+      lid_open_angle_deg: 35
+
+  module_a:
+    spoken_name: red jar
+    class_id: red_module
+    lid_class_id: red_lid
+    has_lid: true
+    lid_type: screw
+    thresholds:
+      grasp_distance_px: 30
+      lid_open_travel_px: 18
+
+  module_b:
+    spoken_name: yellow slab
+    class_id: yellow_module
+    has_lid: false
+
+detector_classes_not_role_bound:
+  - hand_gloved
+  - hand_bare

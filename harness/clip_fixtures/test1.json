@@ -1,0 +1,48 @@
+{
+  "clip_id": "test1",
+  "protocol_id": "bas_specimen_v1",
+  "object_profile": "configs/objects/profile_rect.yaml",
+  "split": "held_out",
+  "_note": "Parth's setup, oblique front view, red+yellow slabs. Clean run in free order (yellow first). HELD OUT: never tune on this clip. Hand-drafted from 1 fps strips -- times +/- 1 s; to be confirmed by Parth.",
+  "expected_events": [
+    {
+      "t": 6.5,
+      "type": "step_complete",
+      "step": "open_container",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 10.5,
+      "type": "step_complete",
+      "step": "remove_b",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 21.5,
+      "type": "step_complete",
+      "step": "return_b",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 24.5,
+      "type": "step_complete",
+      "step": "remove_a",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 34.0,
+      "type": "step_complete",
+      "step": "return_a",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 36.5,
+      "type": "step_complete",
+      "step": "close_container",
+      "tolerance_s": 2.0
+    }
+  ],
+  "partial": false,
+  "expected_missed_steps_note": "not asserted for real clips yet (lid steps need operator confirmation)",
+  "expected_alerts": 0
+}

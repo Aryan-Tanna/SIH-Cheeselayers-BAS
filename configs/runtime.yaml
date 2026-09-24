@@ -10,8 +10,14 @@ schema_version: 1
 
 detector:
   # Swap to a new models/*.pt here when a new detector lands -- nothing
-  # in src/ names a weights file.
+  # in src/ names a weights file. Classes are matched by NAME, and the
+  # model is checked at load against the classes the object profile
+  # binds, so a model that renamed/dropped a class fails at startup.
   weights: models/bootstrap_v4_best.pt
+  conf: 0.25                   # re-tune per model, on the tuning clips only
+  iou: 0.5
+  imgsz: 640                   # the size v4 was trained at
+  device: cpu
 
 audio:
   enabled: true
@@ -163,5 +169,26 @@ session:
   # edit is enforced within ~1 s, an invalid one is rejected with the
   # validator's line-numbered findings and the running protocol is kept.
   protocol: configs/protocols/bas_specimen_v1.json
+  # null = the protocol's own object_profile (jar props). Swap to match
+  # the props on the rig -- same protocol, lid steps skipped where the
+  # props have no lid:
+  #   configs/objects/profile_rect.yaml   red + yellow slabs (no lids)
+  #   configs/objects/profile_mixed.yaml  red jar (screw cap) + yellow slab
+  object_profile: null
   log_dir: logs                # logs/<session_id>.jsonl, hash-chained
   operator: null               # written into every log line when set
+
+# Detections -> step events (src/perception/fusion.py). Debounce k-of-n
+# comes from the protocol's timing (configs/defaults.yaml), per object.
+# TUNE THESE ON harness/clip_fixtures "split: tune" CLIPS ONLY.
+perception:
+  enabled: true
+  # A module counts as inside the container when this fraction of its
+  # box lies inside the container's box (image space until ArUco).
+  # Swept on the tuning clips: 0.6-0.8 equal (10/12), 0.9 worse (8/12).
+  containment_min_overlap: 0.8
+  # Votes older than this (no evidence for the object) are discarded.
+  stale_s: 1.5
+  # Per-class minimum confidence on top of detector.conf, e.g. to damp a
+  # class the model over-fires on:  {red_lid: 0.5}
+  min_conf: {}

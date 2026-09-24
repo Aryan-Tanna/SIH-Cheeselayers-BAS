@@ -1,0 +1,55 @@
+{
+  "clip_id": "test2",
+  "protocol_id": "bas_specimen_v1",
+  "object_profile": "configs/objects/profile_rect.yaml",
+  "split": "held_out",
+  "_note": "Parth's setup. Red out ~7.5 s, then yellow out ~14 s while red is still out: two DISTINCT remove events and one mutual_exclusion_breach on module_b. HELD OUT: never tune on this clip. Times +/- 1 s; to be confirmed by Parth.",
+  "expected_events": [
+    {
+      "t": 4.5,
+      "type": "step_complete",
+      "step": "open_container",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 7.5,
+      "type": "step_complete",
+      "step": "remove_a",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 14.0,
+      "type": "step_complete",
+      "step": "remove_b",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 14.0,
+      "type": "violation",
+      "code": "mutual_exclusion_breach",
+      "target": "module_b",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 20.0,
+      "type": "step_complete",
+      "step": "return_a",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 25.5,
+      "type": "step_complete",
+      "step": "return_b",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 28.0,
+      "type": "step_complete",
+      "step": "close_container",
+      "tolerance_s": 2.0
+    }
+  ],
+  "partial": false,
+  "expected_missed_steps_note": "not asserted for real clips yet (lid steps need operator confirmation)",
+  "expected_alerts": 1
+}

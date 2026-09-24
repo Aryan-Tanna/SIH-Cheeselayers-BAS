@@ -440,9 +440,15 @@ def apply_force_module_order(parsed: ParsedProtocol) -> None:
 def resolve(
     protocol_path: str | Path,
     defaults_path: str | Path = DEFAULT_DEFAULTS_PATH,
+    object_profile: str | Path | None = None,
 ) -> ResolvedProtocol:
+    """object_profile, when given, replaces the protocol's own
+    `object_profile` -- the addendum's "one protocol runs on jar, slab and
+    mixed props with only a profile swap", without copying the protocol."""
     defaults = load_yaml(defaults_path)
     protocol_raw = load_json(protocol_path)
+    if object_profile is not None:
+        protocol_raw["object_profile"] = str(object_profile)
 
     parsed = parse_protocol(protocol_raw)
     apply_force_module_order(parsed)

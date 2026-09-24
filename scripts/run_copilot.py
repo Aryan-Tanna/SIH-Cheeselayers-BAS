@@ -37,19 +37,26 @@ def build_options(args: argparse.Namespace) -> AppOptions:
         stream_url = f"udp://{host}:{port or 5000}?pkt_size=1316"
     return AppOptions(
         protocol=args.protocol, source=source, events=args.events, stream_url=stream_url,
+        object_profile=args.profile,
         voice_control=not args.no_voice_control, capture=not args.no_capture,
         record=not args.no_record, audio=not args.no_audio,
+        perception=not args.no_perception,
     )
 
 
 def add_common_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--protocol", type=Path, default=None)
+    ap.add_argument("--profile", default=None,
+                    help="object profile for the props on the rig, e.g. "
+                         "configs/objects/profile_rect.yaml (slabs) or profile_mixed.yaml")
     ap.add_argument("--source", default=None, help="camera index, video file or stream URL")
     ap.add_argument("--events", type=Path, default=None, help="scripted event stream JSON")
     ap.add_argument("--no-voice-control", action="store_true")
     ap.add_argument("--no-capture", action="store_true")
     ap.add_argument("--no-record", action="store_true")
     ap.add_argument("--no-audio", action="store_true")
+    ap.add_argument("--no-perception", action="store_true",
+                    help="no detector: steps only via voice/GUI/--events")
     ap.add_argument("--stream-to", default=None, metavar="IP[:PORT]",
                     help="stream to this receiver (UDP, default port 5000) instead of stream.url")
 

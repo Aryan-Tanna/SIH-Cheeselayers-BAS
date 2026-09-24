@@ -15,3 +15,4 @@ video.zip
 *.egg-info/
 recordings/
 logs/
+test_clips/

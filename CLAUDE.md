@@ -31,14 +31,14 @@ known-broken things not yet fixed.
   in `src/runtime/app.py`. Run: `scripts/run_gui.py [--events ...]`.
   Engine only via `Session` (not thread-safe). Live checks:
   `scripts/voice_test.py`, `scripts/record_test.py`.
-- MISSING: detections->events; meanwhile drive via "next step"/--events.
+- Perception v1 live (detector+fusion, container/module events; lids not yet).
 - "Hey BAS" live-tested incl. "next step" (3/3 in the GUI session).
 - Detector weights = `configs/runtime.yaml` `detector.weights` (v5 swap).
 - ArUco/rack geometry NOT STARTED -- blocks kinematics on real video.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
   after vision install; `numpy.trapz` shim; Windows eval workers=0;
   never re-run `build_review_sheet.py`; Dataset22 gloves: leave as is.
-  Install `.[vision,audio,dev]`, then the opencv fix. 385/385 tests.
+  Install `.[vision,audio,dev]`, then the opencv fix. 413/413 tests.
 
 ## Your role
 

@@ -28,12 +28,20 @@ roles:
       grasp_distance_px: 40
       lid_open_angle_deg: 35
 
+  # Detector classes are colour-based and cover both slab and cylinder
+  # shapes (configs/objects/LABELLING_RULINGS.md), so a slab binds to the
+  # same red_module / yellow_module classes as a jar. (This file said
+  # `class_id: slab` -- a class the detector has never had.)
   module_a:
-    spoken_name: first slab
-    class_id: slab
+    spoken_name: red slab
+    class_id: red_module
     has_lid: false
 
   module_b:
-    spoken_name: second slab
-    class_id: slab
+    spoken_name: yellow slab
+    class_id: yellow_module
     has_lid: false
+
+detector_classes_not_role_bound:
+  - hand_gloved
+  - hand_bare
