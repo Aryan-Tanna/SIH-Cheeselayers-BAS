@@ -157,3 +157,19 @@ def test_video_file_source_records_with_real_ffmpeg(tmp_path):
     assert summary["frames_captured"] == 30
     assert summary["video_frames"] >= 14 and summary["recording_error"] is None
     assert list(Path(summary["recording_dir"]).glob("seg_*.ts"))
+
+
+def test_stream_to_override_sets_the_stream_url(tmp_path):
+    import argparse
+
+    from scripts.run_copilot import add_common_args, build_options
+
+    ap = argparse.ArgumentParser()
+    add_common_args(ap)
+    opts = build_options(ap.parse_args(["--stream-to", "192.168.1.42"]))
+    assert opts.stream_url == "udp://192.168.1.42:5000?pkt_size=1316"
+    opts = build_options(ap.parse_args(["--stream-to", "192.168.1.42:6000"]))
+    assert opts.stream_url == "udp://192.168.1.42:6000?pkt_size=1316"
+    app = _headless(tmp_path, record=True, stream_url=opts.stream_url)
+    assert app.recorder.cfg.stream_enabled and app.recorder.cfg.stream_url == opts.stream_url
+    app.stop()

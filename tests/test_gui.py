@@ -136,3 +136,19 @@ def test_window_builds_refreshes_and_buttons_map_to_commands():
         assert "PAUSED" in gui.now_lbl.cget("text")
     finally:
         gui.close()
+
+
+def test_mic_badge_names_device_and_flags_silence():
+    from src.runtime.gui import mic_badge
+
+    def st(**kw):
+        base = dict(voice_control=True, listening_armed=False,
+                    mic_name="Microphone (DroidCam Audio)", mic_silent=False)
+        base.update(kw)
+        return type("S", (), base)()
+
+    text, bg = mic_badge(st())
+    assert "DroidCam Audio" in text and bg != BAD
+    text, bg = mic_badge(st(mic_silent=True))
+    assert text.startswith("MIC SILENT") and bg == BAD
+    assert mic_badge(st(voice_control=False))[0] == "MIC off"

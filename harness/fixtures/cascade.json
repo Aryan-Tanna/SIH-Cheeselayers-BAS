@@ -2,13 +2,57 @@
   "clip_id": "cascade",
   "protocol_id": "bas_specimen_v1",
   "expected_events": [
-    { "t": 7.0, "type": "violation", "code": "out_of_order", "target": "container", "tolerance_s": 0.5 },
-    { "t": 7.0, "type": "violation", "code": "skip", "target": "module_b", "tolerance_s": 0.5 },
-    { "t": 7.0, "type": "violation", "code": "skip", "target": "module_b", "tolerance_s": 0.5 },
-    { "t": 7.0, "type": "violation", "code": "skip", "target": "module_b.lid", "tolerance_s": 0.5 },
-    { "t": 7.0, "type": "violation", "code": "skip", "target": "module_b", "tolerance_s": 0.5 },
-    { "t": 7.0, "type": "violation", "code": "skip", "target": "module_b", "tolerance_s": 0.5 }
+    {
+      "t": 7.0,
+      "type": "violation",
+      "code": "out_of_order",
+      "target": "container",
+      "tolerance_s": 0.5
+    },
+    {
+      "t": 7.0,
+      "type": "violation",
+      "code": "skip",
+      "target": "module_b",
+      "tolerance_s": 0.5
+    },
+    {
+      "t": 7.0,
+      "type": "violation",
+      "code": "skip",
+      "target": "module_b",
+      "tolerance_s": 0.5
+    },
+    {
+      "t": 7.0,
+      "type": "violation",
+      "code": "skip",
+      "target": "module_b.lid",
+      "tolerance_s": 0.5
+    },
+    {
+      "t": 7.0,
+      "type": "violation",
+      "code": "skip",
+      "target": "module_b",
+      "tolerance_s": 0.5
+    },
+    {
+      "t": 7.0,
+      "type": "violation",
+      "code": "skip",
+      "target": "module_b",
+      "tolerance_s": 0.5
+    }
   ],
-  "expected_alerts": 4,
-  "partial": true
+  "expected_alerts": 1,
+  "expected_missed_steps": [
+    "remove_b",
+    "open_b_lid",
+    "stow_b_lid",
+    "close_b_lid",
+    "return_b"
+  ],
+  "partial": true,
+  "_alerts_note": "expected_alerts counts SPOKEN utterances (harness plans alerts with the live Announcer). 6 violations are logged; 1 is spoken: all five missed module_b steps merge into one utterance, and close_container's out_of_order is dropped because the skip names the same root cause. Was 4 when the harness counted per-violation AlertManager decisions (the 4/min cap)."
 }

@@ -83,6 +83,7 @@ class AppOptions:
     record: bool = True
     audio: bool = True
     session_id: str | None = None
+    stream_url: str | None = None  # override stream.url (e.g. udp://<phone-ip>:5000)
 
 
 @dataclass
@@ -97,6 +98,8 @@ class AppStatus:
     stream_url: str | None
     voice_control: bool
     listening_armed: bool
+    mic_name: str | None = None
+    mic_silent: bool = False
     recent_events: list[dict[str, Any]] = field(default_factory=list)
     recent_speech: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -166,6 +169,8 @@ class CopilotApp:
         rec_cfg = RecorderConfig.from_config(cfg)
         if not self.opts.record:
             rec_cfg = replace(rec_cfg, enabled=False)
+        if self.opts.stream_url:
+            rec_cfg = replace(rec_cfg, stream_enabled=True, stream_url=self.opts.stream_url)
         self.recorder = Recorder(rec_cfg, self.session_id, REPO_ROOT, printer=printer)
         self.warnings += self.recorder.warnings
 
@@ -243,6 +248,9 @@ class CopilotApp:
             if (self.recorder.active and self.recorder.cfg.stream_enabled) else None,
             voice_control=self.listener is not None,
             listening_armed=time.monotonic() < self._armed_until,
+            mic_name=self.listener.device_name if self.listener else None,
+            mic_silent=bool(self.listener
+                            and self.listener.mic_silent_for() > self.MIC_SILENCE_WARN_S),
             recent_events=list(self._recent_events),
             recent_speech=list(self._recent_speech),
             warnings=list(self.warnings),
@@ -264,6 +272,7 @@ class CopilotApp:
         if self.listener is not None:
             try:
                 self.listener.start()
+                self.printer(f"[voice] listening on: {self.listener.device_name}")
             except Exception as exc:  # noqa: BLE001 -- no microphone
                 self._warn(f"voice control unavailable: {exc}")
                 self.listener = None
@@ -277,9 +286,21 @@ class CopilotApp:
         t.start()
         self._threads.append(t)
 
+    MIC_SILENCE_WARN_S = 8.0
+
     def _ticker(self) -> None:
+        mic_warned = False
         while not self._stop.wait(0.25):
             self.session.tick()
+            if (not mic_warned and self.listener is not None
+                    and self.listener.mic_silent_for() > self.MIC_SILENCE_WARN_S):
+                mic_warned = True
+                self._warn(
+                    f"microphone '{self.listener.device_name}' has sent only digital silence for "
+                    f"{self.MIC_SILENCE_WARN_S:g} s -- voice commands will not work. It is probably "
+                    "a virtual or muted device: pick the real mic as the Windows default input, or "
+                    "set voice_control.input_device in configs/runtime.yaml."
+                )
 
     def _watch_protocol(self) -> None:
         """Hot reload: poll the protocol file; on change, validate and swap

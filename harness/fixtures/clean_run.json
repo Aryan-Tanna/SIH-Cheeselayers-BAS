@@ -1,21 +1,70 @@
 {
   "clip_id": "clean_run",
   "protocol_id": "bas_specimen_v1",
-  "_note": "partial:false deliberately — this is the one fixture where we want ANY unexpected violation to fail the run, not just missing expected ones.",
+  "_note": "partial:false deliberately \u2014 this is the one fixture where we want ANY unexpected violation to fail the run, not just missing expected ones.",
   "expected_events": [
-    { "t": 1.0, "type": "step_complete", "step": "open_container" },
-    { "t": 3.0, "type": "step_complete", "step": "remove_a" },
-    { "t": 4.0, "type": "step_complete", "step": "open_a_lid" },
-    { "t": 5.0, "type": "step_complete", "step": "stow_a_lid" },
-    { "t": 6.0, "type": "step_complete", "step": "close_a_lid" },
-    { "t": 7.0, "type": "step_complete", "step": "return_a" },
-    { "t": 8.0, "type": "step_complete", "step": "remove_b" },
-    { "t": 9.0, "type": "step_complete", "step": "open_b_lid" },
-    { "t": 10.0, "type": "step_complete", "step": "stow_b_lid" },
-    { "t": 11.0, "type": "step_complete", "step": "close_b_lid" },
-    { "t": 12.0, "type": "step_complete", "step": "return_b" },
-    { "t": 13.0, "type": "step_complete", "step": "close_container" }
+    {
+      "t": 1.0,
+      "type": "step_complete",
+      "step": "open_container"
+    },
+    {
+      "t": 3.0,
+      "type": "step_complete",
+      "step": "remove_a"
+    },
+    {
+      "t": 4.0,
+      "type": "step_complete",
+      "step": "open_a_lid"
+    },
+    {
+      "t": 5.0,
+      "type": "step_complete",
+      "step": "stow_a_lid"
+    },
+    {
+      "t": 6.0,
+      "type": "step_complete",
+      "step": "close_a_lid"
+    },
+    {
+      "t": 7.0,
+      "type": "step_complete",
+      "step": "return_a"
+    },
+    {
+      "t": 8.0,
+      "type": "step_complete",
+      "step": "remove_b"
+    },
+    {
+      "t": 9.0,
+      "type": "step_complete",
+      "step": "open_b_lid"
+    },
+    {
+      "t": 10.0,
+      "type": "step_complete",
+      "step": "stow_b_lid"
+    },
+    {
+      "t": 11.0,
+      "type": "step_complete",
+      "step": "close_b_lid"
+    },
+    {
+      "t": 12.0,
+      "type": "step_complete",
+      "step": "return_b"
+    },
+    {
+      "t": 13.0,
+      "type": "step_complete",
+      "step": "close_container"
+    }
   ],
   "expected_alerts": 0,
+  "expected_missed_steps": [],
   "partial": false
 }

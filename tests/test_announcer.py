@@ -320,3 +320,25 @@ def test_anomaly_in_quiet_mode_is_just_the_alert():
     d.engine.process(AnomalyEvent(ts=0.0, label="pen"))
     reqs = d.batch()
     assert [r.segments for r in reqs] == [(ANOMALY_TEXT,)]
+
+
+def test_merged_skip_alert_lists_every_missed_step_in_step_ids():
+    # 2 named + "And 3 more steps." -- step_ids must still cover all 5
+    d = _Driver()
+    d.batch()
+    d.act(1.0, "open", "container")
+    d.do_module(2.0, "module_a", "a")
+    reqs = d.act(7.0, "close", "container")
+    skip = [r for r in _alerts(reqs) if r.severity == "warning"][0]
+    assert skip.step_ids == ("remove_b", "open_b_lid", "stow_b_lid", "close_b_lid", "return_b")
+    assert "And 3 more steps." in skip.segments
+
+
+def test_non_skip_alerts_carry_no_missed_step_ids():
+    d = _Driver()
+    d.batch()
+    d.act(1.0, "open", "container")
+    d.act(2.0, "remove_from", "module_a", source="container")
+    d.act(3.0, "open", "module_a")
+    reqs = d.act(4.0, "close", "module_a")  # out_of_order, nothing missed yet
+    assert _alerts(reqs)[0].step_ids == ()

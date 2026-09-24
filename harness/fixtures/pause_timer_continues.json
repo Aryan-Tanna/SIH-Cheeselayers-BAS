@@ -3,8 +3,15 @@
   "protocol_id": "bas_specimen_v1",
   "_note": "The t=38 event (re-opening the already-open container: logged as unmatched, changes nothing) is a no-op probe that forces a timeout check at 38 s: 35 s wall since detach, only 10 s unpaused, so lid_unstowed must NOT fire yet. It then fires at the clip-end check.",
   "expected_events": [
-    { "t": 45.0, "type": "violation", "code": "lid_unstowed", "target": "module_a", "tolerance_s": 0.1 }
+    {
+      "t": 45.0,
+      "type": "violation",
+      "code": "lid_unstowed",
+      "target": "module_a",
+      "tolerance_s": 0.1
+    }
   ],
   "expected_alerts": 1,
+  "expected_missed_steps": [],
   "partial": true
 }

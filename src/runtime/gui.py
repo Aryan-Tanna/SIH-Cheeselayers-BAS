@@ -100,6 +100,19 @@ def current_step_text(snapshot: dict[str, Any]) -> str:
     return "Waiting..."
 
 
+def mic_badge(st: Any) -> tuple[str, str]:
+    """(text, background) for the MIC badge. Names the device, and turns
+    red when it is delivering pure silence (a virtual or muted mic)."""
+    if not st.voice_control:
+        return "MIC off", PANEL_2
+    short = (st.mic_name or "?").split("(")[-1].rstrip(")")[:22]
+    if getattr(st, "mic_silent", False):
+        return f"MIC SILENT: {short}", BAD
+    if st.listening_armed:
+        return f"MIC listening...  ({short})", ACCENT
+    return f"MIC \"Hey BAS\"  ({short})", PANEL_2
+
+
 def event_line(e: dict[str, Any], t0: float | None) -> tuple[str, str] | None:
     """(text, colour) for the event feed, or None for internal noise."""
     rel = "" if t0 is None else f"{e['ts'] - t0:7.1f}s  "
@@ -299,9 +312,7 @@ class CopilotGUI:
         self.title_lbl.configure(text=f"{snap['title']}    |    {st.session_id}")
         self._badge("mode", "QUIET" if snap["mode"] == "quiet" else "VOICE", PANEL_2)
         self._badge("paused", "PAUSED" if snap["paused"] else "RUNNING", WARN if snap["paused"] else OK)
-        mic = "MIC off" if not st.voice_control else ("MIC listening..." if st.listening_armed
-                                                        else "MIC  say \"Hey BAS\"")
-        self._badge("mic", mic, ACCENT if st.listening_armed else PANEL_2)
+        self._badge("mic", *mic_badge(st))
         self._badge("rec", f"● REC  {st.capture_fps:4.1f} fps" if st.recording else "REC off",
                     BAD if st.recording else PANEL_2)
         self._badge("stream", f"STREAM {st.stream_url.split('?')[0]}" if st.stream_url else "STREAM off",

@@ -80,6 +80,11 @@ class AudioRequest:
     release: bool = False
     replay_prompt: bool = True
     step_id: str | None = None
+    # Missed-step alerts: EVERY missed step this one utterance covers,
+    # in protocol order -- including those only summarised as "and N
+    # more steps". The engine logs one skip violation per step; this is
+    # what lets a test prove the merged utterance covers all of them.
+    step_ids: tuple[str, ...] = ()
     root_cause_id: str | None = None
     ts_monotonic: float | None = None
 
@@ -428,7 +433,7 @@ class Announcer:
         return decision.tone, decision.speak
 
     def _alert(self, e: EngineEvent, severity: str, segments: tuple[str, ...],
-               root: str | None = None) -> AudioRequest | None:
+               root: str | None = None, step_ids: tuple[str, ...] = ()) -> AudioRequest | None:
         d = self._decide(severity, root if root is not None else (e.root_cause_id or ""))
         if d is None:
             return None
@@ -440,6 +445,7 @@ class Announcer:
             severity=severity,
             interrupt=speak and severity in self.settings.interrupt_severities,
             step_id=e.step_id,
+            step_ids=step_ids,
             root_cause_id=e.root_cause_id,
             ts_monotonic=e.ts_monotonic,
         )
@@ -484,7 +490,7 @@ class Announcer:
             key=lambda s: ("advisory", "caution", "warning").index(s)
             if s in ("advisory", "caution", "warning") else 0,
         )
-        return self._alert(first, severity, segments)
+        return self._alert(first, severity, segments, step_ids=tuple(steps))
 
     def _plan_anomaly(self, e: EngineEvent) -> AudioRequest | None:
         segments: tuple[str, ...] = (ANOMALY_TEXT,)

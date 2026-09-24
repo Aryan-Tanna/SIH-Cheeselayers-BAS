@@ -31,8 +31,12 @@ def build_options(args: argparse.Namespace) -> AppOptions:
     source = None
     if args.source is not None:
         source = int(args.source) if str(args.source).isdigit() else args.source
+    stream_url = None
+    if args.stream_to:
+        host, _, port = args.stream_to.partition(":")
+        stream_url = f"udp://{host}:{port or 5000}?pkt_size=1316"
     return AppOptions(
-        protocol=args.protocol, source=source, events=args.events,
+        protocol=args.protocol, source=source, events=args.events, stream_url=stream_url,
         voice_control=not args.no_voice_control, capture=not args.no_capture,
         record=not args.no_record, audio=not args.no_audio,
     )
@@ -46,6 +50,8 @@ def add_common_args(ap: argparse.ArgumentParser) -> None:
     ap.add_argument("--no-capture", action="store_true")
     ap.add_argument("--no-record", action="store_true")
     ap.add_argument("--no-audio", action="store_true")
+    ap.add_argument("--stream-to", default=None, metavar="IP[:PORT]",
+                    help="stream to this receiver (UDP, default port 5000) instead of stream.url")
 
 
 def print_summary(summary: dict) -> None:

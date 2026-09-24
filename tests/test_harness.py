@@ -104,13 +104,63 @@ def test_debounce_raw_observations_down_transition_is_not_sticky():
 
 
 def test_cascade_separates_violations_logged_from_alerts_spoken():
-    """Counts matching (9/9 in the old run_all.py summary) proved nothing
-    about whether suppression actually collapsed anything -- this checks
-    the two numbers separately. Six violations fire from module_b never
-    being touched; the 4/minute rate cap (not root_cause_cooldown_s,
-    since each has a distinct root_cause_id) lets only 4 speak."""
+    """Counts matching proved nothing about whether suppression actually
+    collapsed anything -- this checks the two numbers separately. Six
+    violations are logged from module_b never being touched; the operator
+    hears ONE utterance naming the missed steps, and its step_ids cover
+    all five of them."""
     stream = json.loads((SYNTHETIC_DIR / "cascade.json").read_text(encoding="utf-8"))
     fixture = json.loads((FIXTURES_DIR / "cascade.json").read_text(encoding="utf-8"))
     result = run_replay(stream, fixture)
+    assert result.passed, result.mismatches
     assert result.violations_logged == 6
-    assert result.actual_alerts == 4
+    assert result.actual_alerts == 1
+    assert set(result.missed_steps_spoken) == {
+        "remove_b", "open_b_lid", "stow_b_lid", "close_b_lid", "return_b"}
+
+
+def test_missed_step_coverage_is_asserted():
+    """expected_missed_steps catches an alert that leaves a missed step
+    uncovered (or names one that was not missed)."""
+    stream = json.loads((SYNTHETIC_DIR / "cascade.json").read_text(encoding="utf-8"))
+    fixture = json.loads((FIXTURES_DIR / "cascade.json").read_text(encoding="utf-8"))
+    fixture["expected_missed_steps"] = ["remove_b"]
+    result = run_replay(stream, fixture)
+    assert not result.passed
+    assert any("expected_missed_steps" in m.detail for m in result.mismatches)
+
+
+def test_per_step_alerts_regression_is_caught(monkeypatch):
+    """If missed-step alerts stopped merging (one utterance per step), both
+    assertions fail -- and the coverage failure is the telling one: with
+    five separate alerts the 4/minute rate cap silently drops the fifth,
+    so return_b is never spoken at all. Merging is what keeps every
+    missed step audible under the rate cap."""
+    from src.runtime import announcer as ann
+
+    def one_per_step(self, skips):
+        reqs = [self._alert(e, "warning", (ann.missed_phrase(self.resolved, e.step_id),),
+                            root=f"per-step:{e.step_id}", step_ids=(e.step_id,))
+                for e in skips]
+        for r in reqs[1:]:
+            if r is not None:
+                self._extra_skip_alerts.append(r)
+        return reqs[0]
+
+    original_plan = ann.Announcer.plan
+
+    def plan(self, batch):
+        self._extra_skip_alerts = []
+        out = original_plan(self, batch)
+        return out + self._extra_skip_alerts
+
+    monkeypatch.setattr(ann.Announcer, "_plan_skips", one_per_step)
+    monkeypatch.setattr(ann.Announcer, "plan", plan)
+    stream = json.loads((SYNTHETIC_DIR / "cascade.json").read_text(encoding="utf-8"))
+    fixture = json.loads((FIXTURES_DIR / "cascade.json").read_text(encoding="utf-8"))
+    result = run_replay(stream, fixture)
+    assert result.actual_alerts == 4                        # rate cap: 4 of 5 spoken
+    assert "return_b" not in result.missed_steps_spoken      # a missed step goes unheard
+    assert not result.passed
+    details = " ".join(m.detail for m in result.mismatches)
+    assert "expected_missed_steps" in details and "expected_alerts" in details

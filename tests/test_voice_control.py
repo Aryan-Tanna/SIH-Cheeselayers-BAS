@@ -187,3 +187,55 @@ def test_recognizer_hears_commands(spoken, expected):
 ])
 def test_recognizer_ignores_ordinary_speech(spoken):
     assert _recognize(spoken) is None
+
+
+# --- mic health (2026-09-24: DroidCam's virtual mic became the default) ------
+
+def _bare_listener():
+    from src.runtime.voice_control import VoiceCommandListener
+
+    lst = object.__new__(VoiceCommandListener)  # no Vosk model needed
+    lst._started_at = 100.0
+    return lst
+
+
+def test_dither_only_input_counts_as_silent():
+    np = pytest.importorskip("numpy")
+    lst = _bare_listener()
+    # the measured DroidCam virtual mic: only -1/0/+1
+    lst.note_audio(np.array([0, 1, -1, 0] * 400, dtype=np.int16).tobytes())
+    assert lst.mic_silent_for(now=109.0) == 9.0
+
+
+def test_real_room_noise_counts_as_live():
+    np = pytest.importorskip("numpy")
+    lst = _bare_listener()
+    lst.note_audio(np.array([0, 3, -32, 5] * 400, dtype=np.int16).tobytes())
+    assert lst.mic_silent_for(now=109.0) == 0.0
+
+
+class _FakeSD:
+    DEVICES = [
+        {"name": "Microsoft Sound Mapper - Input", "max_input_channels": 2, "hostapi": 0},
+        {"name": "Microphone (DroidCam Audio)", "max_input_channels": 1, "hostapi": 0},
+        {"name": "Microphone Array (2- Intel Sma", "max_input_channels": 2, "hostapi": 0},
+        {"name": "Speakers", "max_input_channels": 0, "hostapi": 0},
+        {"name": "Microphone Array (2- Intel Smart Sound)", "max_input_channels": 2, "hostapi": 2},
+    ]
+
+    def query_devices(self, device=None, kind=None):
+        if device is None and kind == "input":
+            return self.DEVICES[1]
+        if device is None:
+            return self.DEVICES
+        return self.DEVICES[device]
+
+
+def test_device_name_resolves_to_default_host_api_match():
+    from src.runtime.voice_control import resolve_input_device
+
+    assert resolve_input_device(_FakeSD(), "microphone array") == 2
+    assert resolve_input_device(_FakeSD(), None) is None
+    assert resolve_input_device(_FakeSD(), 4) == 4
+    with pytest.raises(ValueError):
+        resolve_input_device(_FakeSD(), "no such mic")

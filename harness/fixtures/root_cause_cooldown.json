@@ -3,10 +3,29 @@
   "protocol_id": "repeatable_action_test",
   "_note": "Measured, not assumed (see scripts/repro in phase-0 report): 3 violations logged, 2 spoken. The t=5 breach falls inside root_cause_cooldown_s=8 of the t=3 breach and is suppressed; the t=12 breach is 9s after the last SPOKEN alert (t=3, since suppression does not reset the cooldown clock) and speaks again. This is root_cause_cooldown_s suppression specifically, not the max_alerts_per_minute rate cap the cascade fixture exercises -- only 3 violations occur here, well under the 4/minute cap.",
   "expected_events": [
-    { "t": 3.0, "type": "violation", "code": "mutual_exclusion_breach", "target": "module_b", "tolerance_s": 0.5 },
-    { "t": 5.0, "type": "violation", "code": "mutual_exclusion_breach", "target": "module_c", "tolerance_s": 0.5 },
-    { "t": 12.0, "type": "violation", "code": "mutual_exclusion_breach", "target": "module_d", "tolerance_s": 0.5 }
+    {
+      "t": 3.0,
+      "type": "violation",
+      "code": "mutual_exclusion_breach",
+      "target": "module_b",
+      "tolerance_s": 0.5
+    },
+    {
+      "t": 5.0,
+      "type": "violation",
+      "code": "mutual_exclusion_breach",
+      "target": "module_c",
+      "tolerance_s": 0.5
+    },
+    {
+      "t": 12.0,
+      "type": "violation",
+      "code": "mutual_exclusion_breach",
+      "target": "module_d",
+      "tolerance_s": 0.5
+    }
   ],
   "expected_alerts": 2,
+  "expected_missed_steps": [],
   "partial": true
 }

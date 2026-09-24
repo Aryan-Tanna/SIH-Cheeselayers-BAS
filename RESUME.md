@@ -104,6 +104,20 @@ rack-space geometry + deterministic constraint engine. Detail in
       isolated relay process. Video is constant-rate on capture
       timestamps: video offset = log ts_monotonic - t0 (`video.json`).
       Webcam 640x480/720p: encoder 12-15% of one core, 0 frames lost.
+      LAN-tested 2026-09-24 (`run_gui.py --stream-to <ip>` -> phone VLC,
+      `udp://@:5000`, home Wi-Fi): video in 1-2 s, ~2 s glass-to-glass
+      (mostly VLC's default ~1 s network cache), smooth, reconnect <= 2 s
+      (keyframe every 2 s). Not yet tested: a PC receiver, RTSP server.
+      Network CAMERA tested the other way round (phone = rack camera):
+      DroidCam app -> `run_gui.py --source http://<phone-ip>:4747/video`
+      (close the DroidCam PC client first: the phone allows one viewer).
+      ~0.05 s delay, 1280x720 at ~26 fps, app kill/reopen recovered by
+      itself in seconds. GOTCHA: the DroidCam PC client installs a
+      virtual "DroidCam Audio" mic and makes it the Windows default --
+      "Hey BAS" then hears only dither (samples -1/0/+1). The co-pilot now
+      prints/shows which mic it uses and flags it SILENT after 8 s; fix
+      by resetting the Windows default input or `voice_control.
+      input_device: "Microphone Array"` (name match, any host API).
    c. **GUI -- DONE** (`src/runtime/gui.py`, Tkinter: no extra deps).
       Live video, checklist naming each step's object, NOW banner,
       events feed, buttons = voice commands (Space/N/R/Q/F5).
@@ -116,6 +130,13 @@ rack-space geometry + deterministic constraint engine. Detail in
       (tracker + kinematics + debouncer -> ActionEvent/AnomalyEvent),
       loading `detector.weights` from config. Blocked for real video on
       ArUco/rack geometry (item 3).
+   Harness (2026-09-24): alerts are planned by the live Announcer, so
+   `expected_alerts` = SPOKEN utterances (cascade 4 -> 1, skipped_step
+   3 -> 2), plus `expected_missed_steps` == union of the alerts'
+   `step_ids`. Both are needed: with one alert per missed step, the
+   4/min rate cap silently dropped the 5th missed step from the voice.
+   No time-based debounce: all end-of-run skips arrive in one engine
+   batch already, so a window would only add alert latency.
    Log schema (2026-09-24): each JSONL line now also carries `target`,
    `severity`, `message` and `extra` (e.g. out_of_order's unmet steps,
    pause length, anomaly kind) -- before, an operator_command line did
@@ -143,7 +164,7 @@ kept here so it can be rebuilt anywhere if needed.
    documented in `pyproject.toml`:
    `pip uninstall -y opencv-python` and
    `pip install --force-reinstall --no-deps opencv-contrib-python==5.0.0.93`.
-   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **374
+   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **385
    passed**. Phase-2 work needs nothing beyond this step.
 2. **Video / frames** (only for labelling or training): get `clips/`
    (71 mp4, ~6.6 GB) from the team, then `python scripts/normalize_clips.py`
