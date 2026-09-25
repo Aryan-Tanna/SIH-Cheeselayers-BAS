@@ -38,7 +38,7 @@ known-broken things not yet fixed.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
   after vision install; `numpy.trapz` shim; Windows eval workers=0;
   never re-run `build_review_sheet.py`; Dataset22 gloves: leave as is.
-  Install `.[vision,audio,dev]`, then the opencv fix. 413/413 tests.
+  Install `.[vision,audio,dev]`, then the opencv fix. 418/418 tests.
 
 ## Your role
 

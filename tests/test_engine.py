@@ -293,3 +293,65 @@ def test_lid_stow_zone_name_comes_from_protocol_not_hardcoded(tmp_path):
     clock.advance_to(20.0)
     eng.check_timeouts(20.0)
     assert violations(eng, "lid_unstowed") == []
+
+
+# --- ordering passes THROUGH condition-skipped steps (found live 2026-09-25) ---
+# With lidless props the lid steps are skipped; return_b's only `after` is
+# close_b_lid, so treating a skipped step as "done" made return_b due the
+# moment the container opened -- a module could be "returned" without
+# ever being removed, with no out_of_order.
+
+import pytest as _pytest
+
+from src.protocol.loader import REPO_ROOT as _ROOT
+
+
+def _engine_for(profile):
+    from src.protocol.engine import ProtocolEngine
+    from src.protocol.loader import resolve
+    from src.runtime.clock import VirtualClock
+
+    c = VirtualClock()
+    return ProtocolEngine(resolve(_ROOT / "configs/protocols/bas_specimen_v1.json",
+                                  object_profile=profile), clock=c), c
+
+
+@_pytest.mark.parametrize("profile", ["configs/objects/profile_rect.yaml",
+                                      "configs/objects/profile_mixed.yaml",
+                                      "configs/objects/profile_jar.yaml"])
+def test_return_is_not_due_before_remove_whatever_the_props(profile):
+    from src.protocol.events import ActionEvent
+
+    e, c = _engine_for(profile)
+    c.advance_to(1.0)
+    e.process(ActionEvent(ts=1.0, action="open", target="container"))
+    assert e.satisfiable_steps() == {"remove_a", "remove_b"}
+    c.advance_to(2.0)
+    e.process(ActionEvent(ts=2.0, action="place_into", target="module_b", dest="container"))
+    assert [v.violation_type for v in e.out if v.event_type == "violation"] == ["out_of_order"]
+
+
+def test_slab_run_in_order_has_no_violations():
+    from src.protocol.events import ActionEvent
+
+    e, c = _engine_for("configs/objects/profile_rect.yaml")
+    seq = [("open", "container", {}),
+           ("remove_from", "module_a", {"source": "container"}),
+           ("place_into", "module_a", {"dest": "container"}),
+           ("remove_from", "module_b", {"source": "container"}),
+           ("place_into", "module_b", {"dest": "container"}),
+           ("close", "container", {})]
+    for i, (a, t, kw) in enumerate(seq, 1):
+        c.advance_to(float(i))
+        e.process(ActionEvent(ts=float(i), action=a, target=t, **kw))
+    assert not [v for v in e.out if v.event_type == "violation"]
+    assert e.complete == {"open_container", "remove_a", "return_a", "remove_b", "return_b",
+                          "close_container"}
+
+
+def test_prerequisites_chain_through_skipped_steps():
+    e, _ = _engine_for("configs/objects/profile_rect.yaml")
+    # open_container comes via the handle_b group's own `after`
+    assert e.prerequisites("return_b") == {"remove_b", "open_container"}
+    e, _ = _engine_for("configs/objects/profile_jar.yaml")
+    assert e.prerequisites("return_b") == {"close_b_lid", "open_container"}

@@ -18,6 +18,10 @@ detector:
   iou: 0.5
   imgsz: 640                   # the size v4 was trained at
   device: cpu
+  # torch CPU threads. null = physical cores - 2 (leaves room for capture,
+  # recording, speech and the GUI). Letting torch AND the speech engine
+  # each claim every core made the first detection take 5.4 s.
+  threads: null
 
 audio:
   enabled: true
@@ -34,6 +38,9 @@ audio:
     # >1.0 is slower speech. Slightly slow reads better through a
     # headset over fan noise.
     length_scale: 1.1
+    # onnxruntime threads for speech synthesis. Phrases are pre-rendered
+    # once and cached, so speech can be slow; the detector cannot.
+    threads: 2
     # Render every phrase the loaded protocol can speak (constraint
     # alert lines, step prompts, success lines) once at load / hot
     # reload, so speaking an alert never waits on synthesis competing
