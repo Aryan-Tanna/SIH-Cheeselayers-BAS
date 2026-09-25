@@ -21,33 +21,37 @@ known-broken things not yet fixed.
 **Status:** (2026-09-26; handoff detail + rebuild steps in `RESUME.md`)
 - SPLIT: Parth = Phase 2 code only (`.venv` + pytest; don't rebuild
   clips/frames/runs, label or train). Aryan = data/labels/training.
-- Labels = 1032 unique frames (batch-1..9, 13 + `labels/dedup/` 10_v2, 11, 12;
-  raw batch10/11/12 overlap others -- never feed them to the converter).
-  S04 = Dataset72-82 (new tub rig), 96 labelled. S05 = 20 ArUco clips
-  (`clips_Aruco/`), 0 labelled. v5 split: test = S01+S03+S05
-  + `configs/training/split_v5_s00_test.yaml`; train = rest. Next labels: S05
+- Labels = 1032 unique frames: batch-1..9, 13 + `labels/dedup/` 10_v2, 11,
+  12 (raw batch10/11/12 overlap others -- never feed them to the converter).
+  Sessions: S00-S03 old; S04 = Dataset72-82 tub rig (96 labelled); S05 =
+  20 ArUco clips `clips_Aruco/` (0 labelled). Split: test = S01+S03+S05 +
+  `configs/training/split_v5_s00_test.yaml`; train = rest. Next labels: S05
   test batch `runs/label_batch12/batch12_S05_test_import.json` (60).
-  Detector = `models/bootstrap_v5_best.pt` (test S01+S03: P.89 R.83 mAP50
-  .89 vs v4 .77; see models/README.md). S05 unmeasured (0 labels).
-- Phase 2 runtime DONE except perception: audio (Piper + Vosk "Hey
-  BAS"), capture, recorder+UDP stream (.ts segments), Tk GUI, all wired
-  in `src/runtime/app.py`. Run: `scripts/run_gui.py [--events ...]`.
-  Engine only via `Session` (not thread-safe). Live checks:
-  `scripts/voice_test.py`, `scripts/record_test.py`.
-- Perception v1 live (detector+fusion, container/module events; lids not yet).
-- Wake = HOLD 5 s then replay cut speech; engine/timers keep running.
-  "next step" = `engine.confirm_step` (DUE step only, logged override).
-  Live mic 12/13 + 3/3 GUI; loud noise/other voices untested.
-- New rule attended_while_open: module lid off + no hands in view > 5 s ->
-  alert; GUI timer badge. S05 fixtures 12/15/19 verified: v5 17/18.
-- GUI Protocol editor [E]: steps + rules, validated save, switch live.
-- ArUco rack geometry BUILT (`src/perception/rack.py`, `configs/rack.yaml`,
-  GUI Rack setup [K]). Rack containment = `perception.geometry: auto`, OFF
-  by default: no win on S05 without fixtures. stow_zone = team decision.
+- Detector = `models/bootstrap_v5_best.pt`: test S01+S03 mAP50 .89 (v4 .77);
+  S01 alone .92 is the clean number, S03 flattered by similar S02 in train.
+  No leakage (nearest-frame check). Training on v5's own labels (v6p): no
+  gain -- label v5's unsure frames instead (`runs/autolabel_predictions_v5/`).
+- Phase 2 runtime DONE: audio (Piper + Vosk "Hey BAS"), capture, recorder +
+  UDP stream, Tk GUI, all in `src/runtime/app.py`. Run `scripts/run_gui.py`.
+  Engine only via `Session` (not thread-safe). Wake = HOLD 5 s; "next
+  step" = `engine.confirm_step`. Loud noise/other voices untested.
+- Perception: detector + fusion emit container open/close, module
+  remove/return, operator hands in/out of view. Lids NOT perceived
+  (operator confirms). Known miss: module held just above the case reads
+  as returned (hover) -- needs grasp signal, not geometry.
+- ArUco rack BUILT: `src/perception/rack.py`, `configs/rack.yaml` (DICT_4X4_50,
+  IDs 1-4, 49 mm), GUI Rack setup [K], log geometry_status. Rack-space
+  containment = `perception.geometry: auto`, OFF: ties image mode on the 3
+  verified S05 fixtures (17/18 each). Stow zone = whole camera view.
+- Rule attended_while_open: module lid off + no hands in view > 5 s ->
+  one warning; GUI timer badge. GUI Protocol editor [E]: steps + rules,
+  saves only through the validator, switches the session live.
+- Not yet tested live: DroidCam with the markers taped on the rig.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
-  after vision install; `numpy.trapz` shim; Windows eval workers=0;
-  never re-run `build_review_sheet.py`; Dataset22 gloves: leave as is.
-  Install `.[vision,audio,dev]`, then the opencv fix. 418/418 tests.
+  after vision install; `numpy.trapz` shim; Windows eval workers=0; low
+  system RAM kills training (IDE language server ~7 GB); never re-run
+  `build_review_sheet.py`; Dataset22 gloves: leave as is. Install
+  `.[vision,audio,dev]`, then the opencv fix. 481 tests, harness 14/14.
 
 ## Your role
 
