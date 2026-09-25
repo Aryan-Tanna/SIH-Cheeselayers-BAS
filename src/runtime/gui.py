@@ -114,6 +114,39 @@ def det_badge(st: Any) -> tuple[str, str]:
             WARN if st.detector_fps and st.detector_fps < 5 else PANEL_2)
 
 
+def rack_badge(st: Any) -> tuple[str, str]:
+    """ArUco rack geometry: is the tub floor frame known right now?
+    Grey when off, amber when holding or not calibrated, red when lost."""
+    status = getattr(st, "rack_status", "off")
+    ids = ",".join(str(i) for i in (getattr(st, "rack_markers_seen", ()) or ())) or "-"
+    if status == "ok":
+        err = getattr(st, "rack_reproj_px", None)
+        return (f"RACK ok  [{ids}]" + (f"  {err:.1f}px" if err is not None else "") + "  [K]", OK)
+    if status == "held":
+        return f"RACK held  [{ids}]  [K]", WARN
+    if status == "uncalibrated":
+        return f"RACK not calibrated  [{ids}]  [K]", WARN
+    if status == "none":
+        return "RACK lost - image space  [K]", BAD
+    return "RACK off  [K]", PANEL_2
+
+
+def attend_badge(snapshot: dict[str, Any]) -> tuple[str, str] | None:
+    """The attended_while_open timer. None (badge hidden) unless a module
+    is open. Amber while hands are away and the grace clock runs, red once
+    it has run out (the alert fired)."""
+    a = snapshot.get("attendance") or {}
+    mods = a.get("open_modules") or []
+    if not a.get("enabled") or not mods:
+        return None
+    names = ", ".join(mods)
+    if a.get("hands_in_view", True) or a.get("away_s") is None:
+        return f"OPEN {names}  hands in view", PANEL_2
+    grace = a.get("grace_s") or 0
+    text = f"OPEN {names}  hands away {a['away_s']:.1f}/{grace:g} s"
+    return text, BAD if (a.get("alerted") or a["away_s"] >= grace) else WARN
+
+
 def mic_badge(st: Any) -> tuple[str, str]:
     """(text, background) for the MIC badge. Names the device, and turns
     red when it is delivering pure silence (a virtual or muted mic)."""
@@ -204,7 +237,7 @@ class CopilotGUI:
         self.title_lbl.pack(side="left", padx=12, pady=8)
         self.badges: dict[str, tk.Label] = {}
         self.show_dets = True
-        for key in ("stream", "rec", "det", "mic", "paused", "mode"):
+        for key in ("stream", "rec", "rack", "det", "mic", "attend", "paused", "mode"):
             lbl = tk.Label(header, text="", bg=PANEL_2, fg=FG, font=FONT_BOLD, padx=8, pady=2)
             lbl.pack(side="right", padx=4, pady=8)
             self.badges[key] = lbl
@@ -259,6 +292,10 @@ class CopilotGUI:
         self._button(controls, "Repeat  [R]", lambda: self.app.command("repeat"))
         self.mode_btn = self._button(controls, "Quiet mode  [Q]", self._toggle_mode)
         self._button(controls, "Reload protocol  [F5]", self.app.reload_protocol)
+        if hasattr(self.app, "rack_config"):
+            self._button(controls, "Rack setup  [K]", self._open_rack)
+        if hasattr(self.app, "use_protocol"):
+            self._button(controls, "Protocol editor  [E]", self._open_editor)
         self.warn_lbl = tk.Label(controls, text="", bg=BG, fg=WARN, font=FONT, anchor="e")
         self.warn_lbl.pack(side="right", fill="x", expand=True)
 
@@ -276,6 +313,8 @@ class CopilotGUI:
         self.root.bind("<q>", lambda _e: self._toggle_mode())
         self.root.bind("<F5>", lambda _e: self.app.reload_protocol())
         self.root.bind("<d>", lambda _e: setattr(self, "show_dets", not self.show_dets))
+        self.root.bind("<k>", lambda _e: self._open_rack())
+        self.root.bind("<e>", lambda _e: self._open_editor())
 
     # --- actions ----------------------------------------------------------------
 
@@ -284,6 +323,26 @@ class CopilotGUI:
 
     def _toggle_mode(self) -> None:
         self.app.command("voice" if self.app.status().protocol["mode"] == "quiet" else "quiet")
+
+    def _open_editor(self) -> None:
+        if not hasattr(self.app, "use_protocol"):
+            return
+        ed = getattr(self, "_editor", None)
+        if ed is not None and ed.win.winfo_exists():
+            ed.win.lift()
+            return
+        from src.runtime.protocol_editor_gui import ProtocolEditor
+
+        self._editor = ProtocolEditor(self.root, self.app)
+
+    def _open_rack(self) -> None:
+        if not hasattr(self.app, "rack_config"):
+            return
+        win = getattr(self, "_rack_win", None)
+        if win is not None and win.win.winfo_exists():
+            win.win.lift()
+            return
+        self._rack_win = RackDialog(self.root, self.app)
 
     def close(self) -> None:
         self._closed = True
@@ -324,6 +383,16 @@ class CopilotGUI:
                 x0, y0 = int(pts[:, 0].min()), int(pts[:, 1].min())
                 cv2.putText(small, f"{d.cls} {d.conf:.2f}", (x0, max(14, y0 - 4)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.45, c, 1, cv2.LINE_AA)
+        markers = getattr(self.app, "latest_rack_markers", None)
+        if self.show_dets and markers is not None:
+            import numpy as np
+
+            sx, sy = tw / w, th / h
+            for mid, c in markers().items():
+                pts = (np.asarray(c) * [sx, sy]).astype(np.int32)
+                cv2.polylines(small, [pts.reshape(-1, 1, 2)], True, (255, 255, 0), 2)
+                cv2.putText(small, f"ID{mid}", (int(pts[:, 0].max()) + 3, int(pts[:, 1].mean())),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1, cv2.LINE_AA)
         rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
         self._photo = ImageTk.PhotoImage(Image.fromarray(rgb))
         self.video.configure(image=self._photo, text="")
@@ -343,6 +412,14 @@ class CopilotGUI:
         self._badge("paused", "PAUSED" if snap["paused"] else "RUNNING", WARN if snap["paused"] else OK)
         self._badge("mic", *mic_badge(st))
         self._badge("det", *det_badge(st))
+        self._badge("rack", *rack_badge(st))
+        att = attend_badge(snap)
+        if att is None:
+            self.badges["attend"].pack_forget()
+        else:
+            if not self.badges["attend"].winfo_ismapped():
+                self.badges["attend"].pack(side="right", padx=4, pady=8, before=self.badges["paused"])
+            self._badge("attend", *att)
         self._badge("rec", f"● REC  {st.capture_fps:4.1f} fps" if st.recording else "REC off",
                     BAD if st.recording else PANEL_2)
         self._badge("stream", f"STREAM {st.stream_url.split('?')[0]}" if st.stream_url else "STREAM off",
@@ -385,3 +462,152 @@ class CopilotGUI:
 
     def _badge(self, key: str, text: str, bg: str) -> None:
         self.badges[key].configure(text=text, bg=bg, fg=BG if bg in (OK, WARN, BAD, ACCENT) else FG)
+
+
+class RackDialog:
+    """Rack setup: which ArUco markers are on the rig (type, IDs, printed
+    size) and the layout calibration from the live camera. Saved to
+    configs/rack.yaml and applied live -- no restart."""
+
+    CALIBRATE_MS = 4000
+
+    def __init__(self, root: tk.Tk, app: Any) -> None:
+        from src.perception.rack import ARUCO_DICTIONARIES
+
+        self.app = app
+        self.cfg = app.rack_config()
+        self.calibrated_now = False  # a calibration in this window, not yet saved
+        self.win = tk.Toplevel(root, bg=PANEL)
+        self.win.title("Rack setup - ArUco markers")
+        self.win.transient(root)
+        pad = {"padx": 10, "pady": 4}
+
+        def row(r: int, label: str, widget: tk.Widget, hint: str) -> None:
+            tk.Label(self.win, text=label, bg=PANEL, fg=FG, font=FONT_BOLD, anchor="w").grid(
+                row=r, column=0, sticky="w", **pad)
+            widget.grid(row=r, column=1, sticky="we", **pad)
+            tk.Label(self.win, text=hint, bg=PANEL, fg=MUTED, font=FONT, anchor="w").grid(
+                row=r, column=2, sticky="w", **pad)
+
+        self.dict_var = tk.StringVar(value=self.cfg.dictionary)
+        menu = tk.OptionMenu(self.win, self.dict_var, *ARUCO_DICTIONARIES)
+        menu.configure(bg=PANEL_2, fg=FG, activebackground=ACCENT, relief="flat", font=FONT,
+                       highlightthickness=0)
+        row(0, "ArUco type", menu, "not sure? use Auto-detect")
+        self.size_var = tk.StringVar(value=f"{self.cfg.marker_size_mm:g}")
+        row(1, "Marker size (mm)", self._entry(self.size_var), "black border edge to edge")
+        self.ids_var = tk.StringVar(value=",".join(str(i) for i in self.cfg.marker_ids))
+        row(2, "Marker IDs", self._entry(self.ids_var), "e.g. 1,2,3,4")
+
+        btns = tk.Frame(self.win, bg=PANEL)
+        btns.grid(row=3, column=0, columnspan=3, sticky="w", **pad)
+        for text, cmd in (("Auto-detect from camera", self._autodetect),
+                          ("Calibrate layout (4 s)", self._calibrate),
+                          ("Save & apply", self._save),
+                          ("Close", self.win.destroy)):
+            tk.Button(btns, text=text, command=cmd, bg=PANEL_2, fg=FG, activebackground=ACCENT,
+                      relief="flat", font=FONT_BOLD, padx=10, pady=4).pack(side="left", padx=(0, 6))
+        self.live_lbl = tk.Label(self.win, text="", bg=PANEL, fg=MUTED, font=FONT_MONO, anchor="w")
+        self.live_lbl.grid(row=4, column=0, columnspan=3, sticky="we", **pad)
+        self.msg = tk.Label(self.win, text=layout_text(self.cfg), bg=PANEL, fg=FG, font=FONT,
+                            anchor="w", justify="left", wraplength=620)
+        self.msg.grid(row=5, column=0, columnspan=3, sticky="we", padx=10, pady=(4, 10))
+        self._tick()
+
+    def _entry(self, var: tk.StringVar) -> tk.Entry:
+        return tk.Entry(self.win, textvariable=var, bg=PANEL_2, fg=FG, insertbackground=FG,
+                        relief="flat", font=FONT, width=18)
+
+    def _say(self, text: str, colour: str = FG) -> None:
+        self.msg.configure(text=text, fg=colour)
+
+    def _tick(self) -> None:
+        if not self.win.winfo_exists():
+            return
+        seen = sorted(self.app.latest_rack_markers())
+        self.live_lbl.configure(
+            text=f"camera now: markers {seen or 'none'}   rack status: {self.app.status().rack_status}")
+        self.win.after(300, self._tick)
+
+    def _form_config(self) -> tuple[Any, str] | None:
+        """Form -> (config, note), or None after showing the error."""
+        from src.perception.rack import edit_config
+
+        try:
+            form = parse_rack_form(self.dict_var.get(), self.size_var.get(), self.ids_var.get())
+        except ValueError as exc:
+            self._say(str(exc), BAD)
+            return None
+        return edit_config(self.cfg, *form)
+
+    def _autodetect(self) -> None:
+        hits = self.app.autodetect_markers()
+        if not hits:
+            self._say("No ArUco markers found in the current camera frame (tried every type). "
+                      "Are they in view and not covered?", BAD)
+            return
+        name, ids = hits[0]
+        self.dict_var.set(name)
+        self.ids_var.set(",".join(str(i) for i in ids))
+        self._say(f"Found {name}, IDs {ids}. Check the size, then Calibrate and Save.", OK)
+
+    def _calibrate(self) -> None:
+        got = self._form_config()
+        if got is None:
+            return
+        cfg, _ = got
+        live = self.app.rack_config()
+        if (cfg.dictionary, cfg.marker_ids) != (live.dictionary, live.marker_ids):
+            # the live tracker must look for THESE markers while we collect
+            err = self.app.apply_rack_config(cfg, save=False)
+            if err:
+                self._say(err, BAD)
+                return
+        sink = self.app.start_rack_calibration()
+        self._say("Calibrating: keep the camera still and hands out of the tub for 4 s...", ACCENT)
+        self.win.after(self.CALIBRATE_MS, lambda: self._finish(sink, cfg))
+
+    def _finish(self, sink: list, cfg: Any) -> None:
+        new, report = self.app.finish_rack_calibration(sink, cfg)
+        if new is None:
+            self._say("Calibration failed: " + report, BAD)
+            return
+        self.cfg, self.calibrated_now = new, True
+        self._say(f"Calibrated: {report}.  Press Save & apply to keep it.\n{layout_text(new)}", OK)
+
+    def _save(self) -> None:
+        got = self._form_config()
+        if got is None:
+            return
+        cfg, note = got
+        err = self.app.apply_rack_config(
+            cfg, save=True, note="calibrated from the live camera (GUI)" if self.calibrated_now else None)
+        if err:
+            self._say("Not saved: " + err, BAD)
+            return
+        self.cfg, self.calibrated_now = cfg, False
+        self._say("Saved to configs/rack.yaml and applied." + (f"  ({note})" if note else "")
+                  + "\n" + layout_text(cfg), OK)
+
+
+def parse_rack_form(dictionary: str, size_text: str, ids_text: str) -> tuple[str, float, tuple[int, ...]]:
+    """Rack dialog fields -> (dictionary, size mm, ids). ValueError with a
+    message the operator can act on."""
+    from src.perception.rack import ARUCO_DICTIONARIES, parse_ids
+
+    if dictionary not in ARUCO_DICTIONARIES:
+        raise ValueError(f"unknown ArUco type {dictionary!r}")
+    try:
+        size = float(size_text.strip().lower().removesuffix("mm"))
+    except ValueError:
+        raise ValueError("Marker size must be a number of millimetres, e.g. 49") from None
+    if not size > 0:
+        raise ValueError("Marker size must be > 0 mm")
+    return dictionary, size, parse_ids(ids_text)
+
+
+def layout_text(cfg: Any) -> str:
+    if not cfg.layout:
+        return "Layout: not calibrated -- the co-pilot runs in image space. Press Calibrate."
+    return "Layout (mm, lowest ID at origin):  " + "   ".join(
+        f"ID{i} ({p.x_mm:.0f}, {p.y_mm:.0f})" for i, p in sorted(cfg.layout.items()))

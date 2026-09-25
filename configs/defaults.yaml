@@ -72,6 +72,21 @@ default_constraints:
     basis: microgravity_hazard
     override_with: "strict_mode.require_lid_stow: false"
 
+  attended_while_open:
+    type: attendance
+    expression: "any module with its lid off implies operator hands in view"
+    grace_s: 5
+    violation_code: unattended_open_module
+    severity: warning
+    alert: "Module left open. Return to the open module."
+    basis: contamination_control
+    override_with: "strict_mode.require_attendance: false"
+    note: >
+      The lid may be set down anywhere in view (the whole camera view is
+      the stow area); what is not allowed is walking away from an open
+      module. Hands out of view = perception sees no hand for k-of-n
+      frames (configs/runtime.yaml perception.hands_*).
+
   correct_insertion_orientation:
     type: precondition
     expression: "module.orientation within profile tolerance"

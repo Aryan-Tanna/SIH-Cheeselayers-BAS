@@ -1,0 +1,9 @@
+{
+  "clip_id": "attendance_lids_on",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "Control: hands leave the view for 8 s while module_a is out but SEALED (briefly between resealing and returning it, and again after everything is closed) -- no module has its lid off, so nothing may fire.",
+  "expected_events": [],
+  "expected_alerts": 0,
+  "expected_missed_steps": [],
+  "partial": true
+}

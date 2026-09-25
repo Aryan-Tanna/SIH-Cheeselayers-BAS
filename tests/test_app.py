@@ -173,3 +173,56 @@ def test_stream_to_override_sets_the_stream_url(tmp_path):
     app = _headless(tmp_path, record=True, stream_url=opts.stream_url)
     assert app.recorder.cfg.stream_enabled and app.recorder.cfg.stream_url == opts.stream_url
     app.stop()
+
+
+# --- rack (ArUco) geometry through the app --------------------------------------
+
+def test_log_marks_geometry_image_without_rack(tmp_path):
+    app = _headless(tmp_path, events=_events_file(tmp_path, CLEAN[:2]))
+    app.start()
+    assert app.events_done.wait(10.0)
+    summary = app.stop()
+    assert {e["geometry_status"] for e in load_events(summary["log"])} == {"image"}
+    assert app.status().rack_status == "off"
+
+
+def test_live_calibration_from_collected_markers(tmp_path):
+    """The GUI's Calibrate path: frames collected from the camera -> layout.
+    Synthetic overhead camera; checks the report and that a bad size is caught."""
+    import numpy as np
+
+    from src.perception.rack import MarkerPose, RackConfig, marker_corners_mm
+
+    truth = {1: MarkerPose(0, 0, 0), 2: MarkerPose(-372, 266, 0), 3: MarkerPose(5, 265, 0)}
+    px_per_mm = 1.25
+    frames = [{i: marker_corners_mm(p, 49.0) * px_per_mm + [900, 200] for i, p in truth.items()}] * 12
+    app = _headless(tmp_path)
+    new, report = app.finish_rack_calibration(list(frames), RackConfig(marker_size_mm=49.0, marker_ids=(1, 2, 3)))
+    assert new is not None, report
+    assert abs(new.layout[2].x_mm + 372) < 1 and "3 markers placed" in report
+    none, why = app.finish_rack_calibration(frames[:2], RackConfig(marker_ids=(1, 2, 3)))
+    assert none is None and "only 2 frames" in why
+    # without perception there is no live tracker to apply to -- a clear message, no crash
+    assert "perception is off" in app.apply_rack_config(new, save=False)
+    assert app.apply_rack_config(RackConfig(marker_size_mm=-1), save=False)
+    np.testing.assert_allclose(new.layout[1].x_mm, 0.0)
+
+
+def test_switch_to_a_protocol_written_in_the_editor(tmp_path):
+    from src.protocol.editing import StepRow, build, load_raw, save_validated
+    from src.protocol.loader import REPO_ROOT
+
+    raw = load_raw(REPO_ROOT / "configs/protocols/bas_specimen_v1.json")
+    raw["protocol_id"] = "two_step"
+    rows = [StepRow("step", "open_container", action="open", target="container", prompt="Open it."),
+            StepRow("step", "close_container", action="close", target="container",
+                    after=["open_container"], prompt="Close it.")]
+    new = tmp_path / "two_step.json"
+    assert save_validated(build(raw, rows), new, REPO_ROOT / "configs/defaults.yaml") == []
+    app = _headless(tmp_path)
+    assert app.use_protocol(new) is True
+    assert [s["id"] for s in app.status().protocol["steps"]] == ["open_container", "close_container"]
+    assert app.protocol_path == new
+    bad = tmp_path / "bad.json"
+    bad.write_text("{not json", encoding="utf-8")
+    assert app.use_protocol(bad) is False and app.protocol_path == new  # kept running protocol

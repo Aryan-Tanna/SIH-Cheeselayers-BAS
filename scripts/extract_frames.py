@@ -34,6 +34,19 @@ FRAMES_DIR = Path("frames")
 MANIFEST_PATH = Path("manifest/clips.csv")
 DEFAULT_SAMPLE_FPS = 2.5
 DHASH_HAMMING_THRESHOLD = 6
+# Per-clip dHash threshold overrides (clip_id,dhash_threshold). Needed for
+# far/overhead views where the props are a small part of the frame: a 9x8
+# dHash barely changes while hands move, so the default keeps only 6-25
+# frames per clip. Read by DEFAULT so a rebuild of frames/ reproduces the
+# same kept-frame indices -- labels reference frames by that index.
+DEDUP_OVERRIDES_PATH = Path("manifest/extract_overrides.csv")
+
+
+def load_dedup_overrides(path: Path = DEDUP_OVERRIDES_PATH) -> dict[str, int]:
+    if not path.exists():
+        return {}
+    with open(path, newline="", encoding="utf-8") as f:
+        return {row["clip_id"]: int(row["dhash_threshold"]) for row in csv.DictReader(f)}
 
 
 def clip_id_from_frame_filename(frame_filename: str) -> str:
@@ -84,7 +97,10 @@ class ExtractResult:
     duration_s: float
 
 
-def extract_one(clip_path: Path, out_dir: Path, sample_fps: float) -> ExtractResult:
+def extract_one(
+    clip_path: Path, out_dir: Path, sample_fps: float,
+    dhash_threshold: int = DHASH_HAMMING_THRESHOLD,
+) -> ExtractResult:
     clip_stem = clip_path.stem
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -102,7 +118,7 @@ def extract_one(clip_path: Path, out_dir: Path, sample_fps: float) -> ExtractRes
         last_hash: int | None = None
         for i, frame in enumerate(sampled_frames):
             h = dhash(frame)
-            if last_hash is not None and hamming(h, last_hash) < DHASH_HAMMING_THRESHOLD:
+            if last_hash is not None and hamming(h, last_hash) < dhash_threshold:
                 continue  # near-duplicate of the last KEPT frame - drop it
             last_hash = h
             dest = out_dir / f"{clip_stem}_{kept:06d}.jpg"
@@ -145,7 +161,14 @@ def main() -> int:
         print(f"No normalized clips found in {args.clips_dir}/ - nothing to extract.")
         return 0
 
-    results = [extract_one(c, args.out_dir, args.fps) for c in clips]
+    overrides = load_dedup_overrides()
+    results = [
+        extract_one(c, args.out_dir, args.fps, overrides.get(c.stem, DHASH_HAMMING_THRESHOLD))
+        for c in clips
+    ]
+    if overrides:
+        print(f"dHash threshold overrides from {DEDUP_OVERRIDES_PATH}: "
+              f"{sum(c.stem in overrides for c in clips)} of {len(clips)} clips")
 
     print(f"{'clip':<30} {'duration_s':<11} {'sampled':<9} {'kept':<6} flag")
     for r in results:

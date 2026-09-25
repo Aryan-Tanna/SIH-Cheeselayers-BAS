@@ -152,3 +152,40 @@ def test_mic_badge_names_device_and_flags_silence():
     text, bg = mic_badge(st(mic_silent=True))
     assert text.startswith("MIC SILENT") and bg == BAD
     assert mic_badge(st(voice_control=False))[0] == "MIC off"
+
+
+# --- rack setup ------------------------------------------------------------------
+
+def test_rack_badge_states():
+    from types import SimpleNamespace
+
+    from src.runtime.gui import PANEL_2, WARN, rack_badge
+
+    ok = rack_badge(SimpleNamespace(rack_status="ok", rack_markers_seen=(1, 3), rack_reproj_px=0.84))
+    assert ok == ("RACK ok  [1,3]  0.8px  [K]", OK)
+    assert rack_badge(SimpleNamespace(rack_status="held", rack_markers_seen=()))[1] == WARN
+    assert rack_badge(SimpleNamespace(rack_status="none"))[1] == BAD
+    assert rack_badge(SimpleNamespace(rack_status="uncalibrated"))[1] == WARN
+    assert rack_badge(SimpleNamespace())[1] == PANEL_2  # older app without rack fields
+
+
+def test_rack_form_parsing():
+    from src.runtime.gui import parse_rack_form
+
+    assert parse_rack_form("DICT_4X4_50", " 49 mm", "1,2, 3 4") == ("DICT_4X4_50", 49.0, (1, 2, 3, 4))
+    for args in (("DICT_X", "49", "1"), ("DICT_4X4_50", "abc", "1"), ("DICT_4X4_50", "0", "1"),
+                 ("DICT_4X4_50", "49", "")):
+        with pytest.raises(ValueError):
+            parse_rack_form(*args)
+
+
+def test_attend_badge_timer():
+    from src.runtime.gui import PANEL_2, WARN, attend_badge
+
+    base = {"enabled": True, "open_modules": ["module_a"], "grace_s": 5.0, "alerted": False}
+    assert attend_badge({"attendance": {**base, "open_modules": []}}) is None
+    assert attend_badge({"attendance": {**base, "hands_in_view": True, "away_s": None}})[1] == PANEL_2
+    assert attend_badge({"attendance": {**base, "hands_in_view": False, "away_s": 3.2}}) == (
+        "OPEN module_a  hands away 3.2/5 s", WARN)
+    assert attend_badge({"attendance": {**base, "hands_in_view": False, "away_s": 6.0, "alerted": True}})[1] == BAD
+    assert attend_badge({}) is None

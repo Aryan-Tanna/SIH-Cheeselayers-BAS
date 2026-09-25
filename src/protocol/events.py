@@ -123,6 +123,7 @@ ViolationCode = Literal[
     "out_of_order",
     "mutual_exclusion_breach",
     "lid_unstowed",
+    "unattended_open_module",
     "module_not_sealed",
     "module_not_returned",
     "premature_close",

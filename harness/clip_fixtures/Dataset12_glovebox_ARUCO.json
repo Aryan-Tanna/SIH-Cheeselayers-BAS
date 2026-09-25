@@ -1,0 +1,76 @@
+{
+  "clip_id": "Dataset12_glovebox_ARUCO",
+  "protocol_id": "bas_specimen_v1",
+  "object_profile": "configs/objects/profile_jar.yaml",
+  "split": "held_out",
+  "_verified": true,
+  "_view": "cropped overhead",
+  "_note": "Drafted by Claude from a 1-frame-per-second strip (clips_norm) -- Times +/- 1 s; anything between samples can be missed. Verified by Aryan against the video 2026-09-26 (\"spot on\"). S05 is a TEST session: never tune on this clip. Lid steps (cap off / stow / cap on) are listed in _lid_timeline but NOT asserted: lids are not perceived yet (operator confirms them). Whole view = stow area, so the lid counts as stowed the moment it is off.",
+  "_hands": "hands enter ~1 s, leave ~26 s (case closed: no attendance risk)",
+  "expected_events": [
+    {
+      "t": 4.0,
+      "type": "step_complete",
+      "step": "open_container",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 5.5,
+      "type": "step_complete",
+      "step": "remove_a",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 17.0,
+      "type": "step_complete",
+      "step": "return_a",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 18.0,
+      "type": "step_complete",
+      "step": "remove_b",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 24.0,
+      "type": "step_complete",
+      "step": "return_b",
+      "tolerance_s": 2.0
+    },
+    {
+      "t": 25.0,
+      "type": "step_complete",
+      "step": "close_container",
+      "tolerance_s": 2.0
+    }
+  ],
+  "_lid_timeline": [
+    {
+      "t": 6.0,
+      "step": "open_a_lid"
+    },
+    {
+      "t": 6.0,
+      "step": "stow_a_lid"
+    },
+    {
+      "t": 13.5,
+      "step": "close_a_lid"
+    },
+    {
+      "t": 19.0,
+      "step": "open_b_lid"
+    },
+    {
+      "t": 19.0,
+      "step": "stow_b_lid"
+    },
+    {
+      "t": 23.0,
+      "step": "close_b_lid"
+    }
+  ],
+  "partial": true,
+  "expected_missed_steps_note": "not asserted for real clips yet (lid steps need operator confirmation)"
+}

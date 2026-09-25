@@ -267,6 +267,7 @@ _STRICT_MODE_TOGGLES = {
     "require_lid_stow": "lid_stow_required",
     "require_sealed_before_return": "sealed_before_return",
     "require_orientation": "correct_insertion_orientation",
+    "require_attendance": "attended_while_open",
 }
 
 

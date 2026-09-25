@@ -98,6 +98,9 @@
         "require_orientation": {
           "type": "boolean"
         },
+        "require_attendance": {
+          "type": "boolean"
+        },
         "force_module_order": {
           "type": [
             "string",
@@ -279,6 +282,7 @@
             "precondition_failure",
             "zone_confinement",
             "timeout",
+            "attendance",
             "sequence"
           ]
         },
@@ -337,6 +341,7 @@
             "out_of_order",
             "mutual_exclusion_breach",
             "lid_unstowed",
+            "unattended_open_module",
             "module_not_sealed",
             "module_not_returned",
             "premature_close",

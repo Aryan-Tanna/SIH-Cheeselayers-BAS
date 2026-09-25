@@ -79,3 +79,26 @@ runtime, per `CLAUDE.md`).
   rejects ordinary sentences (they decode with `[unk]`). Not yet
   measured on live human speech or with fan noise.
 - **License**: Apache License 2.0 (Alpha Cephei).
+
+## `bootstrap_v5_best.pt` (runtime default since 2026-09-26)
+
+- **What**: YOLOv8n-OBB, same 8 classes, same recipe as v4 (from
+  `yolov8n-obb.pt`, `configs/training/augment_v4.yaml`, 120 epochs,
+  GPU, 26 min). `best.pt` of run `bootstrap_v5`.
+- **Data**: 1032 labelled frames (batch-1..13, dedup copies in
+  `labels/dedup/`). Train 715 = S00 minus 9 test clips + S02 + S04.
+  Test = S01 + S03 (205) + S05 (0 labelled yet) + 9 whole S00 clips
+  (112, `configs/training/split_v5_s00_test.yaml`). Split by whole
+  session / whole clip, never by frame.
+- **Test S01+S03 (never trained on, same frames and labels for both)**:
+  v4 P .77 R .65 mAP50 .769 mAP50-95 .572 -> **v5 P .887 R .833 mAP50
+  .892 mAP50-95 .703**. Per class mAP50 v5 (v4): case_open .98 (.77),
+  case_closed .86 (.65), red_module .92 (.91), yellow_module .90 (.74),
+  red_lid .84 (.80), yellow_lid .76 (.62), hand_bare .97 (.91).
+  Caveat: v4 picked its best epoch ON S01-S03 (it was v4's val), so v4
+  is if anything flattered here. S03 is slab, like S02 which v5 trains on.
+- **Test 9 S00 clips (same session as train -> overestimates)**: mAP50
+  .906; hand_gloved .99 -- still not a real glove number (needs gloved
+  clips from a new session).
+- **Live**: 34 ms/1080p frame CPU, 15.5 det-fps with rack tracking on.
+- **Not yet measured**: S05 (label `runs/label_batch12/batch12_S05_test_import.json`).

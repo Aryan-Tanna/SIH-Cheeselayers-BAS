@@ -30,6 +30,7 @@ are never refused.
 from __future__ import annotations
 
 import threading
+from dataclasses import replace as dc_replace
 from typing import Callable
 
 from src.logging.session_log import SessionLogger
@@ -55,8 +56,12 @@ class Session:
         operator: str | None = None,
         event_listeners: list[Callable[[EngineEvent], None]] | None = None,
         audio_listeners: list[Callable[[AudioRequest], None]] | None = None,
+        geometry_status: Callable[[], str | None] | None = None,
     ) -> None:
         self.clock = clock or SystemClock()
+        # "rack" / "image" at the time each event is logged (the log schema's
+        # geometry_status): says whether rack-space geometry was available.
+        self._geometry_status = geometry_status
         self._lock = threading.RLock()
         self._audio_submit = audio_submit
         self.logger = logger
@@ -169,6 +174,7 @@ class Session:
                 "mode": self.announcer.mode,
                 "paused": eng.paused,
                 "violations": sum(1 for e in eng.out if e.event_type == "violation"),
+                "attendance": eng.attendance_status(self.clock.now()),
             }
 
     def reload_protocol(self, resolved: ResolvedProtocol) -> None:
@@ -183,6 +189,10 @@ class Session:
     def _flush(self, extra: list[AudioRequest] | None = None) -> None:
         batch = self.engine.out[self._seen:]
         self._seen = len(self.engine.out)
+        if self._geometry_status is not None:
+            geo = self._geometry_status()
+            batch = [e if e.geometry_status is not None else dc_replace(e, geometry_status=geo)
+                     for e in batch]
         for e in batch:
             if self.logger is not None:
                 self.logger.log_event(e)

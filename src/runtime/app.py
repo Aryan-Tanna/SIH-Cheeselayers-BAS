@@ -110,6 +110,10 @@ class AppStatus:
     detector_fps: float = 0.0
     frame_latency_ms: float = 0.0
     perception_states: dict[str, str] = field(default_factory=dict)
+    rack_status: str = "off"  # ok | held | none | uncalibrated | off
+    rack_markers_seen: tuple[int, ...] = ()
+    rack_reproj_px: float | None = None
+    rack_summary: str = ""
     recent_events: list[dict[str, Any]] = field(default_factory=list)
     recent_speech: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -168,6 +172,7 @@ class CopilotApp:
             operator=sess_cfg.get("operator"),
             event_listeners=[self._on_engine_event],
             audio_listeners=[self._on_speech],
+            geometry_status=self._geometry_status,
         )
 
         # --- voice control ----------------------------------------------------
@@ -233,6 +238,90 @@ class CopilotApp:
     def latest_detections(self) -> tuple[int, list]:
         return self.perception.latest_detections() if self.perception else (-1, [])
 
+    # --- rack (ArUco) geometry --------------------------------------------------
+
+    def _geometry_status(self) -> str:
+        # Also called while Session is being built (session_start is logged
+        # then), before perception exists.
+        perception = getattr(self, "perception", None)
+        rack = perception.rack if perception else None
+        return rack.geometry_status if rack is not None else "image"
+
+    def latest_rack_markers(self) -> dict:
+        return self.perception.rack_markers() if self.perception else {}
+
+    def rack_config(self) -> Any:
+        from src.perception.rack import RackConfig
+
+        rack = self.perception.rack if self.perception else None
+        return rack.cfg if rack is not None else RackConfig(enabled=False)
+
+    def apply_rack_config(self, cfg: Any, save: bool = True, note: str | None = None) -> str | None:
+        """Validate, save to configs/rack.yaml and swap in live (no restart).
+        Returns an error message, or None on success."""
+        from src.perception.rack import save_rack_config
+        from src.runtime.perception_stage import rack_config_path
+
+        errs = cfg.validate()
+        if errs:
+            return "; ".join(errs)
+        if self.perception is None:
+            return "perception is off (no detector) -- rack tracking runs inside it"
+        if save:
+            try:
+                save_rack_config(cfg, rack_config_path(self.cfg, REPO_ROOT), layout_note=note)
+            except Exception as exc:  # noqa: BLE001
+                return f"could not save: {exc}"
+        self.perception.set_rack(cfg)
+        self.printer(f"rack config applied: {cfg.dictionary} ids {list(cfg.marker_ids)} "
+                     f"{cfg.marker_size_mm:g} mm, layout of {len(cfg.layout)} markers")
+        return None
+
+    def autodetect_markers(self) -> list[tuple[str, list[int]]]:
+        """Dictionaries that find markers in the current camera frame."""
+        from src.perception.rack import autodetect_dictionary
+
+        frame = self.latest_frame()
+        return [] if frame is None else autodetect_dictionary(frame.payload)
+
+    def start_rack_calibration(self) -> list[dict]:
+        sink: list[dict] = []
+        if self.perception is not None:
+            self.perception.collect_markers(sink)
+        return sink
+
+    def finish_rack_calibration(self, sink: list[dict], cfg: Any) -> tuple[Any, str]:
+        """Stop collecting; fit the layout for `cfg` (dictionary / size / ids
+        as entered). Returns (new cfg or None, human-readable report)."""
+        import math
+
+        from src.perception.rack import calibrate_layout
+
+        if self.perception is not None:
+            self.perception.collect_markers(None)
+        frames = [{i: c for i, c in f.items() if i in cfg.marker_ids} for f in sink[-300:]]
+        frames = [f for f in frames if len(f) >= 2]
+        if len(frames) < 5:
+            return None, (f"only {len(frames)} frames showed 2+ of markers {list(cfg.marker_ids)} "
+                          "together -- keep hands out of the tub and check the ArUco type / IDs")
+        try:
+            res = calibrate_layout(frames, cfg.marker_size_mm)
+        except ValueError as exc:
+            return None, str(exc)
+        new = type(cfg)(**{**cfg.__dict__, "layout": res.layout})
+        msg = f"{len(frames)} frames, {len(res.layout)} markers placed, RMS {res.rms_reproj_px:.2f} px"
+        if res.unplaced:
+            msg += f"; never seen with another marker: {res.unplaced}"
+        old = self.rack_config().layout
+        common = [i for i in res.layout if i in old]
+        if common:
+            shift = max(math.hypot(res.layout[i].x_mm - old[i].x_mm, res.layout[i].y_mm - old[i].y_mm)
+                        for i in common)
+            msg += f"; max change vs saved layout {shift:.1f} mm"
+        if res.rms_reproj_px > cfg.max_reproj_px:
+            return None, msg + " -- too inaccurate, not applied (wrong marker size? a marker not flat?)"
+        return new, msg
+
     def _on_voice(self, parsed: Any) -> None:
         if parsed.command == "wake":
             self._armed_until = time.monotonic() + float(
@@ -283,11 +372,24 @@ class CopilotApp:
             detector_fps=self.perception.stats.detector_fps if self.perception else 0.0,
             frame_latency_ms=self.perception.stats.frame_latency_ms if self.perception else 0.0,
             perception_states=self.perception.fusion.states() if self.perception else {},
+            **self._rack_status_fields(),
             recent_events=list(self._recent_events),
             recent_speech=list(self._recent_speech),
             warnings=list(self.warnings),
             uptime_s=0.0 if self._started_at is None else time.monotonic() - self._started_at,
         )
+
+    def _rack_status_fields(self) -> dict[str, Any]:
+        rack = self.perception.rack if self.perception else None
+        if rack is None:
+            return {}
+        pose, cfg = rack.latest, rack.cfg
+        return {
+            "rack_status": pose.status,
+            "rack_markers_seen": pose.markers_seen,
+            "rack_reproj_px": pose.fit.reproj_px if pose.fit is not None else None,
+            "rack_summary": f"{cfg.dictionary} {list(cfg.marker_ids)} {cfg.marker_size_mm:g} mm",
+        }
 
     # ------------------------------------------------------------------
     # Lifecycle
@@ -350,6 +452,19 @@ class CopilotApp:
             self._protocol_mtime = mtime
             self.reload_protocol()
 
+    def use_protocol(self, path: Path) -> bool:
+        """Switch the running session to another protocol file (the GUI
+        editor's "save as new"). Same validated path as a hot reload; on
+        failure the running protocol is kept."""
+        path = Path(path)
+        old = self.protocol_path
+        self.protocol_path = path
+        if not self.reload_protocol():
+            self.protocol_path = old
+            return False
+        self._protocol_mtime = path.stat().st_mtime  # the watcher now follows the new file
+        return True
+
     def reload_protocol(self) -> bool:
         try:
             resolved = load_validated(self.protocol_path, self.defaults_path, self.object_profile)
@@ -360,10 +475,11 @@ class CopilotApp:
         self.resolved = resolved
         if self.perception is not None:
             # roles/profile may have changed: rebuild the fusion (keeps the model)
-            from src.perception.fusion import FusionConfig, SceneFusion, binding_for
+            from src.perception.fusion import FusionConfig, SceneFusion, binding_for, with_hand_classes
 
             self.perception.fusion = SceneFusion(
-                binding_for(resolved), FusionConfig.from_config(self.cfg, resolved.timing))
+                with_hand_classes(binding_for(resolved), self.cfg),
+                FusionConfig.from_config(self.cfg, resolved.timing))
         self.audio.prewarm_async(speakable_phrases(resolved))
         self.printer("protocol reloaded:\n" + format_resolved_report(resolved, IMPLEMENTED_CONSTRAINT_IDS))
         return True

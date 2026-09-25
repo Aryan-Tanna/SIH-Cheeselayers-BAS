@@ -80,9 +80,11 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from src.logging.session_log import SessionLogger, verify_chain  # noqa: E402
 from src.protocol.alerts import AlertManager  # noqa: E402
+
+TICK_S = 0.25  # live ticker rate (src/runtime/app.py _ticker)
 from src.protocol.debounce import Debouncer  # noqa: E402
 from src.protocol.engine import ProtocolEngine  # noqa: E402
-from src.protocol.events import ActionEvent, AnomalyEvent, EngineEvent  # noqa: E402
+from src.protocol.events import ActionEvent, AnomalyEvent, EngineEvent, StateEvent  # noqa: E402
 from src.protocol.loader import ResolvedProtocol, resolve  # noqa: E402
 from src.runtime.announcer import Announcer, AnnouncerSettings  # noqa: E402
 from src.runtime.clock import VirtualClock  # noqa: E402
@@ -260,9 +262,29 @@ def run_replay(
                 result.actual_alerts += 1
                 missed_spoken.update(r.step_ids)
 
+    last_t = raw_events[0]["t"] if raw_events else 0.0
+
+    def tick_until(t: float) -> None:
+        """Timeouts fire between events as they do live (Session.tick at
+        4 Hz), not only when the next action happens to arrive."""
+        nonlocal last_t
+        step = TICK_S
+        k = last_t + step
+        while k < t:
+            clock.advance_to(k)
+            engine.check_timeouts(k)
+            drain()
+            k += step
+        last_t = max(last_t, t)
+
     try:
         for raw in raw_events:
+            tick_until(raw["t"])
             clock.advance_to(raw["t"])
+            if "state" in raw:
+                engine.process(StateEvent(ts=raw["t"], key=raw["state"], value=raw["value"]))
+                drain()
+                continue
             if "command" in raw:
                 if raw["command"] == "pause":
                     engine.pause_session(raw["t"])

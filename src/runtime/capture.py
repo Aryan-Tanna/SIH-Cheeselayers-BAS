@@ -104,6 +104,8 @@ class VideoSource:
     """Runs capture on its own thread and hands each Frame to `on_frame`
     (which must be quick -- enqueue, never process inline)."""
 
+    MAX_PACE_LAG_S = 0.5  # files: further behind than this -> re-anchor, no burst
+
     def __init__(
         self,
         cfg: CaptureConfig,
@@ -175,6 +177,12 @@ class VideoSource:
                     if pace_t0 is None:
                         pace_t0 = now
                     due = pace_t0 + pace_n / src_fps
+                    if now - due > self.MAX_PACE_LAG_S:
+                        # Fell behind (a stall, e.g. model warm-up at start).
+                        # Catching up would read frames as fast as the decoder
+                        # allows -- measured 94 fps from a 30 fps file -- and
+                        # starve the detector; a live camera just carries on.
+                        pace_t0, pace_n, due = now, 0, now
                     if due > now:
                         self._stop.wait(due - now)
                     pace_n += 1

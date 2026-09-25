@@ -1,11 +1,10 @@
 # configs/zones.yaml
 #
-# Rack-space geometry for zones referenced by protocols. Phase 0 has no
-# ArUco calibration and no video, so these are placeholder extents in
-# rack-frame millimetres, shaped correctly for the loader/validator and
-# for src/kinematics zone_confinement checks to consume once real
-# rack-to-camera calibration exists. Do NOT treat these numbers as
-# measured — they are unset placeholders, not defaults to build on.
+# Rack-space geometry for zones referenced by protocols, in rack-frame
+# millimetres (tub floor, origin = centre of ArUco ID1; configs/rack.yaml).
+# Nothing loads this file yet: protocols declare zone NAMES inline, and
+# zone_confinement / lid stowing are not perceived. Each zone says whether
+# its numbers are measured or unset -- never treat an unset one as a default.
 
 schema_version: 1
 
@@ -13,16 +12,23 @@ zones:
   stow_zone:
     frame: rack
     shape: aabb
-    # rack-frame millimetres, origin at the ArUco-derived rack anchor.
-    # Unset — fill in once fiducial batch 2 lands.
+    # rack-frame millimetres: origin = centre of ArUco ID1 (configs/rack.yaml).
+    # UNSET ON PURPOSE: no stow area exists in any clip (S05 included) --
+    # where the lid is stowed is a rig decision for the team. Nothing reads
+    # it yet either: lid events are not perceived (operator confirms).
     min: null
     max: null
 
   container_interior:
     frame: rack
     shape: aabb
-    min: null
-    max: null
+    # MEASURED 2026-09-25 (scripts/compare_geometry.py): median axis-aligned
+    # floor box of the CLOSED case over the 20 S05 clips, 333 x 243 mm.
+    # Reference only -- the case sits up to ~100-125 mm elsewhere from clip
+    # to clip, so containment uses the LIVE footprint (fusion, rack mode),
+    # never this fixed box.
+    min: [-363, -52]
+    max: [-30, 191]
 
 note: >
   Every zone MUST declare frame: rack. An "image" frame zone breaks the

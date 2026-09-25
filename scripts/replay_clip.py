@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -32,7 +33,8 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from harness.replay import format_result, run_replay  # noqa: E402
 from src.perception.detector import Detection, Detector, DetectorConfig, required_classes  # noqa: E402
-from src.perception.fusion import FusionConfig, SceneFusion, binding_for  # noqa: E402
+from src.perception.fusion import FusionConfig, SceneFusion, binding_for, with_hand_classes  # noqa: E402
+from src.protocol.events import StateEvent  # noqa: E402
 from src.protocol.loader import resolve  # noqa: E402
 from src.runtime.config import load_runtime_config  # noqa: E402
 
@@ -71,6 +73,32 @@ def detections_for(clip: Path, cfg: DetectorConfig, stride: int, det_holder: dic
     return rows
 
 
+def markers_for(clip: Path, stride: int, rack_cfg) -> list[dict]:
+    """ArUco markers per processed frame (same frames as detections_for),
+    cached next to the detections -- only needed for --geometry auto."""
+    key = f"{clip.stem}__markers_{rack_cfg.dictionary}_s{stride}.jsonl"
+    path = CACHE / key
+    if path.is_file():
+        return [json.loads(l) for l in path.read_text(encoding="utf-8").splitlines() if l]
+    import cv2
+
+    from src.perception.rack import detect_markers, make_detector
+
+    det = make_detector(rack_cfg.dictionary)
+    cap = cv2.VideoCapture(str(clip))
+    rows, idx = [], 0
+    while cap.grab():
+        if idx % stride == 0:
+            ok, img = cap.retrieve()
+            mk = detect_markers(det, img, rack_cfg.marker_ids) if ok else {}
+            rows.append({str(i): c.tolist() for i, c in mk.items()})
+        idx += 1
+    cap.release()
+    CACHE.mkdir(parents=True, exist_ok=True)
+    path.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    return rows
+
+
 def to_detection(row: list) -> Detection:
     cls, conf, cx, cy, w, h, ang, corners = row
     return Detection(cls, conf, cx, cy, w, h, ang, tuple(tuple(p) for p in corners))
@@ -81,6 +109,9 @@ def main() -> int:
     ap.add_argument("clips", nargs="+", type=Path)
     ap.add_argument("--stride", type=int, default=3)
     ap.add_argument("--show-events", action="store_true")
+    ap.add_argument("--geometry", choices=("config", "image", "auto"), default="config",
+                    help="containment geometry (default: configs/runtime.yaml perception.geometry); "
+                         "auto = rack space from ArUco markers where visible")
     args = ap.parse_args()
 
     runtime = load_runtime_config()
@@ -99,10 +130,30 @@ def main() -> int:
             print(f"{clip.stem}: model lacks {sorted(missing)}")
             return 1
         frames = detections_for(clip, dcfg, args.stride, holder)
-        fusion = SceneFusion(binding_for(resolved), FusionConfig.from_config(runtime, resolved.timing))
+        fcfg = FusionConfig.from_config(runtime, resolved.timing)
+        if args.geometry != "config":
+            fcfg = replace(fcfg, geometry=args.geometry)
+        fusion = SceneFusion(with_hand_classes(binding_for(resolved), runtime), fcfg)
+        tracker = None
+        if fcfg.geometry == "auto":
+            import numpy as np
+
+            from src.perception.rack import RackTracker, load_rack_config
+
+            rack_cfg = load_rack_config(REPO_ROOT / (runtime.get("perception") or {}).get(
+                "rack_config", "configs/rack.yaml"))
+            tracker = RackTracker(replace(rack_cfg, enabled=False))
+            tracker.cfg = rack_cfg
+            marks = markers_for(clip, args.stride, rack_cfg)
         events = []
-        for fr in frames:
-            for e in fusion.update(fr["t"], [to_detection(r) for r in fr["dets"]]):
+        for i, fr in enumerate(frames):
+            pose = None
+            if tracker is not None and i < len(marks):
+                pose = tracker.update_markers(fr["t"], {int(k): np.array(v) for k, v in marks[i].items()})
+            for e in fusion.update(fr["t"], [to_detection(r) for r in fr["dets"]], pose):
+                if isinstance(e, StateEvent):  # operator presence (hands in view)
+                    events.append({"t": round(e.ts, 3), "state": e.key, "value": e.value})
+                    continue
                 ev = {"t": round(e.ts, 3), "action": e.action, "target": e.target,
                       "confidence": round(e.confidence, 3)}
                 for k in ("source", "dest", "zone"):
@@ -117,7 +168,10 @@ def main() -> int:
         print(format_result(result))
         if args.show_events:
             for ev in events:
-                print(f"      {ev['t']:6.2f}s  {ev['action']:12s} {ev['target']}")
+                if "state" in ev:
+                    print(f"      {ev['t']:6.2f}s  {ev['state']} = {ev['value']}")
+                else:
+                    print(f"      {ev['t']:6.2f}s  {ev['action']:12s} {ev['target']}")
         split = (fixture or {}).get("split", "-")
         exp = [e for e in (fixture or {}).get("expected_events", [])]
         found = len(exp) - result.missed_violations - sum(

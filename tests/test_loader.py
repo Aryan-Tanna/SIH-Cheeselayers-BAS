@@ -12,7 +12,7 @@ def test_resolve_loads_bas_specimen_v1():
     assert set(r.parsed.roles) == {"container", "module_a", "module_b"}
 
 
-def test_all_nine_default_constraints_present_and_unmodified_by_silent_protocol():
+def test_all_default_constraints_present_and_unmodified_by_silent_protocol():
     r = resolve(PROTOCOL, DEFAULTS)
     by_id = {c.id: c for c in r.constraints}
     assert set(by_id) == {
@@ -21,6 +21,7 @@ def test_all_nine_default_constraints_present_and_unmodified_by_silent_protocol(
         "sealed_before_return",
         "container_empty_before_close",
         "lid_stow_required",
+        "attended_while_open",
         "correct_insertion_orientation",
         "out_of_order",
         "skip",

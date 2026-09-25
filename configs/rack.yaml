@@ -1,0 +1,42 @@
+# configs/rack.yaml -- ArUco markers that define the rack (tub floor) frame.
+#
+# Edited by hand, or from the GUI ("Rack setup [K]"). Units: millimetres.
+# marker_size_mm = black border edge to black border edge.
+# layout = where each marker sits on the floor (centre + rotation), with
+# the lowest-ID marker at the origin. It is CALIBRATED FROM VIDEO
+# (GUI "Calibrate", or scripts/calibrate_rack.py) -- re-run that if the
+# markers are re-taped, the size or IDs change. An empty layout means
+# "not calibrated": the co-pilot then runs in image space (degraded).
+
+enabled: true
+aruco:
+  dictionary: DICT_4X4_50
+  marker_size_mm: 49.0
+  marker_ids:
+  - 1
+  - 2
+  - 3
+  - 4
+layout:
+  note: calibrated by scripts/calibrate_rack.py from clips_Aruco (20 clips, RMS 1.28
+    px)
+  markers:
+    1:
+      x_mm: 0.0
+      y_mm: 0.0
+      angle_deg: 0.0
+    2:
+      x_mm: -372.3
+      y_mm: 266.2
+      angle_deg: 0.62
+    3:
+      x_mm: 4.9
+      y_mm: 265.3
+      angle_deg: -0.02
+    4:
+      x_mm: -377.0
+      y_mm: 7.3
+      angle_deg: 178.84
+hold_s: 1.0
+max_reproj_px: 4.0
+ransac_px: 3.0

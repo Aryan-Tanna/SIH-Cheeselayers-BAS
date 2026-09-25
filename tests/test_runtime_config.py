@@ -21,7 +21,8 @@ def test_detector_weights_come_from_config():
     cfg = load_runtime_config()
     p = detector_weights_path(cfg)
     assert p.is_absolute()
-    assert p.name == "bootstrap_v4_best.pt"
+    assert p == REPO_ROOT / cfg["detector"]["weights"]
+    assert p.is_file(), f"configured weights {p} missing -- commit them to models/"
     other = {"detector": {"weights": "models/v5.pt"}}
     assert detector_weights_path(other) == REPO_ROOT / "models" / "v5.pt"
 

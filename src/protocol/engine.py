@@ -84,10 +84,14 @@ IMPLEMENTED_CONSTRAINT_IDS = frozenset({
     "sealed_before_return",
     "container_empty_before_close",
     "lid_stow_required",
+    "attended_while_open",
     "out_of_order",
     "skip",
     "wrong_object",
 })
+
+
+HANDS_IN_VIEW = "operator.hands_in_view"
 
 
 def split_target(target: str) -> tuple[str, str | None]:
@@ -166,6 +170,13 @@ class ProtocolEngine:
         self.paused = False
         self._paused_at: float | None = None
         self._ignored_while_paused = 0
+
+        # Operator presence (attended_while_open). Perception reports it as
+        # StateEvent("operator.hands_in_view", bool). Until it says
+        # otherwise the operator is assumed present: no camera, no alert.
+        self.hands_in_view = True
+        self._hands_away_since: float | None = None
+        self._unattended_fired = False
 
         self.out: list[EngineEvent] = []
         self._load(resolved)
@@ -421,6 +432,8 @@ class ProtocolEngine:
         for rs in self.role_state.values():
             if rs.lid_detached_ts is not None:
                 rs.lid_detached_ts += paused_for
+        if self._hands_away_since is not None:
+            self._hands_away_since += paused_for
         self.paused = False
         self._paused_at = None
         self._emit(EngineEvent(
@@ -441,6 +454,7 @@ class ProtocolEngine:
     def check_timeouts(self, now: float) -> None:
         if self.paused:
             return
+        self._check_attendance(now)
         lid_stow = self.constraints_by_id.get("lid_stow_required")
         if lid_stow is None or not lid_stow.enabled:
             return
@@ -460,6 +474,51 @@ class ProtocolEngine:
                     target=role,
                     message=f"{role} lid not stowed within {timeout_s}s",
                 )
+
+    def open_modules(self) -> list[str]:
+        """Module roles whose own lid is off right now."""
+        return sorted(r for r in self._module_roles if self.role_state.get(r) and self.role_state[r].open)
+
+    def attendance_status(self, now: float) -> dict[str, Any]:
+        """For the GUI timer: which modules are open, whether hands are in
+        view, how long they have been away (the grace clock), the limit."""
+        c = self.constraints_by_id.get("attended_while_open")
+        grace = float(c.params.get("grace_s", 5)) if c is not None else None
+        open_mods = self.open_modules()
+        away = None
+        if not self.hands_in_view and self._hands_away_since is not None and open_mods:
+            opened = max((self.role_state[r].lid_detached_ts or self._hands_away_since) for r in open_mods)
+            ref = self._paused_at if (self.paused and self._paused_at is not None) else now
+            away = max(0.0, ref - max(self._hands_away_since, opened))
+        return {"enabled": bool(c is not None and c.enabled), "open_modules": open_mods,
+                "hands_in_view": self.hands_in_view, "away_s": away, "grace_s": grace,
+                "alerted": self._unattended_fired}
+
+    def _check_attendance(self, now: float) -> None:
+        """attended_while_open: a module with its lid off must not be left
+        with nobody at it. Fires ONCE per unattended episode, after
+        grace_s with no hands in view; a new episode starts when hands
+        come back or every module is sealed again. The lid itself may lie
+        anywhere in view -- the whole view is the stow area."""
+        c = self.constraints_by_id.get("attended_while_open")
+        if c is None or not c.enabled or self.hands_in_view or self._unattended_fired:
+            return
+        open_mods = self.open_modules()
+        if not open_mods or self._hands_away_since is None:
+            return
+        grace = float(c.params.get("grace_s", 5))
+        # the clock runs from the LATER of: hands left, module opened
+        opened = max((self.role_state[r].lid_detached_ts or self._hands_away_since) for r in open_mods)
+        started = max(self._hands_away_since, opened)
+        if now - started > grace:
+            self._unattended_fired = True
+            self._violation(
+                "unattended_open_module",
+                root_cause_id="attendance",
+                target=open_mods[0],
+                message=f"{', '.join(open_mods)} open with no hands in view for {grace:g}s",
+                extra={"open_modules": open_mods, "grace_s": grace},
+            )
 
     # ------------------------------------------------------------------
     # Hard ordering guards — see module docstring
@@ -620,6 +679,11 @@ class ProtocolEngine:
     # ------------------------------------------------------------------
 
     def process(self, event: SemanticEvent) -> None:
+        if isinstance(event, StateEvent) and event.key == HANDS_IN_VIEW:
+            # Presence is tracked even while paused (it is not a step, and a
+            # stale value would misfire on resume); timers stay frozen.
+            self._set_hands_in_view(event.ts, bool(event.value))
+            return
         if self.paused and not isinstance(event, OperatorOverrideEvent):
             self._ignored_while_paused += 1
             return
@@ -638,6 +702,23 @@ class ProtocolEngine:
             ))
         else:  # pragma: no cover - exhaustiveness guard
             raise TypeError(f"unknown event type: {type(event)!r}")
+
+    def _set_hands_in_view(self, ts: float, value: bool) -> None:
+        if value == self.hands_in_view:
+            return
+        self.hands_in_view = value
+        if value:
+            self._hands_away_since = None
+            self._unattended_fired = False
+        else:
+            self._hands_away_since = ts
+        self._emit(EngineEvent(
+            ts_monotonic=ts, event_type="unmatched_action",
+            message=f"operator hands {'back in view' if value else 'out of view'}",
+            operator=self.operator,
+        ))
+        if not self.paused:
+            self.check_timeouts(ts)
 
     def _process_state(self, event: StateEvent) -> None:
         # Reserved for orientation/zone-confinement predicates once
@@ -850,6 +931,7 @@ _CODE_TO_DEFAULT_ID = {
     "module_not_sealed": "sealed_before_return",
     "module_not_returned": "container_empty_before_close",
     "lid_unstowed": "lid_stow_required",
+    "unattended_open_module": "attended_while_open",
     "wrong_orientation": "correct_insertion_orientation",
     "out_of_order": "out_of_order",
     "skip": "skip",

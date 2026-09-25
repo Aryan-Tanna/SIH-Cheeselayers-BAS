@@ -13,7 +13,7 @@ detector:
   # in src/ names a weights file. Classes are matched by NAME, and the
   # model is checked at load against the classes the object profile
   # binds, so a model that renamed/dropped a class fails at startup.
-  weights: models/bootstrap_v4_best.pt
+  weights: models/bootstrap_v5_best.pt
   conf: 0.25                   # re-tune per model, on the tuning clips only
   iou: 0.5
   imgsz: 640                   # the size v4 was trained at
@@ -196,6 +196,27 @@ perception:
   containment_min_overlap: 0.8
   # Votes older than this (no evidence for the object) are discarded.
   stale_s: 1.5
+  # Containment geometry. image = today's image-box overlap (above).
+  # auto = rack space (ArUco floor mm, configs/rack.yaml) whenever the
+  # rack pose is known, image space otherwise. Rack space fixes rotated
+  # containers and the open lid flap; it does NOT fix a module hovering
+  # over the box (no height in a floor map). See src/perception/fusion.py.
+  geometry: image
+  rack_config: configs/rack.yaml
+  # rack space: module centre may lie this far outside the footprint (mm)
+  rack_margin_mm: 15
+  # rack space: while open, the last CLOSED footprint is the interior if
+  # the open box still covers this fraction of it (else it moved)
+  closed_footprint_min_cover: 0.7
+  # Operator presence for the attended_while_open rule (configs/defaults.yaml):
+  # "hands gone" / "hands back" once k of the last n processed frames agree
+  # (~1 s at 10 det-fps), so a detector missing a hand for a frame is not
+  # "operator left". Hand classes = the object profile's
+  # detector_classes_not_role_bound unless hand_classes is set here.
+  hands_k: 8
+  hands_n: 10
+  hand_min_conf: 0.0
+  # hand_classes: [hand_bare, hand_gloved]
   # Per-class minimum confidence on top of detector.conf, e.g. to damp a
   # class the model over-fires on:  {red_lid: 0.5}
   min_conf: {}

@@ -1,0 +1,17 @@
+{
+  "clip_id": "unattended_open_module",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "Red module open (lid off at t=3); the operator's hands leave the view at t=6 and come back at t=16. attended_while_open (grace 5 s) must fire ONCE, at the first 4 Hz tick past t=11, and never again for this episode. The rest of the run is clean.",
+  "expected_events": [
+    {
+      "t": 11.25,
+      "type": "violation",
+      "code": "unattended_open_module",
+      "target": "module_a",
+      "tolerance_s": 0.3
+    }
+  ],
+  "expected_alerts": 1,
+  "expected_missed_steps": [],
+  "partial": true
+}

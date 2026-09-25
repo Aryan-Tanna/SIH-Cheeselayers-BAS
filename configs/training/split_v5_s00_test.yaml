@@ -1,0 +1,31 @@
+# configs/training/split_v5_s00_test.yaml
+#
+# v5 split (Aryan, 2026-09-25): test = S01 + S03 + S05 whole sessions + these
+# WHOLE S00 clips; train = remaining S00 + S02 + S04. (S02 went to train,
+# S03 to test: both are slab-only sessions; S02 is twice the frames and
+# mixes overhead + angled, so it is worth more as training data.)
+#
+# Whole clips, never frames: frames of one clip are near-copies, so a
+# frame-level split would score train frames as "test".
+#
+# CAVEAT -- these S00 clips share session (day, rig, operator, lighting)
+# with the S00 clips left in train, so their score OVERESTIMATES. Report
+# them separately from S01+S03 (data_test_sessions.yaml vs
+# data_test_s00.yaml); the combined number is for model selection only.
+#
+# Chosen for content coverage (from label counts, not the manifest gloves
+# column, which is wrong for some clips): gloved jar + gloved slab (the ONLY
+# hand_gloved test data -- no other session has gloves), bare jar overhead +
+# angled with case_closed and lids, bare slab. The biggest S00 clips
+# (Dataset10/11/22/4) stay in train.
+name: test_s00
+clips:
+  - Dataset35_glovebox   # gloved, jar,  overhead
+  - Dataset12_glovebox   # gloved, jar,  angled
+  - Dataset36_glovebox   # gloved, slab, angled
+  - Dataset24_glovebox   # gloved, slab, angled
+  - Dataset28_glovebox   # bare,   jar,  overhead, case_closed 14
+  - Dataset26_glovebox   # bare,   jar,  angled, lids
+  - Dataset19_glovebox   # bare,   jar,  overhead, lids
+  - Dataset45_glovebox   # bare,   slab, angled
+  - Dataset37_glovebox   # bare,   slab, angled

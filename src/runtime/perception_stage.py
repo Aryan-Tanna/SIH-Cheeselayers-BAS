@@ -7,6 +7,12 @@ NEWEST frame and processes that, skipping whatever arrived meanwhile --
 the pipeline rule that stale frames are dropped, not worked through.
 Capture and recording keep their own full rate regardless.
 
+The same thread also tracks the rack (ArUco markers on the rig floor,
+src/perception/rack.py) on the frame it just ran the detector on: ~12 ms
+per 1080p frame, measured, next to ~100 ms for the detector. The rack
+pose is published for the GUI and the log's geometry_status, and handed
+to fusion for rack-space containment when perception.geometry is auto.
+
 Every event carries the frame's CAPTURE timestamp (acquisition time), so
 the log and the recording stay aligned however long inference took.
 Latency is measured, not assumed:
@@ -26,6 +32,7 @@ from typing import Any, Callable
 
 from src.perception.detector import Detection, Detector
 from src.perception.fusion import SceneFusion
+from src.perception.rack import RackConfig, RackPose, RackTracker
 from src.protocol.events import SemanticEvent
 from src.runtime.pipeline import Frame
 
@@ -44,8 +51,13 @@ class PerceptionStage:
     def __init__(self, detector: Detector, fusion: SceneFusion,
                  emit: Callable[[SemanticEvent], None],
                  clock: Callable[[], float] = time.monotonic,
-                 printer: Callable[[str], None] = print) -> None:
+                 printer: Callable[[str], None] = print,
+                 rack: RackTracker | None = None) -> None:
         self.detector = detector
+        # Swapped whole (never mutated) by set_rack(): a plain attribute
+        # rebind is atomic, so the perception thread sees old or new.
+        self.rack = rack
+        self._markers_sink: list[dict] | None = None  # calibration capture
         self.fusion = fusion
         self.emit = emit
         self.clock = clock
@@ -71,6 +83,23 @@ class PerceptionStage:
         """(frame seq, detections) of the most recent processed frame."""
         with self._cond:
             return self._latest
+
+    def rack_pose(self) -> RackPose | None:
+        rack = self.rack
+        return None if rack is None else rack.latest
+
+    def rack_markers(self) -> dict:
+        """Marker corners seen in the last processed frame (GUI overlay)."""
+        rack = self.rack
+        return {} if rack is None else dict(rack.last_markers)
+
+    def set_rack(self, cfg: RackConfig) -> None:
+        self.rack = RackTracker(cfg)
+
+    def collect_markers(self, sink: list[dict] | None) -> None:
+        """While a list is set, every processed frame's markers are appended
+        to it (layout calibration from the live camera). None stops."""
+        self._markers_sink = sink
 
     def start(self) -> None:
         self._thread = threading.Thread(target=self._run, name="perception", daemon=True)
@@ -106,7 +135,18 @@ class PerceptionStage:
                 s.detector_fps = (len(self._times) - 1) / (self._times[-1] - self._times[0])
             with self._cond:
                 self._latest = (frame.seq, dets)
-            for event in self.fusion.update(frame.ts_monotonic, dets):
+            rack, pose = self.rack, None
+            if rack is not None:
+                try:
+                    pose = rack.update(frame.ts_monotonic, frame.payload)
+                    sink = self._markers_sink
+                    if sink is not None and len(rack.last_markers) >= 2:
+                        sink.append(dict(rack.last_markers))
+                except Exception as exc:  # noqa: BLE001 -- geometry is optional, never fatal
+                    self.printer(f"WARNING: rack tracking failed on a frame: {exc!r}")
+                    pose = None
+            # the SAME frame's rack pose; fusion uses it only with geometry: auto
+            for event in self.fusion.update(frame.ts_monotonic, dets, pose):
                 s.events += 1
                 try:
                     self.emit(event)
@@ -131,5 +171,43 @@ def build_perception(runtime_cfg: dict[str, Any], resolved: Any, repo_root: Any,
                             required=required_classes(resolved.parsed.object_profile))
     except ImportError as exc:
         return None, f"perception unavailable (install the vision extra): {exc}"
-    fusion = SceneFusion(binding_for(resolved), FusionConfig.from_config(runtime_cfg, resolved.timing))
-    return PerceptionStage(detector, fusion, emit, printer=printer), None
+    from src.perception.fusion import with_hand_classes
+
+    fusion = SceneFusion(with_hand_classes(binding_for(resolved), runtime_cfg),
+                         FusionConfig.from_config(runtime_cfg, resolved.timing))
+    rack = build_rack(runtime_cfg, repo_root, printer)
+    return PerceptionStage(detector, fusion, emit, printer=printer, rack=rack), None
+
+
+def rack_config_path(runtime_cfg: dict[str, Any], repo_root: Any) -> Any:
+    from pathlib import Path
+
+    rel = (runtime_cfg.get("perception") or {}).get("rack_config", "configs/rack.yaml")
+    return Path(repo_root) / rel
+
+
+def build_rack(runtime_cfg: dict[str, Any], repo_root: Any,
+               printer: Callable[[str], None] = print) -> RackTracker | None:
+    """Rack tracking is optional: a missing/invalid config or no layout
+    means image-space geometry, printed -- never a startup failure."""
+    from src.perception.rack import load_rack_config
+
+    path = rack_config_path(runtime_cfg, repo_root)
+    try:
+        cfg = load_rack_config(path)
+    except Exception as exc:  # noqa: BLE001
+        printer(f"WARNING: {path} unreadable ({exc!r}) -- rack geometry off, image space only")
+        return None
+    errs = cfg.validate()
+    if errs:
+        printer(f"WARNING: {path} invalid ({'; '.join(errs)}) -- rack geometry off, image space only")
+        return None
+    if not cfg.enabled:
+        printer(f"rack geometry: off ({path.name} missing or disabled) -- image space only")
+    elif not cfg.calibrated:
+        printer(f"rack geometry: {cfg.dictionary} ids {list(cfg.marker_ids)} {cfg.marker_size_mm:g} mm, "
+                "layout NOT calibrated -- image space until calibrated (GUI: Rack setup)")
+    else:
+        printer(f"rack geometry: {cfg.dictionary} ids {list(cfg.marker_ids)} {cfg.marker_size_mm:g} mm, "
+                f"layout of {len(cfg.layout)} markers")
+    return RackTracker(cfg)

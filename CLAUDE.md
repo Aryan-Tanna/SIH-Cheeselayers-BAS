@@ -18,12 +18,17 @@ A living scratchpad so the next session is not re-briefed from scratch.
 would waste the next session's time; open decisions awaiting the human;
 known-broken things not yet fixed.
 
-**Status:** (2026-09-24 late; handoff detail + rebuild steps in `RESUME.md`)
+**Status:** (2026-09-26; handoff detail + rebuild steps in `RESUME.md`)
 - SPLIT: Parth = Phase 2 code only (`.venv` + pytest; don't rebuild
   clips/frames/runs, label or train). Aryan = data/labels/training.
-- Labels batch-1..8 = 450 frames (0 dups). Detector = `models/
-  bootstrap_v4_best.pt` (val S01-S03: P.78 R.58 mAP50 .73; hand_gloved
-  unmeasured; yellow_module R fell .70->.43 vs v3, cause untested).
+- Labels = 1032 unique frames (batch-1..9, 13 + `labels/dedup/` 10_v2, 11, 12;
+  raw batch10/11/12 overlap others -- never feed them to the converter).
+  S04 = Dataset72-82 (new tub rig), 96 labelled. S05 = 20 ArUco clips
+  (`clips_Aruco/`), 0 labelled. v5 split: test = S01+S03+S05
+  + `configs/training/split_v5_s00_test.yaml`; train = rest. Next labels: S05
+  test batch `runs/label_batch12/batch12_S05_test_import.json` (60).
+  Detector = `models/bootstrap_v5_best.pt` (test S01+S03: P.89 R.83 mAP50
+  .89 vs v4 .77; see models/README.md). S05 unmeasured (0 labels).
 - Phase 2 runtime DONE except perception: audio (Piper + Vosk "Hey
   BAS"), capture, recorder+UDP stream (.ts segments), Tk GUI, all wired
   in `src/runtime/app.py`. Run: `scripts/run_gui.py [--events ...]`.
@@ -33,8 +38,12 @@ known-broken things not yet fixed.
 - Wake = HOLD 5 s then replay cut speech; engine/timers keep running.
   "next step" = `engine.confirm_step` (DUE step only, logged override).
   Live mic 12/13 + 3/3 GUI; loud noise/other voices untested.
-- Detector weights = `configs/runtime.yaml` `detector.weights` (v5 swap).
-- ArUco/rack geometry NOT STARTED -- blocks kinematics on real video.
+- New rule attended_while_open: module lid off + no hands in view > 5 s ->
+  alert; GUI timer badge. S05 fixtures 12/15/19 verified: v5 17/18.
+- GUI Protocol editor [E]: steps + rules, validated save, switch live.
+- ArUco rack geometry BUILT (`src/perception/rack.py`, `configs/rack.yaml`,
+  GUI Rack setup [K]). Rack containment = `perception.geometry: auto`, OFF
+  by default: no win on S05 without fixtures. stow_zone = team decision.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
   after vision install; `numpy.trapz` shim; Windows eval workers=0;
   never re-run `build_review_sheet.py`; Dataset22 gloves: leave as is.

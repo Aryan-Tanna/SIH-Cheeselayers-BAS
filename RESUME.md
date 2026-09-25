@@ -3,7 +3,7 @@
 Bridge document, not a replacement for `CLAUDE.md` (loaded automatically
 by Claude Code — it is the authoritative brief and rules). This file is
 **where things stand right now** and **how to rebuild what git doesn't
-carry**. Last updated 2026-09-24.
+carry**. Last updated 2026-09-25.
 
 ## What this project is
 
@@ -30,9 +30,18 @@ rack-space geometry + deterministic constraint engine. Detail in
 - **Phase 1 data** — 71 clips normalized + frames extracted;
   `manifest/clips.csv` hand-filled. Sessions: S00=48 clips (16 gloved),
   S01=6, S02=8, S03=9 (Dataset63-71). All bare-handed outside S00.
-- **Labels** — 450 frames in `labels/batch-1..batch8` (Label Studio
-  exports, OBB). Checked: 0 duplicate frames across batches, 0
-  near-duplicates across sessions.
+- **Labels** — 1032 unique frames: `labels/batch-1..batch9`, `batch13`, plus
+  `labels/dedup/batch10_dedup_v2.json`, `batch11_dedup.json`,
+  `batch12_dedup.json`. batch12 re-labelled 27 batch10 frames: batch12 kept
+  for 23 (fixes: hand_gloved on the case, yellow_lid on a slab, missing
+  cases), batch10 kept for 4 where batch12 was wrong (Dataset59_000077,
+  63_000041, 68_000073, 55_000034 -- judged side by side). The raw
+  `batch10`/`batch11` exports overlap batch9 (100 identical frames +
+  Dataset69_000036) and the converter hard-fails on duplicates, so build
+  from the dedup copies, never the raw ones. 0 cross-session
+  near-duplicates (dHash <= 3). S04 (Dataset72-82, new overhead tub rig,
+  jars, bare) = 0 labelled; v4 pre-labels in
+  `runs/autolabel_predictions_v4_s04/label_studio_predictions_S04.json`.
 - **Detector `bootstrap_v4`** — committed at `models/bootstrap_v4_best.pt`
   (see `models/README.md`). Real held-out split by session:
 
@@ -177,11 +186,74 @@ rack-space geometry + deterministic constraint engine. Detail in
 2. **(Aryan)** Label batch9 (80 train + 50 val frames aimed at the weak
    classes) → train v5 with the gloved probe → report val AND probe
    separately → commit to `models/`.
-3. **ArUco / rack geometry** — still not started (no `clips_aruco/`, no
-   `validate_rack.py`, `zones.yaml` null). Blocks kinematics on real
-   video, not the phase-2 items above.
+3. **ArUco / rack geometry -- BUILT (2026-09-25), fusion not switched yet.**
+   `src/perception/rack.py`: markers (DICT_4X4_50, IDs 1-4, 49 mm, flat on
+   the tub floor) -> image-to-floor homography in mm from ANY visible
+   marker (RANSAC when >=2; unknown IDs ignored -- wall reflections gave
+   ID17), 1 s hold, else image space. Layout calibrated from video
+   (`scripts/calibrate_rack.py --clips clips_Aruco` -> `configs/rack.yaml`):
+   on clips NOT used for fitting, rack known 100% of frames, 1.0 px
+   median reprojection, half-vs-all layout <= 0.9 mm. Runs in the
+   perception thread (~12 ms/1080p frame); live on an ArUco clip: det
+   15-17 fps, 51-58 ms, rack known 98.5% of samples (rest = startup).
+   Log `geometry_status` = rack/image per line. GUI: RACK badge, marker
+   overlay, "Rack setup [K]" (ArUco type / IDs / size, Auto-detect,
+   Calibrate from live camera 4 s, Save & apply live). Tilt: geometry
+   tests pass to 50 deg; simulated tilt on real frames: markers found
+   fine to 50 deg, 71% of frames at 60, none at 70. Rack-space
+   CONTAINMENT built in fusion behind `perception.geometry` (image | auto),
+   DEFAULT image: without a rack pose it is event-identical to before
+   (300 random streams, 6689 events, 0 diffs). auto = module centre vs the
+   container's ROTATED floor footprint in mm, closed footprint kept as the
+   interior while open (open box measured 1.15-1.8x the closed area = lid
+   flap). On the 20 S05 clips (`scripts/cache_rack_detections.py` +
+   `scripts/compare_geometry.py --sheet`): 231 vs 227 events, 55
+   disagreements, nearly all jars HELD at the rim, where both geometries
+   flicker -- no clear winner; needs 2-3 hand-traced S05 fixtures to decide.
+   Rack space does NOT fix hover (no height); that needs the grasp signal.
+   `zones.yaml`: container_interior measured (reference only, the case
+   moves ~100 mm between clips); stow_zone unset = team decision. Live testing needs the 4 markers taped in
+   the same place (or re-Calibrate in the GUI after re-taping).
 
-## Setup
+## Added 2026-09-26
+
+- **v5 detector** (runtime default; `models/README.md`). Leakage check:
+  nearest-train-frame similarity (32x32 grey correlation, 1 = identical):
+  S01 test .39 (nothing like train), S03 .70 (closest = S02: same slab
+  setup, other recordings), S00 test clips .92 (~same-clip level .94 ->
+  optimistic, as labelled). No markers in any S00 clip; S05 vs S00 .47.
+  Per session v4 -> v5 mAP50: S01 .859 -> .917 (clean gain), S03 .524 ->
+  .775 (partly learned from the similar S02 setup).
+- **Pseudo-label experiment v6p** (`runs/yolo_dataset_v6p`: v5 train + 1197
+  train-side frames labelled by v5 itself, conf >= 0.5; test frames
+  excluded). Crashed at epoch 70/120 on SYSTEM RAM (0.3 GB free: the IDE's
+  language server held 7 GB), weights kept. At epoch 70, S01+S03 mAP50
+  .896 vs v5 .892 (S01 .918 vs .917, S03 .779 vs .775) = no real gain.
+  Conclusion: training on v5's own labels does not help; label the frames
+  v5 is unsure about instead (`runs/autolabel_predictions_v5/`, 2650 frames).
+- **Verified S05 fixtures** (`harness/clip_fixtures/Dataset{12,15,19}_
+  glovebox_ARUCO.json`, drafted by Claude from 1 fps strips, checked by
+  Aryan): v5 finds 17/18, image and rack geometry alike; the miss is the
+  hover case (jar uncapped right above the open case). `scripts/
+  replay_clip.py clips_norm/<clip>.mp4 --geometry image|auto`.
+- **attended_while_open** (defaults.yaml): a module with its lid off and
+  no hands in view for grace_s (5) -> one warning `unattended_open_module`.
+  Whole camera view = stow area. Hands = profile's non-role classes, k-of-n
+  (`perception.hands_k/n`). GUI badge shows the running timer. Harness has
+  `unattended_open_module` + `attendance_lids_on` (14/14); the harness now
+  ticks timeouts at 4 Hz between events, as live.
+- **Protocol editor** (GUI button / key E; `src/runtime/protocol_editor_gui.py`,
+  logic in `src/protocol/editing.py`): Steps tab (add/edit/delete/move
+  steps and groups from the fixed action set, renames follow `after`
+  refs) and Rules tab (every default rule: on/off, severity, timer, spoken
+  alert; non-overridable ones LOCKED). Saves only through the validator;
+  "Save as new experiment" writes `configs/protocols/<name>.json` and
+  switches the running session to it (`CopilotApp.use_protocol`).
+  Overwriting `bas_specimen_v1.json` asks first (harness depends on it).
+  Note: the validator bans colour/shape words in ids/targets/roles, NOT in
+  spoken prompts.
+
+
 
 Not in git: `clips/`, `clips_norm/`, `frames/`, `runs/`, `.venv/`,
 `.venv-train/`, Label Studio's database. **For Phase 2 coding (Parth) you need
@@ -201,7 +273,10 @@ kept here so it can be rebuilt anywhere if needed.
    and `python scripts/extract_frames.py`. Frame filenames must match the
    label JSONs — step 4 fails loudly on any missing frame, which is your
    check. If they don't match, ask the team for the `frames/` folder
-   (~108 MB) instead.
+   (~108 MB) instead. `extract_frames.py` reads per-clip dHash thresholds
+   from `manifest/extract_overrides.csv` (S04 = 3: the default 6 kept only
+   6-25 frames on the far tub view) -- keep that file, or S04 frame
+   indices change under existing labels.
 3. **GPU training venv** (optional, ~11x faster than CPU; training only,
    never the runtime): `python -m venv .venv-train`, then
    `pip install torch==2.14.0 torchvision==0.29.0 --index-url
@@ -211,10 +286,24 @@ kept here so it can be rebuilt anywhere if needed.
    `python scripts/convert_labels_to_yolo_obb.py --json labels/batch-1_full.json
    labels/batch-2_full.json labels/batch-3_full.json labels/batch-4_sih.json
    labels/batch5_retrain.json labels/batch6_retrain3.json labels/batch7
-   labels/batch8_retrain.json --out-images runs/yolo_dataset_v5/images/train
+   labels/batch8_retrain.json labels/batch9 labels/dedup/batch10_dedup_v2.json
+   labels/dedup/batch11_dedup.json labels/dedup/batch12_dedup.json labels/batch13
+   --out-images runs/yolo_dataset_v5/images/train
    --out-labels runs/yolo_dataset_v5/labels/train`, then
    `python scripts/split_yolo_dataset.py --dataset-dir runs/yolo_dataset_v5
-   --val-sessions S01,S02,S03 --probe-config configs/training/probe_gloved.yaml`.
+   --val-sessions S01,S03,S05 --probe-config configs/training/split_v5_s00_test.yaml`
+   (v5 split, chosen 2026-09-25: test = S01 + S03 + S05 + 9 whole S00 clips;
+   train = rest of S00 + S02 + S04; built in `runs/yolo_dataset_v5`). S05 =
+   the 20 ArUco clips (raw in `clips_Aruco/`, normalize with
+   `--clips-dir clips_Aruco`), the only held-out session on the demo-like
+   tub rig; label `runs/label_batch12/batch12_S05_test_import.json` (60). Next labels:
+   `runs/label_batch12/batch12_S04_import.json` (100 S04) +
+   `batch12_priority_import.json` (100 train-side, 80 jar) -- export as
+   batch12, add to the --json list, rebuild the dataset dir fresh. `data.yaml` val =
+   both test parts (model selection); score `data_test_sessions.yaml` (honest,
+   unseen sessions) and `data_test_s00.yaml` (same session, overestimates)
+   separately. (v4 used `--val-sessions S01,S02,S03 --probe-config
+   configs/training/probe_gloved.yaml`.)
    Write `data.yaml` (train: images/train, val: images/val, 8 names in
    `CLASS_ORDER` order) and `data_probe_gloved.yaml` (val:
    images/probe_gloved). Always build into a **fresh** directory: re-running
