@@ -301,15 +301,38 @@ class ProtocolEngine:
     # Satisfiability
     # ------------------------------------------------------------------
 
+    def prerequisites(self, step_id: str) -> set[str]:
+        """The leaf steps that must be COMPLETE before step_id is due.
+
+        A step skipped by its condition "silently does not exist for this
+        run" (addendum) -- so it cannot satisfy ordering either: its OWN
+        prerequisites take its place. Treating it as done let slab props
+        (no lid) return a module that was never removed: return_b's only
+        `after` is close_b_lid, which is skipped, so return_b became due
+        the moment the container opened, with no out_of_order (found live
+        2026-09-25). Now the chain passes through skipped steps:
+        return_b -> close_b_lid(skipped) -> ... -> remove_b.
+        """
+        out: set[str] = set()
+        stack = list(self.parsed.effective_after_leaf_ids(step_id))
+        seen: set[str] = set()
+        while stack:
+            p = stack.pop()
+            if p in seen:
+                continue
+            seen.add(p)
+            if p in self.skipped:
+                stack.extend(self.parsed.effective_after_leaf_ids(p))
+            else:
+                out.add(p)
+        return out
+
     def satisfiable_steps(self) -> set[str]:
         result = set()
         for step_id in self.parsed.order:
             if step_id in self.complete or step_id in self.skipped:
                 continue
-            unmet = self.parsed.effective_after_leaf_ids(step_id) - (
-                self.complete | self.skipped
-            )
-            if not unmet:
+            if not (self.prerequisites(step_id) - self.complete):
                 result.add(step_id)
         return result
 
@@ -699,9 +722,7 @@ class ProtocolEngine:
         perceived actions and operator confirmation so the two can never
         drift apart."""
         node = self.parsed.nodes[step_id]
-        unmet = self.parsed.effective_after_leaf_ids(step_id) - (
-            self.complete | self.skipped
-        )
+        unmet = self.prerequisites(step_id) - self.complete
 
         self._apply_state_effect(node, event)
         self.complete.add(step_id)

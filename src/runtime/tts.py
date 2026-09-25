@@ -41,16 +41,34 @@ class NullTTS:
 class PiperTTS:
     name = "piper"
 
-    def __init__(self, voice_model: str | Path, length_scale: float = 1.0) -> None:
+    def __init__(self, voice_model: str | Path, length_scale: float = 1.0,
+                 threads: int = 2) -> None:
         # Imported here, not at module scope: piper is an optional extra.
+        import json
+
+        import onnxruntime
         from piper import PiperVoice, SynthesisConfig
+        from piper.config import PiperConfig
 
         model = Path(voice_model)
         if not model.is_file():
             raise FileNotFoundError(f"Piper voice model not found: {model}")
         if not Path(str(model) + ".json").is_file():
             raise FileNotFoundError(f"Piper voice config not found: {model}.json")
-        self._voice = PiperVoice.load(str(model))
+        # Thread cap. onnxruntime defaults to one thread per core, and so
+        # does torch (the detector): started together they oversubscribed
+        # the CPU and the detector's first frame took 5.4 s instead of
+        # ~80 ms (measured 2026-09-25), so a 14 s session saw no detection
+        # at all. Speech is pre-rendered once and cached, so it can be slow;
+        # the detector cannot.
+        opts = onnxruntime.SessionOptions()
+        opts.intra_op_num_threads = max(1, int(threads))
+        opts.inter_op_num_threads = 1
+        self._voice = PiperVoice(
+            config=PiperConfig.from_dict(json.loads(Path(str(model) + ".json").read_text(encoding="utf-8"))),
+            session=onnxruntime.InferenceSession(str(model), sess_options=opts,
+                                                 providers=["CPUExecutionProvider"]),
+        )
         self._syn_config = SynthesisConfig(length_scale=length_scale)
         self.sample_rate = int(self._voice.config.sample_rate)
 
@@ -114,6 +132,7 @@ def build_tts(tts_cfg: dict[str, Any], repo_root: Path) -> tuple[TTSBackend, str
     if not model.is_absolute():
         model = repo_root / model
     try:
-        return PiperTTS(model, length_scale=float(tts_cfg.get("length_scale", 1.0))), None
+        return PiperTTS(model, length_scale=float(tts_cfg.get("length_scale", 1.0)),
+                        threads=int(tts_cfg.get("threads", 2))), None
     except (ImportError, FileNotFoundError, OSError) as exc:
         return NullTTS(), f"TTS unavailable, falling back to earcons + printed text: {exc}"

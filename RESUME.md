@@ -157,6 +157,16 @@ rack-space geometry + deterministic constraint engine. Detail in
    4/min rate cap silently dropped the 5th missed step from the voice.
    No time-based debounce: all end-of-run skips arrive in one engine
    batch already, so a window would only add alert latency.
+   Fixes 2026-09-25 (found running the GUI on the phone camera):
+   (1) ENGINE: a condition-skipped step counted as "done" for ordering,
+   so with slab props (lid steps skipped) return_a/return_b were due as
+   soon as the container opened -- a never-removed module could be
+   "returned" with no out_of_order. Ordering now passes THROUGH skipped
+   steps (`ProtocolEngine.prerequisites`). (2) CPU: torch and the speech
+   engine (onnxruntime) each claimed every core; the first detection
+   took 5.4 s and a short session saw none. Detector warms up at load,
+   torch = physical cores - 2 (`detector.threads`), speech = 2 threads
+   (`audio.tts.threads`): first detection now 0.9 s after start.
    Log schema (2026-09-24): each JSONL line now also carries `target`,
    `severity`, `message` and `extra` (e.g. out_of_order's unmet steps,
    pause length, anomaly kind) -- before, an operator_command line did
@@ -184,7 +194,7 @@ kept here so it can be rebuilt anywhere if needed.
    documented in `pyproject.toml`:
    `pip uninstall -y opencv-python` and
    `pip install --force-reinstall --no-deps opencv-contrib-python==5.0.0.93`.
-   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **413
+   Check `python -c "import cv2; cv2.aruco"`. Then `pytest -q` → **418
    passed**. Phase-2 work needs nothing beyond this step.
 2. **Video / frames** (only for labelling or training): get `clips/`
    (71 mp4, ~6.6 GB) from the team, then `python scripts/normalize_clips.py`

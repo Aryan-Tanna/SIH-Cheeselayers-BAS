@@ -57,6 +57,7 @@ class DetectorConfig:
     iou: float = 0.5
     imgsz: int = 640
     device: str = "cpu"
+    threads: int | None = None  # torch CPU threads; None = physical cores - 2
 
     @classmethod
     def from_config(cls, cfg: dict[str, Any]) -> "DetectorConfig":
@@ -67,6 +68,7 @@ class DetectorConfig:
             iou=float(d.get("iou", 0.5)),
             imgsz=int(d.get("imgsz", 640)),
             device=str(d.get("device", "cpu")),
+            threads=int(d["threads"]) if d.get("threads") else None,
         )
 
 
@@ -101,6 +103,7 @@ class Detector:
             raise FileNotFoundError(f"detector weights not found: {path}")
         self.cfg = cfg
         self.weights_path = path
+        self._set_threads(cfg.threads)
         self._model = YOLO(str(path), task="obb")
         self.names: dict[int, str] = {int(k): str(v) for k, v in self._model.names.items()}
         missing = set(required) - set(self.names.values())
@@ -111,6 +114,30 @@ class Detector:
                 f"profile's class names."
             )
         self.last_inference_ms = 0.0
+        # Warm-up: the first inference pays one-off costs (graph setup,
+        # allocations) -- measured ~3 s. Pay them here, at startup, not on
+        # the first camera frame.
+        t0 = time.perf_counter()
+        self.detect(np.zeros((cfg.imgsz, cfg.imgsz, 3), dtype=np.uint8))
+        self.warmup_ms = 1000.0 * (time.perf_counter() - t0)
+
+    @staticmethod
+    def _set_threads(threads: int | None) -> None:
+        """Leave cores for capture, recording, speech and the GUI instead of
+        letting torch claim every core (see src/runtime/tts.py)."""
+        import os
+
+        import torch
+
+        if threads is None:
+            try:
+                import psutil
+
+                cores = psutil.cpu_count(logical=False) or os.cpu_count() or 4
+            except ImportError:
+                cores = os.cpu_count() or 4
+            threads = max(1, cores - 2)
+        torch.set_num_threads(max(1, int(threads)))
 
     def detect(self, frame_bgr: Any) -> list[Detection]:
         t0 = time.perf_counter()
