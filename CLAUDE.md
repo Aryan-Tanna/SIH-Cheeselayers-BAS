@@ -50,9 +50,8 @@ known-broken things not yet fixed.
 - Rule attended_while_open: module lid off + no hands in view > 5 s ->
   one warning; GUI timer badge. GUI Protocol editor [E]: steps + rules,
   saves only through the validator, never overwrites bas_specimen_v1.
-- GUI: start dashboard (experiment / props / camera) -> session -> back.
-  Restart = NEW session + log (button asks; voice "restart experiment"
-  said twice). Validator flags steps repeating a state already reached.
+- GUI: dashboard -> session -> back; Restart = NEW session + log (voice: say
+  twice). Validator flags steps repeating a state already reached.
 - Not yet tested live: DroidCam with the markers taped on the rig.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
   after vision install; `numpy.trapz` shim; Windows eval workers=0; low
