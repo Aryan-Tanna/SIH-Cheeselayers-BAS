@@ -1,0 +1,74 @@
+{
+ "clip_id": "Dataset82_glovebox",
+ "clip_path": "clips_norm/Dataset82_glovebox.mp4",
+ "session": "S04",
+ "split": "tune",
+ "object_profile": "configs/objects/profile_jar.yaml",
+ "verified": false,
+ "_note": "DRAFT by Claude from 1-frame-per-second strips (2026-09-28): times +/- 1 s, lid (cap) times +/- 2 s and marked 'rough'. NOT yet verified by a human -- Aryan to check against the video. Physical actions only (the clip does not follow the protocol).",
+ "_extra": "red cap may come off and on a second time around 10-13 s (unclear at 1 fps)",
+ "tolerance_s": 1.5,
+ "rough_tolerance_s": 2.5,
+ "events": [
+  {
+   "t": 3.5,
+   "action": "open",
+   "target": "container",
+   "conf": "clear"
+  },
+  {
+   "t": 5,
+   "action": "remove_from",
+   "target": "module_a",
+   "conf": "clear"
+  },
+  {
+   "t": 6.5,
+   "action": "open",
+   "target": "module_a",
+   "conf": "rough"
+  },
+  {
+   "t": 8.5,
+   "action": "close",
+   "target": "module_a",
+   "conf": "rough"
+  },
+  {
+   "t": 15,
+   "action": "place_into",
+   "target": "module_a",
+   "conf": "clear"
+  },
+  {
+   "t": 16,
+   "action": "remove_from",
+   "target": "module_b",
+   "conf": "clear"
+  },
+  {
+   "t": 17,
+   "action": "open",
+   "target": "module_b",
+   "conf": "rough"
+  },
+  {
+   "t": 18.5,
+   "action": "close",
+   "target": "module_b",
+   "conf": "rough"
+  },
+  {
+   "t": 20,
+   "action": "place_into",
+   "target": "module_b",
+   "conf": "clear"
+  },
+  {
+   "t": 21.5,
+   "action": "close",
+   "target": "container",
+   "conf": "clear"
+  }
+ ]
+}

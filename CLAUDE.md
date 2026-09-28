@@ -37,10 +37,11 @@ known-broken things not yet fixed.
   step" = `engine.confirm_step`. Loud noise/other voices untested.
 - Perception: box/module/hands/lids. S05 lids 16/18; 2 closes 2-5 s early =
   cap RESTING on jar before screwing (traced, not a label swap). v5 swaps
-  lid->same-colour module 17% (low-conf in S05): data fix. kinematics/ NOT
-  wired; grasp.py on v5 boxes (S05, 1 untuned run) on 83% of held time, 14%
-  in case = the rest/hover fix. MediaPipe per labelled hand: bare 63% (S05
-  video 19-64%), gloved 14%, fails gripping, 27 ms: unused, keep YOLO boxes.
+  lid->same-colour module 17%: data fix (label batch14). Grasp/intent from
+  boxes TRIED + reverted: hand boxes 2.4x jar, over the case 100% of frames;
+  release gate worse at every setting, reach cue 4/9 hits vs 20 false.
+  `scripts/score_perception.py` + `harness/perception_fixtures/` (4 tune =
+  UNVERIFIED drafts, 3 held-out). MediaPipe gloved 14%, bare 63%: unused.
 - ArUco rack BUILT: `src/perception/rack.py`, `configs/rack.yaml` (DICT_4X4_50,
   IDs 1-4, 49 mm), GUI Rack setup [K], log geometry_status. Rack-space
   containment = `perception.geometry: auto`, OFF: ties image mode on the 3

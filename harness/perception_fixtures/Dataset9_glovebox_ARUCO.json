@@ -1,0 +1,92 @@
+{
+ "clip_id": "Dataset9_glovebox_ARUCO",
+ "clip_path": "clips_Aruco/Dataset9_glovebox_ARUCO.mp4",
+ "session": "S05",
+ "split": "tune",
+ "object_profile": "configs/objects/profile_jar.yaml",
+ "verified": false,
+ "_note": "DRAFT by Claude from 1-frame-per-second strips (2026-09-28): times +/- 1 s, lid (cap) times +/- 2 s and marked 'rough'. NOT yet verified by a human -- Aryan to check against the video. Physical actions only (the clip does not follow the protocol).",
+ "_extra": "jars and caps set down on the tub floor outside the box; yellow cap on/off several times 25-35 s, final close ~35-49 s unclear",
+ "tolerance_s": 1.5,
+ "rough_tolerance_s": 2.5,
+ "events": [
+  {
+   "t": 6,
+   "action": "open",
+   "target": "container",
+   "conf": "clear"
+  },
+  {
+   "t": 8,
+   "action": "remove_from",
+   "target": "module_a",
+   "conf": "clear"
+  },
+  {
+   "t": 9.5,
+   "action": "close",
+   "target": "container",
+   "conf": "clear"
+  },
+  {
+   "t": 13.5,
+   "action": "open",
+   "target": "module_a",
+   "conf": "rough"
+  },
+  {
+   "t": 21,
+   "action": "open",
+   "target": "container",
+   "conf": "clear"
+  },
+  {
+   "t": 22.5,
+   "action": "remove_from",
+   "target": "module_b",
+   "conf": "clear"
+  },
+  {
+   "t": 23.5,
+   "action": "close",
+   "target": "container",
+   "conf": "clear"
+  },
+  {
+   "t": 25,
+   "action": "open",
+   "target": "module_b",
+   "conf": "rough"
+  },
+  {
+   "t": 40,
+   "action": "close",
+   "target": "module_a",
+   "conf": "rough"
+  },
+  {
+   "t": 44,
+   "action": "open",
+   "target": "container",
+   "conf": "clear"
+  },
+  {
+   "t": 45,
+   "action": "place_into",
+   "target": "module_a",
+   "conf": "clear"
+  },
+  {
+   "t": 51.5,
+   "action": "place_into",
+   "target": "module_b",
+   "conf": "clear"
+  },
+  {
+   "t": 53.5,
+   "action": "close",
+   "target": "container",
+   "conf": "clear"
+  }
+ ]
+}
