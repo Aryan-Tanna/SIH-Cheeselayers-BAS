@@ -39,8 +39,10 @@ known-broken things not yet fixed.
   lids (c2d42d9). Held-out S05 lids 16/18: 2 closes 2.2/4.6 s early = cap
   RESTING on the jar before screwing (frame-traced; not a label swap). v5
   also swaps lid->same-colour module (17% on test); low-conf, harmless in
-  S05, a data fix. Rest/hover needs grasp; src/kinematics/ is NOT wired
-  in. MediaPipe gloved 39%/bare 72%: unused, YOLO hand boxes instead.
+  S05, a data fix. src/kinematics/ NOT wired in. grasp.py on v5 boxes
+  (S05, 1 untuned run): on 83% of held time, 14% in case -> the rest/hover
+  fix. MediaPipe per labelled hand: bare 63% (S04 92%, S05 video 19-64%),
+  gloved 14%, fails on gripping hands, 27 ms/frame: unused, keep YOLO boxes.
 - ArUco rack BUILT: `src/perception/rack.py`, `configs/rack.yaml` (DICT_4X4_50,
   IDs 1-4, 49 mm), GUI Rack setup [K], log geometry_status. Rack-space
   containment = `perception.geometry: auto`, OFF: ties image mode on the 3
