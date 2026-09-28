@@ -92,3 +92,22 @@ def test_add_group_and_step(root, tmp_path):
     assert any(s.get("type") == "group" and s["id"].startswith("new_group") for s in raw["steps"])
     ed.dirty = False
     ed.close()
+
+
+def test_reference_protocol_cannot_be_overwritten_from_the_editor(root, tmp_path):
+    from src.runtime.protocol_editor_gui import REFERENCE_PROTOCOLS, ProtocolEditor
+
+    app = _app(tmp_path)
+    ed = ProtocolEditor(root, app)
+    assert ed.path.name in REFERENCE_PROTOCOLS
+    copy = tmp_path / ed.path.name  # same name, so a regression cannot touch the real file
+    copy.write_bytes(ed.path.read_bytes())
+    ed.path = copy
+    before = copy.read_bytes()
+    ed.tree.selection_set("remove_a"); ed._load_form()
+    ed.f["prompt"].set("Changed."); ed.update_row()
+    ed.save_apply()
+    assert ed.path.read_bytes() == before
+    assert "Save as new" in ed.msg.get("1.0", "end")
+    ed.dirty = False
+    ed.close()

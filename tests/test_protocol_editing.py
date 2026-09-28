@@ -7,7 +7,7 @@ import pytest
 import yaml
 
 from src.protocol.editing import (
-    ACTIONS, StepRow, apply_rule_edit, build, flatten, load_raw, rule_rows, save_validated, targets,
+    ACTIONS, PLACEHOLDER_PROMPT, StepRow, apply_rule_edit, build, flatten, load_raw, rule_rows, save_validated, targets,
 )
 from src.protocol.loader import resolve
 
@@ -116,3 +116,15 @@ def test_strict_mode_toggle_folds_into_the_explicit_entry():
     assert "require_lid_stow" not in out["strict_mode"]
     e = next(c for c in out["constraints"] if c["id"] == "lid_stow_required")
     assert e["disabled"] is True and e["timeout_s"] == 20.0
+
+
+def test_step_still_carrying_the_placeholder_prompt_is_not_saved(tmp_path):
+    """Structurally valid, but the prompt is spoken to the operator."""
+    raw = load_raw(PROTOCOL)
+    rows = flatten(raw)
+    rows.insert(1, StepRow("step", "new_step_1", action="open", target="container",
+                           after=[rows[0].id], prompt=PLACEHOLDER_PROMPT))
+    out = tmp_path / "unfinished.json"
+    findings = save_validated(build(raw, rows), out, DEFAULTS, PROFILE)
+    assert not out.exists()
+    assert any("new_step_1" in f and "placeholder" in f for f in findings)

@@ -28,13 +28,14 @@ from src.protocol.editing import (
     load_raw,
     rename_step,
     rule_rows,
+    PLACEHOLDER_PROMPT,
     save_validated,
     targets,
     validate_raw,
 )
 from src.runtime.gui import ACCENT, BAD, BG, FG, FONT, FONT_BOLD, FONT_MONO, MUTED, OK, PANEL, PANEL_2, WARN
 
-REFERENCE_PROTOCOLS = {"bas_specimen_v1.json"}  # harness fixtures depend on these: never overwrite silently
+REFERENCE_PROTOCOLS = {"bas_specimen_v1.json"}  # harness fixtures depend on these: the editor never overwrites them
 STEP_COLS = ("action", "target", "place", "after", "prompt", "condition")
 RULE_COLS = ("on", "severity", "timer", "alert", "origin")
 
@@ -310,7 +311,7 @@ class ProtocolEditor:
         sel = self._selected()
         row = StepRow(kind, f"{base}_{n}")
         if kind == "step":
-            row.action, row.prompt = "open", "Describe the step to the operator."
+            row.action, row.prompt = "open", PLACEHOLDER_PROMPT
             row.target = next(iter(self.raw.get("roles") or {}), "")
             if sel is not None:
                 row.group = sel.id if sel.kind == "group" else sel.group
@@ -321,7 +322,7 @@ class ProtocolEditor:
         self.rows.insert(idx, row)
         if kind == "group":  # a group needs a step to exist
             first = StepRow("step", f"{row.id}_step_1", group=row.id, action="open",
-                            target=next(iter(self.raw.get("roles") or {}), ""), prompt="Describe the step.")
+                            target=next(iter(self.raw.get("roles") or {}), ""), prompt=PLACEHOLDER_PROMPT)
             self.rows.insert(idx + 1, first)
         self.dirty = True
         self.refresh_steps(select=row.id)
@@ -450,10 +451,11 @@ class ProtocolEditor:
                       "protocol. See the warning in the main window.", BAD)
 
     def save_apply(self) -> None:
-        if self.path.name in REFERENCE_PROTOCOLS and not messagebox.askyesno(
-                "Overwrite the reference experiment?",
-                f"{self.path.name} is the reference experiment the test harness is built on.\n\n"
-                "Overwrite it anyway? (Usually: 'Save as new experiment...')", parent=self.win):
+        # No "overwrite anyway?" dialog: during a live demo someone clicks Yes,
+        # the harness fixtures stop matching, and the headline metric breaks.
+        if self.path.name in REFERENCE_PROTOCOLS:
+            self._say(f"{self.path.name} is the reference experiment the harness is built on and "
+                      "cannot be overwritten here. Use 'Save as new experiment...'.", WARN)
             return
         self._write_and_apply(self.path)
 
@@ -464,6 +466,9 @@ class ProtocolEditor:
             return
         name = re.sub(r"[^A-Za-z0-9_\-]", "_", name.strip()).removesuffix(".json")
         path = self.path.parent / f"{name}.json"
+        if path.name in REFERENCE_PROTOCOLS:
+            self._say(f"{path.name} is the reference experiment; pick another name.", BAD)
+            return
         if path.exists() and not messagebox.askyesno("Replace?", f"{path.name} exists. Replace it?",
                                                      parent=self.win):
             return

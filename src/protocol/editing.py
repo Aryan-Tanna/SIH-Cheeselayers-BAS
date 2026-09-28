@@ -36,6 +36,9 @@ STEP_KEYS = ("id", "action", "target", "source", "dest", "zone", "after", "promp
 # Rule fields the editor exposes (others stay as in defaults.yaml).
 TIMER_KEYS = ("timeout_s", "grace_s")
 SEVERITIES = ("advisory", "caution", "warning")
+# Prompt text a freshly added step starts with. The prompt is spoken to the
+# operator, so a step still carrying it is unfinished: saving is refused.
+PLACEHOLDER_PROMPT = "Describe the step to the operator."
 
 
 @dataclass
@@ -244,6 +247,13 @@ def validate_raw(raw: dict[str, Any], near: Path, defaults_path: Path,
     `near`, not the scratch file."""
     from scripts.validate_protocol import validate
 
+    try:
+        unfinished = [r.id for r in flatten(raw) if r.kind == "step" and r.prompt.strip() == PLACEHOLDER_PROMPT]
+    except (KeyError, ValueError):  # malformed / nested groups: the real validator reports it
+        unfinished = []
+    if unfinished:  # it validates structurally but would speak the placeholder aloud
+        return [f"{Path(near).name}: step '{sid}' has no real prompt (still the placeholder)"
+                for sid in unfinished]
     near = Path(near)
     tmp = near.with_name(near.stem + ".editing.json")
     tmp.write_text(json.dumps(raw, indent=4, ensure_ascii=False) + "\n", encoding="utf-8")
