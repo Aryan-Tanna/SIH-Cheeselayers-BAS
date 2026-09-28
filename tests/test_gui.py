@@ -219,3 +219,17 @@ def test_session_screen_follows_a_restart_and_hands_back_on_end(tmp_path):
     finally:
         app.stop()
         root.destroy()
+
+
+def test_hand_cue_line_names_objects_and_says_maybe_for_prediction():
+    from src.runtime.gui import hand_cue_text, object_names
+
+    snap = {"steps": [{"id": "r", "target": "module_a", "object": "red module", "prompt": "x", "status": "open"},
+                      {"id": "l", "target": "module_a.lid", "object": "red module", "prompt": "y", "status": "pending"}]}
+    names = object_names(snap)
+    assert names == {"module_a": "red module", "module_a.lid": "red module cap"}
+    text = hand_cue_text([{"obj": "module_a", "state": "holding", "eta_s": None},
+                          {"obj": "module_a.lid", "state": "reaching", "eta_s": 0.62}], names, gloved=2)
+    assert "Holding: red module" in text and "Maybe reaching for: red module cap (0.6 s)" in text
+    assert "2 gloved hands (no skeleton)" in text
+    assert hand_cue_text([], names) == ""

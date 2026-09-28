@@ -187,6 +187,39 @@ def progress_text(snapshot: dict[str, Any]) -> str:
     return f"{done} of {len(steps)} steps done" + (f",  {missed} missed" if missed else "")
 
 
+HAND_LINKS = ((0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8), (5, 9), (9, 10),
+              (10, 11), (11, 12), (9, 13), (13, 14), (14, 15), (15, 16), (13, 17), (17, 18),
+              (18, 19), (19, 20), (0, 17))
+
+
+def object_names(snapshot: dict[str, Any]) -> dict[str, str]:
+    """role -> spoken object name ("module_a" -> "red module"), from the
+    protocol snapshot, plus "<role>.lid" -> "<name> cap"."""
+    names: dict[str, str] = {}
+    for s in snapshot.get("steps", []):
+        role = (s.get("target") or "").split(".", 1)[0]
+        if role and s.get("object") and role not in names:
+            names[role] = s["object"]
+    names.update({f"{r}.lid": f"{n} cap" for r, n in list(names.items())})
+    return names
+
+
+def hand_cue_text(cues: list[dict[str, Any]], names: dict[str, str], gloved: int = 0) -> str:
+    """One line for the hand cues. Reach is a prediction that is right
+    about a third of the time (measured), so it says 'maybe'."""
+    parts = []
+    for c in cues:
+        n = names.get(c["obj"], c["obj"])
+        if c["state"] == "holding":
+            parts.append(f"Holding: {n}")
+        elif c["state"] == "reaching":
+            eta = f" ({c['eta_s']:.1f} s)" if c.get("eta_s") is not None else ""
+            parts.append(f"Maybe reaching for: {n}{eta}")
+    if gloved:
+        parts.append(f"{gloved} gloved hand{'s' if gloved > 1 else ''} (no skeleton)")
+    return "   ·   ".join(parts)
+
+
 def event_line(e: dict[str, Any], t0: float | None,
                step_names: dict[str, str] | None = None) -> tuple[str, str] | None:
     """(text, colour) for the event feed, or None for internal noise.
@@ -248,7 +281,10 @@ def setup_window(root: tk.Tk) -> None:
 
 
 class CopilotGUI:
-    VIDEO_MS = 66  # ~15 fps display; the recording is independent of this
+    # ~25 fps display. A redraw measured 15.6 ms (1080p -> 1500x850, boxes +
+    # skeletons) after reusing the Tk image; 40 ms keeps the GUI thread free
+    # more than half the time. The recording is independent of this.
+    VIDEO_MS = 40
     PANEL_MS = 250
 
     def __init__(self, root: tk.Tk, app: Any, on_end: Any = None) -> None:
@@ -308,6 +344,8 @@ class CopilotGUI:
         self.now_lbl = tk.Label(left, text="", bg=PANEL, fg=FG, font=FONT_BIG, anchor="w",
                                 padx=14, pady=10, justify="left")
         self.now_lbl.pack(side="bottom", fill="x", pady=(8, 0))
+        self.hands_lbl = tk.Label(left, text="", bg=BG, fg=ACCENT, font=FONT_BOLD, anchor="w")
+        self.hands_lbl.pack(side="bottom", fill="x", pady=(2, 0))
         self.progress_lbl = tk.Label(left, text="", bg=BG, fg=MUTED, font=FONT_BOLD, anchor="w")
         self.progress_lbl.pack(side="bottom", fill="x", pady=(6, 0))
         self.video_box = tk.Frame(left, bg="#000000")
@@ -476,7 +514,8 @@ class CopilotGUI:
         tw, th = fit_size(w, h, self.video_box.winfo_width(), self.video_box.winfo_height())
         if tw < 2 or th < 2:
             return
-        small = cv2.resize(img, (tw, th), interpolation=cv2.INTER_AREA)
+        # INTER_LINEAR: a display downscale; INTER_AREA cost several ms more per frame
+        small = cv2.resize(img, (tw, th), interpolation=cv2.INTER_LINEAR)
         latest = getattr(self.app, "latest_detections", None)
         if self.show_dets and latest is not None:
             import numpy as np
@@ -489,6 +528,16 @@ class CopilotGUI:
                 x0, y0 = int(pts[:, 0].min()), int(pts[:, 1].min())
                 cv2.putText(small, f"{d.cls} {d.conf:.2f}", (x0, max(14, y0 - 4)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.45, c, 1, cv2.LINE_AA)
+        hand = getattr(self.app, "latest_hand_frame", None)
+        hf = hand() if hand is not None else None
+        if self.show_dets and hf is not None:
+            sx, sy = tw / w, th / h
+            for pose in hf.poses:
+                pts = [(int(x * sx), int(y * sy)) for x, y in pose.landmarks]
+                for a, b in HAND_LINKS:
+                    cv2.line(small, pts[a], pts[b], (80, 255, 160), 2, cv2.LINE_AA)
+                for i in (4, 8, 12, 16, 20):  # fingertips
+                    cv2.circle(small, pts[i], 4, (255, 255, 255), -1, cv2.LINE_AA)
         markers = getattr(self.app, "latest_rack_markers", None)
         if self.show_dets and markers is not None:
             import numpy as np
@@ -499,9 +548,15 @@ class CopilotGUI:
                 cv2.polylines(small, [pts.reshape(-1, 1, 2)], True, (255, 255, 0), 2)
                 cv2.putText(small, f"ID{mid}", (int(pts[:, 0].max()) + 3, int(pts[:, 1].mean())),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1, cv2.LINE_AA)
-        rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
-        self._photo = ImageTk.PhotoImage(Image.fromarray(rgb))
-        self.video.configure(image=self._photo, text="")
+        rgb = Image.fromarray(cv2.cvtColor(small, cv2.COLOR_BGR2RGB))
+        # Reuse the Tk image while the size is unchanged: paste() is several
+        # times cheaper than building a new PhotoImage every frame, and this
+        # runs on the GUI thread (a slow redraw makes the buttons lag).
+        if self._photo is not None and (self._photo.width(), self._photo.height()) == (tw, th):
+            self._photo.paste(rgb)
+        else:
+            self._photo = ImageTk.PhotoImage(rgb)
+            self.video.configure(image=self._photo, text="")
 
     def _tick_panels(self) -> None:
         if self._closed:
@@ -518,6 +573,8 @@ class CopilotGUI:
             self._t0, self._last_event_count, self._last_steps = None, -1, None
         self.title_lbl.configure(text=f"{snap['title']}    |    {st.session_id}")
         self.progress_lbl.configure(text=progress_text(snap))
+        self.hands_lbl.configure(text=hand_cue_text(getattr(st, "hand_cues", []) or [], object_names(snap),
+                                                    getattr(st, "gloved_hands", 0)))
         self._badge("mode", "QUIET" if snap["mode"] == "quiet" else "VOICE", PANEL_2)
         self._badge("paused", "PAUSED" if snap["paused"] else "RUNNING", WARN if snap["paused"] else OK)
         self._badge("mic", *mic_badge(st))

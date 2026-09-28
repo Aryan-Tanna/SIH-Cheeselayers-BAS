@@ -120,6 +120,12 @@ class AppStatus:
     rack_markers_seen: tuple[int, ...] = ()
     rack_reproj_px: float | None = None
     rack_summary: str = ""
+    # hand skeletons (src/runtime/hand_stage.py): cues like
+    # {"obj": "module_a", "state": "reaching", "eta_s": 0.8}
+    hand_pose: bool = False
+    hand_fps: float = 0.0
+    hand_cues: list[dict[str, Any]] = field(default_factory=list)
+    gloved_hands: int = 0
     recent_events: list[dict[str, Any]] = field(default_factory=list)
     recent_speech: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -200,6 +206,15 @@ class CopilotApp:
             else:
                 self.printer(f"perception: {self.perception.detector.weights_path.name}, "
                              f"classes checked against the object profile")
+        self.hand_stage = None
+        if self.perception is not None:
+            from src.runtime.hand_stage import build_hand_stage
+
+            self.hand_stage, why = build_hand_stage(cfg, REPO_ROOT, self.perception, printer)
+            if why:
+                self._warn(why)
+            elif self.hand_stage is not None:
+                self.printer("hand skeletons: MediaPipe on bare hands (own thread)")
         self.capture: VideoSource | None = None
         if self.opts.capture:
             cap_cfg = CaptureConfig.from_config(cfg)
@@ -229,6 +244,12 @@ class CopilotApp:
             self._latest_frame = frame
         if self.perception is not None:
             self.perception.submit(frame)
+        if self.hand_stage is not None:
+            self.hand_stage.submit(frame)
+
+    def latest_hand_frame(self) -> Any:
+        """Skeletons + cues of the most recent hand-pose frame (GUI), or None."""
+        return self.hand_stage.latest() if self.hand_stage is not None else None
 
     def latest_detections(self) -> tuple[int, list]:
         return self.perception.latest_detections() if self.perception else (-1, [])
@@ -455,11 +476,20 @@ class CopilotApp:
             frame_latency_ms=self.perception.stats.frame_latency_ms if self.perception else 0.0,
             perception_states=self.perception.fusion.states() if self.perception else {},
             **self._rack_status_fields(),
+            **self._hand_status_fields(),
             recent_events=list(self._recent_events),
             recent_speech=list(self._recent_speech),
             warnings=list(self.warnings),
             uptime_s=0.0 if self._started_at is None else time.monotonic() - self._started_at,
         )
+
+    def _hand_status_fields(self) -> dict[str, Any]:
+        hs = self.hand_stage
+        if hs is None:
+            return {}
+        hf = hs.latest()
+        return {"hand_pose": True, "hand_fps": hs.fps, "gloved_hands": hf.gloved_hands,
+                "hand_cues": [{"obj": c.obj, "state": c.state, "eta_s": c.eta_s} for c in hf.cues]}
 
     def _rack_status_fields(self) -> dict[str, Any]:
         rack = self.perception.rack if self.perception else None
@@ -485,6 +515,8 @@ class CopilotApp:
         self.recorder.start()
         if self.perception is not None:
             self.perception.start()
+        if self.hand_stage is not None:
+            self.hand_stage.start()
         if self.capture is not None:
             self.capture.start()
         if self.listener is not None:
@@ -572,6 +604,12 @@ class CopilotApp:
         if self.perception.rack is not None:
             fusion.set_workspace(self.perception.rack.cfg)
         self.perception.fusion = fusion
+        hs = getattr(self, "hand_stage", None)
+        if hs is not None:  # the protocol's jars / caps may have changed
+            b = fusion.binding
+            objects = {role: {c} for role, c in b.modules.items()}
+            objects.update({f"{role}.lid": {c} for role, c in b.lids.items()})
+            hs.estimator.objects = objects
 
     def _play_events(self) -> None:
         """Scripted event stream, replayed in real time from start()."""
@@ -624,6 +662,8 @@ class CopilotApp:
             self.capture.stop()
         if self.perception is not None:
             self.perception.stop()
+        if self.hand_stage is not None:
+            self.hand_stage.stop()
         side = self.recorder.stop()
         if self.audio.worker is not None:
             self.audio.worker.drain(10.0)

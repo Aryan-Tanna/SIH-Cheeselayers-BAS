@@ -37,11 +37,12 @@ known-broken things not yet fixed.
   step" = `engine.confirm_step`. Loud noise/other voices untested.
 - Perception: box/module/hands/lids. S05 lids 16/18; 2 closes 2-5 s early =
   cap RESTING on jar before screwing (traced, not a label swap). v5 swaps
-  lid->same-colour module 17%: data fix (label batch14). Grasp/intent from
-  boxes TRIED + reverted: hand boxes 2.4x jar, over the case 100% of frames;
-  release gate worse at every setting, reach cue 4/9 hits vs 20 false.
-  `scripts/score_perception.py` + `harness/perception_fixtures/` (4 tune =
-  UNVERIFIED drafts, 3 held-out). MediaPipe gloved 14%, bare 63%: unused.
+  lid->same-colour module 17%: data fix (label batch14). Hand skeletons ON:
+  MediaPipe VIDEO mode (IMAGE-mode tests were wrong), own thread, 30 fps, no
+  det-fps cost; skeleton on 94-97% bare hands, removed on gloved. Fingertip
+  "holding" 95% while jar out / 4% in box; reach hint 24-35% right (shown,
+  never spoken). Box-based grasp/gate tried + reverted. Scorers:
+  `score_perception.py`, `score_hand_cues.py` (4 tune fixtures UNVERIFIED).
 - ArUco rack BUILT: `src/perception/rack.py`, `configs/rack.yaml` (DICT_4X4_50,
   IDs 1-4, 49 mm), GUI Rack setup [K], log geometry_status. Rack-space
   containment = `perception.geometry: auto`, OFF: ties image mode on the 3
@@ -57,7 +58,7 @@ known-broken things not yet fixed.
   after vision install; `numpy.trapz` shim; Windows eval workers=0; low
   system RAM kills training (IDE language server ~7 GB); never re-run
   `build_review_sheet.py`; Dataset22 gloves: leave as is. Install
-  `.[vision,audio,dev]`, then the opencv fix. 519 tests, harness 14/14.
+  `.[vision,audio,dev]`, then the opencv fix. 531 tests, harness 14/14.
 
 ## Your role
 
