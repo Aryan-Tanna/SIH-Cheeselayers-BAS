@@ -377,17 +377,17 @@ class CopilotApp:
                 "violations": snap["violations"],
             }
 
-    RESTART_CONFIRM_S = 8.0
-
     def _voice_restart(self) -> None:
-        """Restart by voice needs the command twice within RESTART_CONFIRM_S:
+        """Restart by voice needs the command twice within
+        voice_control.restart_confirm_s (configs/runtime.yaml):
         a misheard "Hey BAS" must not throw away an experiment."""
         now = time.monotonic()
         if now < self._restart_armed_until:
             self._restart_armed_until = 0.0
             self.restart_session()
             return
-        self._restart_armed_until = now + self.RESTART_CONFIRM_S
+        self._restart_armed_until = now + float(
+            (self.cfg.get("voice_control") or {}).get("restart_confirm_s", 8.0))
         self.session.command_note("restart requested by voice, waiting for confirmation")
         if self.audio.worker is not None:
             self.audio.worker.submit([

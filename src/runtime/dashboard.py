@@ -202,14 +202,22 @@ class Dashboard:
     operator presses Start (the caller destroys the dashboard)."""
 
     def __init__(self, root: tk.Tk, cfg: dict[str, Any], on_start: Callable[[StartChoice], None],
-                 last_summary: dict[str, Any] | None = None) -> None:
+                 last_summary: dict[str, Any] | None = None,
+                 source: int | str | None = None, object_profile: str | None = None) -> None:
+        """source / object_profile: command-line --source / --profile. They
+        prefill the setup fields and win over configs/runtime.yaml, so
+        `run_gui.py --source http://<phone>:4747/video` still means the phone."""
         self.root = root
         self.cfg = cfg
         self.on_start = on_start
+        self._cli_source = source
+        self._cli_profile = object_profile
         self.frame = tk.Frame(root, bg=BG)
         self.frame.pack(fill="both", expand=True)
         self.infos: list[ExperimentInfo] = []
         self.profiles = list_profiles()
+        if object_profile and object_profile not in [p for _, p in self.profiles]:
+            self.profiles.append((object_profile, object_profile))  # a profile outside the list
         sess = cfg.get("session") or {}
         self._default_protocol = (REPO_ROOT / sess.get("protocol", "")).resolve()
         self._build(last_summary)
@@ -279,10 +287,14 @@ class Dashboard:
             row=0, column=0, columnspan=3, sticky="w", pady=(0, 4))
         tk.Label(setup, text="Props on the rig", bg=PANEL, fg=FG, font=FONT_BOLD).grid(row=1, column=0, sticky="w")
         self.profile_var = tk.StringVar(value=self._default_profile_label())
-        ttk.Combobox(setup, textvariable=self.profile_var, values=[lbl for lbl, _ in self.profiles],
-                     state="readonly", width=38).grid(row=1, column=1, columnspan=2, sticky="we", padx=6, pady=3)
+        props = ttk.Combobox(setup, textvariable=self.profile_var, values=[lbl for lbl, _ in self.profiles],
+                             state="readonly", width=38)
+        props.grid(row=1, column=1, columnspan=2, sticky="we", padx=6, pady=3)
+        # other props can make a protocol invalid (unbound roles): re-check
+        props.bind("<<ComboboxSelected>>", lambda _e: self.refresh())
         tk.Label(setup, text="Camera", bg=PANEL, fg=FG, font=FONT_BOLD).grid(row=2, column=0, sticky="w")
-        src = (self.cfg.get("capture") or {}).get("source", 0)
+        src = self._cli_source if self._cli_source is not None else (
+            (self.cfg.get("capture") or {}).get("source", 0))
         self.source_var = tk.StringVar(value=f"{src}  (webcam)" if isinstance(src, int) else str(src))
         ttk.Combobox(setup, textvariable=self.source_var, width=30,
                      values=["0  (webcam)", "1  (second camera)", "http://PHONE-IP:4747/video"]).grid(
@@ -318,7 +330,7 @@ class Dashboard:
         return b
 
     def _default_profile_label(self) -> str:
-        want = (self.cfg.get("session") or {}).get("object_profile")
+        want = self._cli_profile or (self.cfg.get("session") or {}).get("object_profile")
         for label, path in self.profiles:
             if path == want:
                 return label
@@ -443,9 +455,19 @@ class Dashboard:
             messagebox.showerror("Cannot open", f"{path.name} does not load:\n\n{exc}", parent=self.root)
             return
         ed = ProtocolEditor(self.root, host)
-        ed.win.bind("<Destroy>", lambda e: self.refresh(select=host.protocol_path) if e.widget is ed.win else None)
+
+        def closed(e: Any) -> None:
+            # the operator may have pressed Start meanwhile: dashboard gone
+            if e.widget is ed.win and self.frame.winfo_exists():
+                self.refresh(select=host.protocol_path)
+
+        ed.win.bind("<Destroy>", closed)
+        self._editor = ed
 
     def destroy(self) -> None:
+        ed = getattr(self, "_editor", None)
+        if ed is not None and ed.win.winfo_exists():
+            ed.win.destroy()  # an editor bound to no session would linger over the session screen
         self.frame.destroy()
 
 

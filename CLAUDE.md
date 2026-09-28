@@ -36,10 +36,11 @@ known-broken things not yet fixed.
   Engine only via `Session` (not thread-safe). Wake = HOLD 5 s; "next
   step" = `engine.confirm_step`. Loud noise/other voices untested.
 - Perception: container open/close, module remove/return, hands, module
-  lids (c2d42d9). Held-out S05 lids 16/18: 2 closes 2-4 s early (cap held
-  over the jar). v5 swaps lid<->same-colour module (red_lid->red_module
-  17%): a data fix. Hover (module/cap above the jar) needs grasp; nothing
-  in src/kinematics/ is wired in. MediaPipe gloved 39%/bare 72%: unused.
+  lids (c2d42d9). Held-out S05 lids 16/18: 2 closes 2.2/4.6 s early = cap
+  RESTING on the jar before screwing (frame-traced; not a label swap). v5
+  also swaps lid->same-colour module (17% on test); low-conf, harmless in
+  S05, a data fix. Rest/hover needs grasp; src/kinematics/ is NOT wired
+  in. MediaPipe gloved 39%/bare 72%: unused, YOLO hand boxes instead.
 - ArUco rack BUILT: `src/perception/rack.py`, `configs/rack.yaml` (DICT_4X4_50,
   IDs 1-4, 49 mm), GUI Rack setup [K], log geometry_status. Rack-space
   containment = `perception.geometry: auto`, OFF: ties image mode on the 3
@@ -55,7 +56,7 @@ known-broken things not yet fixed.
   after vision install; `numpy.trapz` shim; Windows eval workers=0; low
   system RAM kills training (IDE language server ~7 GB); never re-run
   `build_review_sheet.py`; Dataset22 gloves: leave as is. Install
-  `.[vision,audio,dev]`, then the opencv fix. 518 tests, harness 14/14.
+  `.[vision,audio,dev]`, then the opencv fix. 519 tests, harness 14/14.
 
 ## Your role
 

@@ -115,3 +115,28 @@ def test_dashboard_window_starts_only_a_ready_experiment():
         dash.destroy()
     finally:
         root.destroy()
+
+
+def test_command_line_source_and_profile_win_over_the_config():
+    """run_gui.py --source <phone> --profile <slabs> must not be dropped by the start screen."""
+    tk = pytest.importorskip("tkinter")
+    from src.runtime.config import load_runtime_config
+    from src.runtime.dashboard import Dashboard
+
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        pytest.skip("no display")
+    root.withdraw()
+    started = []
+    try:
+        dash = Dashboard(root, load_runtime_config(), on_start=started.append,
+                         source="http://192.168.1.5:4747/video",
+                         object_profile="configs/objects/profile_rect.yaml")
+        root.update()
+        dash.start()
+        assert started[0].source == "http://192.168.1.5:4747/video"
+        assert started[0].object_profile == "configs/objects/profile_rect.yaml"
+        dash.destroy()
+    finally:
+        root.destroy()

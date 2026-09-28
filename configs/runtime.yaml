@@ -114,6 +114,8 @@ voice_control:
   # "bas" is not in the recognizer's vocabulary; "bass" is its homophone.
   wake_phrase: hey bass
   command_window_s: 5
+  # "restart experiment" must be said again within this long to take effect
+  restart_confirm_s: 8
   # null = OS default microphone.
   input_device: null
   commands:
@@ -127,7 +129,7 @@ voice_control:
     next: [next step]
     # Starts the experiment again from step one as a NEW session (new log;
     # the old one is closed and its hash chain verified). Must be said TWICE
-    # within 8 s -- one misheard wake phrase must not wipe a run. Two-word
+    # within restart_confirm_s -- one misheard wake phrase must not wipe a run. Two-word
     # phrases on purpose: a bare "restart" sits too close to "resume".
     restart: [restart experiment, start over]
 

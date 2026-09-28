@@ -82,7 +82,8 @@ def run_with_dashboard(args: argparse.Namespace) -> int:
 
     def show_dashboard() -> None:
         root.protocol("WM_DELETE_WINDOW", root.destroy)
-        state["dash"] = Dashboard(root, cfg, on_start=start, last_summary=state["summary"])
+        state["dash"] = Dashboard(root, cfg, on_start=start, last_summary=state["summary"],
+                                  source=base.source, object_profile=base.object_profile)
 
     def start(choice: Any) -> None:
         state["dash"].destroy()
