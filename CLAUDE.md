@@ -35,14 +35,12 @@ known-broken things not yet fixed.
   UDP stream, Tk GUI, all in `src/runtime/app.py`. Run `scripts/run_gui.py`.
   Engine only via `Session` (not thread-safe). Wake = HOLD 5 s; "next
   step" = `engine.confirm_step`. Loud noise/other voices untested.
-- Perception: container open/close, module remove/return, hands, module
-  lids (c2d42d9). Held-out S05 lids 16/18: 2 closes 2.2/4.6 s early = cap
-  RESTING on the jar before screwing (frame-traced; not a label swap). v5
-  also swaps lid->same-colour module (17% on test); low-conf, harmless in
-  S05, a data fix. src/kinematics/ NOT wired in. grasp.py on v5 boxes
-  (S05, 1 untuned run): on 83% of held time, 14% in case -> the rest/hover
-  fix. MediaPipe per labelled hand: bare 63% (S04 92%, S05 video 19-64%),
-  gloved 14%, fails on gripping hands, 27 ms/frame: unused, keep YOLO boxes.
+- Perception: box/module/hands/lids. S05 lids 16/18; 2 closes 2-5 s early =
+  cap RESTING on jar before screwing (traced, not a label swap). v5 swaps
+  lid->same-colour module 17% (low-conf in S05): data fix. kinematics/ NOT
+  wired; grasp.py on v5 boxes (S05, 1 untuned run) on 83% of held time, 14%
+  in case = the rest/hover fix. MediaPipe per labelled hand: bare 63% (S05
+  video 19-64%), gloved 14%, fails gripping, 27 ms: unused, keep YOLO boxes.
 - ArUco rack BUILT: `src/perception/rack.py`, `configs/rack.yaml` (DICT_4X4_50,
   IDs 1-4, 49 mm), GUI Rack setup [K], log geometry_status. Rack-space
   containment = `perception.geometry: auto`, OFF: ties image mode on the 3
