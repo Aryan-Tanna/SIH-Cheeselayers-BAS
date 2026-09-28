@@ -108,3 +108,54 @@ def test_stop_is_prompt_when_idle():
     st.stop()
     assert time.perf_counter() - t < 2.0
     assert not any(th.name == "perception" and th.is_alive() for th in threading.enumerate())
+
+
+class CountingRack:
+    """Stands in for RackTracker: counts marker detections; status settable."""
+
+    def __init__(self, status="ok"):
+        from src.perception.rack import RackPose
+
+        self.calls = 0
+        self.status = status
+        self.last_markers = {1: None, 2: None}
+        self._pose = RackPose
+        self.latest = RackPose(status, None, (1, 2), 0.0, 0.0)
+
+    def update(self, ts, image):
+        self.calls += 1
+        self.latest = self._pose(self.status, None, (1, 2), 0.0, ts)
+        return self.latest
+
+
+def _run_frames(st, n):
+    st.start()
+    try:
+        for i in range(n):
+            st.submit(Frame(seq=i, ts_monotonic=float(i), payload=[]))
+            assert _wait(lambda: st.stats.frames_processed >= i + 1)
+    finally:
+        st.stop()
+
+
+def test_markers_detected_every_nth_frame_while_the_pose_is_ok():
+    rack = CountingRack("ok")
+    st = PerceptionStage(FakeDetector(), SceneFusion(BINDING, FusionConfig(k=2, n=3)), lambda e: None,
+                         printer=lambda _: None, rack=rack, rack_every_n=5)
+    _run_frames(st, 20)
+    assert rack.calls == 4
+
+
+def test_markers_detected_every_frame_while_lost_or_calibrating():
+    lost = CountingRack("none")
+    st = PerceptionStage(FakeDetector(), SceneFusion(BINDING, FusionConfig(k=2, n=3)), lambda e: None,
+                         printer=lambda _: None, rack=lost, rack_every_n=5)
+    _run_frames(st, 10)
+    assert lost.calls == 10
+    ok = CountingRack("ok")
+    st = PerceptionStage(FakeDetector(), SceneFusion(BINDING, FusionConfig(k=2, n=3)), lambda e: None,
+                         printer=lambda _: None, rack=ok, rack_every_n=5)
+    sink: list = []
+    st.collect_markers(sink)
+    _run_frames(st, 10)
+    assert ok.calls == 10 and len(sink) == 10

@@ -80,7 +80,27 @@ runtime, per `CLAUDE.md`).
   measured on live human speech or with fan noise.
 - **License**: Apache License 2.0 (Alpha Cephei).
 
-## `bootstrap_v5_best.pt` (runtime default since 2026-09-26)
+## `bootstrap_v5_best.onnx` (runtime default since 2026-09-28)
+
+- **What**: `bootstrap_v5_best.pt` exported to ONNX, one self-contained file
+  (md5 `cf1246c51e64d158a05d364f3b257ee1`). Exported with ultralytics 8.3.28,
+  torch 2.14 + onnx 1.23 + onnxscript 0.7 (dev extra), `imgsz=640`,
+  `simplify=False`, static shape, then merged with `onnx.save` (the
+  exporter writes a `.onnx.data` side file).
+- **Parity (test S01+S03, same frames/labels)**: mAP50 .894 vs .892 (.pt),
+  mAP50-95 .702 vs .703. Live frames (S05 Dataset15, 60 frames): identical
+  class lists 60/60, box centres within 0.35 px (median).
+- **Speed (CPU)**: 23.0 vs 35.6 ms/inference (ultralytics val); in the live
+  app with audio on, 19.9 vs 16.9 det-fps, capture->detections 63 vs 73 ms.
+- **Threads**: ultralytics opens the session with default options (one
+  spinning worker per core, the speech-contention problem); the Detector
+  re-creates it capped at `detector.threads`, no spinning.
+- **Re-export after a retrain**:
+  `yolo export model=models/<new>.pt format=onnx imgsz=640 simplify=False`,
+  then `python -c "import onnx; onnx.save(onnx.load('x.onnx'), 'models/<new>.onnx')"`,
+  then check parity with `yolo val` on `data_test_sessions.yaml` before switching.
+
+## `bootstrap_v5_best.pt` (training weights; runtime default 2026-09-26 to 09-28)
 
 - **What**: YOLOv8n-OBB, same 8 classes, same recipe as v4 (from
   `yolov8n-obb.pt`, `configs/training/augment_v4.yaml`, 120 epochs,

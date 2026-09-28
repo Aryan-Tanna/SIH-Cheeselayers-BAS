@@ -114,12 +114,43 @@ class Detector:
                 f"profile's class names."
             )
         self.last_inference_ms = 0.0
+        if path.suffix.lower() == ".onnx":
+            self._limit_onnx_threads(path, cfg.threads)
         # Warm-up: the first inference pays one-off costs (graph setup,
         # allocations) -- measured ~3 s. Pay them here, at startup, not on
         # the first camera frame.
         t0 = time.perf_counter()
         self.detect(np.zeros((cfg.imgsz, cfg.imgsz, 3), dtype=np.uint8))
         self.warmup_ms = 1000.0 * (time.perf_counter() - t0)
+
+    def _limit_onnx_threads(self, path: Path, threads: int | None) -> None:
+        """ONNX weights (see models/README.md): ultralytics 8.3.28 opens the
+        onnxruntime session with default options, i.e. one worker per
+        physical core, spinning -- the same every-core contention with the
+        speech engine that made the first detection take 5.4 s with torch.
+        Build the predictor, then swap in a session capped at the same
+        thread count as torch (detector.threads)."""
+        import numpy as np
+        import onnxruntime as ort
+        import torch
+
+        self.detect(np.zeros((self.cfg.imgsz, self.cfg.imgsz, 3), dtype=np.uint8))  # builds the predictor
+        backend = self._model.predictor.model
+        opts = ort.SessionOptions()
+        opts.intra_op_num_threads = torch.get_num_threads()  # set by _set_threads from `threads`
+        opts.inter_op_num_threads = 1
+        opts.add_session_config_entry("session.intra_op.allow_spinning", "0")
+        session = ort.InferenceSession(str(path), sess_options=opts, providers=["CPUExecutionProvider"])
+        if not getattr(backend, "dynamic", True):
+            # static shape: ultralytics pre-binds its output tensors to the
+            # session it made; re-bind the same tensors to ours
+            io = session.io_binding()
+            for out, y in zip(session.get_outputs(), backend.bindings):
+                io.bind_output(name=out.name, device_type="cpu", device_id=0,
+                               element_type=np.float16 if backend.fp16 else np.float32,
+                               shape=tuple(y.shape), buffer_ptr=y.data_ptr())
+            backend.io = io
+        backend.session = session
 
     @staticmethod
     def _set_threads(threads: int | None) -> None:

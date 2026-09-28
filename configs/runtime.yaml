@@ -13,7 +13,12 @@ detector:
   # in src/ names a weights file. Classes are matched by NAME, and the
   # model is checked at load against the classes the object profile
   # binds, so a model that renamed/dropped a class fails at startup.
-  weights: models/bootstrap_v5_best.pt
+  # .onnx (onnxruntime) is the runtime default: same v5 weights exported,
+  # test S01+S03 mAP50 .894 vs .892 (.pt), identical classes on 60/60 live
+  # frames, 23 vs 36 ms/inference; live 19.9 vs 16.9 det-fps with audio on.
+  # Threads capped to detector.threads (src/perception/detector.py). The
+  # .pt stays for training and as the fallback: set it here to go back.
+  weights: models/bootstrap_v5_best.onnx
   conf: 0.25                   # re-tune per model, on the tuning clips only
   iou: 0.5
   imgsz: 640                   # the size v4 was trained at
@@ -210,6 +215,11 @@ perception:
   # over the box (no height in a floor map). See src/perception/fusion.py.
   geometry: image
   rack_config: configs/rack.yaml
+  # Re-detect the ArUco markers every Nth processed frame while the rack
+  # pose is ok (every frame while lost or calibrating). The camera is fixed
+  # and the pose holds hold_s (1 s) anyway; measured 19 ms of ~66 ms per
+  # frame on a 1182x994 frame. 5 at ~15-20 det-fps = 3-4 checks per second.
+  rack_every_n: 5
   # rack space: module centre may lie this far outside the footprint (mm)
   rack_margin_mm: 15
   # rack space: while open, the last CLOSED footprint is the interior if

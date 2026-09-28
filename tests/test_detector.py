@@ -30,7 +30,10 @@ def test_config_from_runtime_yaml():
     from src.runtime.config import load_runtime_config
 
     c = DetectorConfig.from_config(load_runtime_config())
-    assert c.weights.endswith(".pt") and 0 < c.conf < 1 and c.imgsz == 640
+    assert c.weights.endswith((".pt", ".onnx")) and 0 < c.conf < 1 and c.imgsz == 640
+    from src.protocol.loader import REPO_ROOT
+
+    assert (REPO_ROOT / c.weights).is_file()
 
 
 # --- real weights ------------------------------------------------------------------

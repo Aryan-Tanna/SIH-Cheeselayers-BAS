@@ -68,6 +68,10 @@ audio = [
 dev = [
     "pytest==8.3.3",
     "pytest-cov==6.0.0",
+    # Exporting a trained .pt to ONNX (models/README.md). Dev-time only:
+    # the runtime loads the .onnx with onnxruntime, already pinned above.
+    "onnx==1.23.0",
+    "onnxscript==0.7.2",
 ]
 
 [build-system]

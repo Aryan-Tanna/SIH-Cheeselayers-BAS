@@ -52,8 +52,13 @@ class PerceptionStage:
                  emit: Callable[[SemanticEvent], None],
                  clock: Callable[[], float] = time.monotonic,
                  printer: Callable[[str], None] = print,
-                 rack: RackTracker | None = None) -> None:
+                 rack: RackTracker | None = None, rack_every_n: int = 1) -> None:
         self.detector = detector
+        # Markers are re-detected every Nth frame while the pose is "ok"
+        # (camera fixed; measured ~19 ms/frame of ~66). Lost pose or a
+        # calibration capture: every frame.
+        self.rack_every_n = max(1, int(rack_every_n))
+        self._rack_since = 0
         # Swapped whole (never mutated) by set_rack(): a plain attribute
         # rebind is atomic, so the perception thread sees old or new.
         self.rack = rack
@@ -139,7 +144,12 @@ class PerceptionStage:
             rack, pose = self.rack, None
             if rack is not None:
                 try:
-                    pose = rack.update(frame.ts_monotonic, frame.payload)
+                    due = (self._markers_sink is not None or rack.latest.status != "ok"
+                           or self._rack_since + 1 >= self.rack_every_n)
+                    if due:
+                        pose, self._rack_since = rack.update(frame.ts_monotonic, frame.payload), 0
+                    else:
+                        pose, self._rack_since = rack.latest, self._rack_since + 1
                     sink = self._markers_sink
                     if sink is not None and len(rack.last_markers) >= 2:
                         sink.append(dict(rack.last_markers))
@@ -181,7 +191,8 @@ def build_perception(runtime_cfg: dict[str, Any], resolved: Any, repo_root: Any,
     rack = build_rack(runtime_cfg, repo_root, printer)
     if rack is not None:
         fusion.set_workspace(rack.cfg)
-    return PerceptionStage(detector, fusion, emit, printer=printer, rack=rack), None
+    every_n = int((runtime_cfg.get("perception") or {}).get("rack_every_n", 1))
+    return PerceptionStage(detector, fusion, emit, printer=printer, rack=rack, rack_every_n=every_n), None
 
 
 def rack_config_path(runtime_cfg: dict[str, Any], repo_root: Any) -> Any:
