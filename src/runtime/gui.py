@@ -82,7 +82,8 @@ def step_lines(snapshot: dict[str, Any]) -> list[StepLine]:
     for s in snapshot.get("steps", []):
         glyph, colour, label = STATUS_STYLE.get(s["status"], ("?", MUTED, s["status"]))
         is_current = s["id"] == current and s["status"] == "open"
-        suffix = f"   ({label})" if label and s["status"] not in ("pending", "open") else ""
+        # the green tick already says "done"; words only where the glyph can't
+        suffix = f"   ({label})" if label and s["status"] not in ("pending", "open", "done") else ""
         # Prompts repeat across objects ("Unseal the module." for both
         # modules), so name the object, exactly as the voice does.
         obj = f"{s['object']}:  " if s.get("object") else ""
@@ -160,18 +161,49 @@ def mic_badge(st: Any) -> tuple[str, str]:
     return f"MIC \"Hey BAS\"  ({short})", PANEL_2
 
 
-def event_line(e: dict[str, Any], t0: float | None) -> tuple[str, str] | None:
-    """(text, colour) for the event feed, or None for internal noise."""
+# Violation codes in words, for the event feed (the log keeps the codes).
+VIOLATION_TEXT = {
+    "skip": "Missed step",
+    "out_of_order": "Out of order",
+    "wrong_object": "Wrong object",
+    "mutual_exclusion_breach": "Two modules out at once",
+    "lid_unstowed": "Lid not stowed",
+    "module_not_sealed": "Module not sealed",
+    "module_not_returned": "Module not returned",
+    "premature_close": "Closed too early",
+    "loose_object": "Loose object",
+    "wrong_orientation": "Wrong orientation",
+    "unattended_open_module": "Open module left unattended",
+}
+
+
+def progress_text(snapshot: dict[str, Any]) -> str:
+    """'Step 4 of 12' -- conditional steps skipped for these props don't count."""
+    steps = [s for s in snapshot.get("steps", []) if s["status"] != "not_applicable"]
+    if not steps:
+        return ""
+    done = sum(s["status"] in ("done", "confirmed") for s in steps)
+    missed = sum(s["status"] == "missed" for s in steps)
+    return f"{done} of {len(steps)} steps done" + (f",  {missed} missed" if missed else "")
+
+
+def event_line(e: dict[str, Any], t0: float | None,
+               step_names: dict[str, str] | None = None) -> tuple[str, str] | None:
+    """(text, colour) for the event feed, or None for internal noise.
+    step_names: step id -> the words shown for it (object + prompt)."""
     rel = "" if t0 is None else f"{e['ts'] - t0:7.1f}s  "
     kind = e["type"]
+    names = step_names or {}
     if kind == "violation":
-        return (f"{rel}{(e.get('severity') or '').upper():8s} {e.get('code')}  "
-                f"{e.get('target') or ''}", SEVERITY_COLOUR.get(e.get("severity") or "", WARN))
+        what = VIOLATION_TEXT.get(e.get("code") or "", e.get("code") or "violation")
+        on = names.get(e.get("step") or "") or e.get("target") or ""
+        return (f"{rel}{(e.get('severity') or '').upper():8s} {what}" + (f":  {on}" if on else ""),
+                SEVERITY_COLOUR.get(e.get("severity") or "", WARN))
     if kind == "anomaly":
         return (f"{rel}ANOMALY  {e.get('message') or ''}", WARN)
     if kind == "step_complete":
-        how = "  (operator)" if e.get("status") == "operator_confirmed" else ""
-        return (f"{rel}done     {e.get('step')}{how}", OK)
+        how = "  (confirmed by operator)" if e.get("status") == "operator_confirmed" else ""
+        return (f"{rel}✓ done   {names.get(e.get('step') or '', e.get('step'))}{how}", OK)
     if kind in ("session_paused", "session_resumed"):
         return (f"{rel}{kind.replace('session_', '').upper()}", MUTED)
     if kind == "protocol_reloaded":
@@ -202,35 +234,51 @@ def make_dpi_aware() -> None:
     except (AttributeError, OSError):
         pass
 
+
+def setup_window(root: tk.Tk) -> None:
+    """Size the one main window (dashboard and session share it)."""
+    if getattr(root, "_bas_sized", False):
+        return
+    root._bas_sized = True  # type: ignore[attr-defined]
+    root.configure(bg=BG)
+    sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
+    w, h = int(sw * 0.9), int(sh * 0.86)
+    root.geometry(f"{w}x{h}+{(sw - w) // 2}+{max(0, (sh - h) // 3)}")
+    root.minsize(min(1000, sw), min(620, sh))
+
+
 class CopilotGUI:
     VIDEO_MS = 66  # ~15 fps display; the recording is independent of this
     PANEL_MS = 250
 
-    def __init__(self, root: tk.Tk, app: Any) -> None:
+    def __init__(self, root: tk.Tk, app: Any, on_end: Any = None) -> None:
+        """on_end: called when the operator ends the session (the dashboard
+        takes over again). Without it, ending closes the window."""
         self.root = root
         self.app = app
+        self.on_end = on_end
         self._photo: Any = None
         self._last_steps: tuple | None = None
         self._last_event_count = -1
         self._t0: float | None = None
+        self._session_id: str | None = None
         self._closed = False
 
         root.title("BAS Co-Pilot")
         root.configure(bg=BG)
-        sw, sh = root.winfo_screenwidth(), root.winfo_screenheight()
-        w, h = int(sw * 0.9), int(sh * 0.86)
-        root.geometry(f"{w}x{h}+{(sw - w) // 2}+{max(0, (sh - h) // 3)}")
-        root.minsize(min(1000, sw), min(620, sh))
+        setup_window(root)
+        self.frame = tk.Frame(root, bg=BG)
+        self.frame.pack(fill="both", expand=True)
         self._build()
         self._bind_keys()
-        root.protocol("WM_DELETE_WINDOW", self.close)
+        root.protocol("WM_DELETE_WINDOW", self.end_session)
         self._tick_video()
         self._tick_panels()
 
     # --- layout --------------------------------------------------------------
 
     def _build(self) -> None:
-        r = self.root
+        r = self.frame
         header = tk.Frame(r, bg=PANEL, height=44)
         header.pack(side="top", fill="x")
         self.title_lbl = tk.Label(header, text="", bg=PANEL, fg=FG, font=FONT_BOLD)
@@ -246,7 +294,7 @@ class CopilotGUI:
         body.pack(side="top", fill="both", expand=True, padx=10, pady=(10, 0))
         left = tk.Frame(body, bg=BG)
         left.pack(side="left", fill="both", expand=True)
-        right = tk.Frame(body, bg=PANEL, width=430)
+        right = tk.Frame(body, bg=PANEL, width=560)
         right.pack(side="right", fill="y", padx=(10, 0))
         right.pack_propagate(False)
 
@@ -260,6 +308,8 @@ class CopilotGUI:
         self.now_lbl = tk.Label(left, text="", bg=PANEL, fg=FG, font=FONT_BIG, anchor="w",
                                 padx=14, pady=10, justify="left")
         self.now_lbl.pack(side="bottom", fill="x", pady=(8, 0))
+        self.progress_lbl = tk.Label(left, text="", bg=BG, fg=MUTED, font=FONT_BOLD, anchor="w")
+        self.progress_lbl.pack(side="bottom", fill="x", pady=(6, 0))
         self.video_box = tk.Frame(left, bg="#000000")
         self.video_box.pack(side="top", fill="both", expand=True)
         self.video_box.pack_propagate(False)
@@ -276,7 +326,7 @@ class CopilotGUI:
         tk.Label(right, text="EVENTS", bg=PANEL, fg=MUTED, font=FONT_BOLD, anchor="w").pack(
             side="top", fill="x", padx=12, pady=(10, 2))
         self.events_txt = tk.Text(right, bg=PANEL_2, fg=FG, font=FONT_MONO, relief="flat",
-                                  wrap="none", cursor="arrow", highlightthickness=0)
+                                  wrap="word", cursor="arrow", highlightthickness=0)
         self.events_txt.pack(side="top", fill="both", expand=True, padx=8, pady=(0, 8))
         for colour in {OK, CONFIRMED, BAD, WARN, ACCENT, MUTED, FG}:
             self.steps_txt.tag_configure(colour, foreground=colour)
@@ -284,27 +334,47 @@ class CopilotGUI:
         self.steps_txt.tag_configure("current", font=FONT_BOLD, background=PANEL_2)
         # hanging indent: a wrapped step lines up under its text, not the glyph
         self.steps_txt.tag_configure("step", lmargin1=4, lmargin2=30, spacing1=2)
+        # wrapped event lines hang under the text, not under the timestamp
+        self.events_txt.tag_configure("event", lmargin1=2, lmargin2=110)
 
+        # Two rows: what the operator uses during the experiment (each one a
+        # voice command too), and setup tools nobody needs mid-experiment.
+        tools = tk.Frame(r, bg=BG)
+        tools.pack(side="bottom", fill="x", padx=10, pady=(0, 8), before=body)
         controls = tk.Frame(r, bg=BG)
-        controls.pack(side="bottom", fill="x", padx=10, pady=10, before=body)
-        self.pause_btn = self._button(controls, "Pause  [Space]", self._toggle_pause)
-        self._button(controls, "Next step  [N]", lambda: self.app.command("next"))
-        self._button(controls, "Repeat  [R]", lambda: self.app.command("repeat"))
-        self.mode_btn = self._button(controls, "Quiet mode  [Q]", self._toggle_mode)
-        self._button(controls, "Reload protocol  [F5]", self.app.reload_protocol)
+        controls.pack(side="bottom", fill="x", padx=10, pady=(10, 6), before=tools)
+        self.pause_btn = self._button(controls, "⏸  Pause  [Space]", self._toggle_pause, big=True)
+        self._button(controls, "↻  Repeat  [R]", lambda: self.app.command("repeat"), big=True)
+        self._button(controls, "✓  Next step  [N]", lambda: self.app.command("next"), big=True)
+        if hasattr(self.app, "restart_session"):
+            self._button(controls, "⟲  Restart", self._restart, big=True)
+        self.mode_btn = self._button(controls, "Quiet mode  [Q]", self._toggle_mode, big=True)
+        end = self._button(controls, "End session", self.end_session, big=True)
+        end.pack_configure(side="right", padx=0)
+        end.configure(bg=BAD, fg=BG)
+
+        tk.Label(tools, text="Setup:", bg=BG, fg=MUTED, font=FONT_BOLD).pack(side="left", padx=(0, 6))
+        self._button(tools, "Show detections  [D]", self._toggle_dets)
+        self._button(tools, "Reload protocol  [F5]", self.app.reload_protocol)
         if hasattr(self.app, "rack_config"):
-            self._button(controls, "Rack setup  [K]", self._open_rack)
+            self._button(tools, "Rack setup  [K]", self._open_rack)
         if hasattr(self.app, "use_protocol"):
-            self._button(controls, "Protocol editor  [E]", self._open_editor)
-        self.warn_lbl = tk.Label(controls, text="", bg=BG, fg=WARN, font=FONT, anchor="e")
+            self._button(tools, "Protocol editor  [E]", self._open_editor)
+        self.hint_lbl = tk.Label(
+            tools, bg=BG, fg=MUTED, font=FONT, anchor="w",
+            text='Voice: "Hey BAS, pause / resume / repeat / next step / restart experiment (say twice)"')
+        self.hint_lbl.pack(side="left", padx=10)
+        self.warn_lbl = tk.Label(tools, text="", bg=BG, fg=WARN, font=FONT, anchor="e")
         self.warn_lbl.pack(side="right", fill="x", expand=True)
 
-    def _button(self, parent: tk.Widget, text: str, cmd: Any) -> tk.Button:
+    def _button(self, parent: tk.Widget, text: str, cmd: Any, big: bool = False) -> tk.Button:
         b = tk.Button(parent, text=text, command=cmd, bg=PANEL_2, fg=FG, activebackground=ACCENT,
-                      activeforeground=BG, relief="flat", font=FONT_BOLD, padx=12, pady=6,
-                      cursor="hand2")
+                      activeforeground=BG, relief="flat", font=FONT_BOLD,
+                      padx=16 if big else 10, pady=9 if big else 4, cursor="hand2")
         b.pack(side="left", padx=(0, 8))
         return b
+
+    KEYS = ("<space>", "<n>", "<r>", "<q>", "<F5>", "<d>", "<k>", "<e>")
 
     def _bind_keys(self) -> None:
         self.root.bind("<space>", lambda _e: self._toggle_pause())
@@ -312,11 +382,35 @@ class CopilotGUI:
         self.root.bind("<r>", lambda _e: self.app.command("repeat"))
         self.root.bind("<q>", lambda _e: self._toggle_mode())
         self.root.bind("<F5>", lambda _e: self.app.reload_protocol())
-        self.root.bind("<d>", lambda _e: setattr(self, "show_dets", not self.show_dets))
+        self.root.bind("<d>", lambda _e: self._toggle_dets())
         self.root.bind("<k>", lambda _e: self._open_rack())
         self.root.bind("<e>", lambda _e: self._open_editor())
 
     # --- actions ----------------------------------------------------------------
+
+    def _toggle_dets(self) -> None:
+        self.show_dets = not self.show_dets
+
+    def _restart(self) -> None:
+        """Button restart: a dialog is the confirmation (voice: say it twice).
+        No keyboard shortcut on purpose -- one stray key must not wipe a run."""
+        from tkinter import messagebox
+
+        if not messagebox.askyesno(
+                "Restart the experiment?",
+                "Start again from step one?\n\nThis ends the current session (its log is kept "
+                "and verified) and starts a new one.", parent=self.root):
+            return
+        self.app.restart_session()
+
+    def end_session(self) -> None:
+        from tkinter import messagebox
+
+        if self.on_end is not None and not messagebox.askyesno(
+                "End the session?", "Stop the co-pilot and go back to the start screen?\n\n"
+                "The log and recording are saved.", parent=self.root):
+            return
+        self.close()
 
     def _toggle_pause(self) -> None:
         self.app.command("resume" if self.app.status().protocol["paused"] else "pause")
@@ -345,8 +439,20 @@ class CopilotGUI:
         self._rack_win = RackDialog(self.root, self.app)
 
     def close(self) -> None:
+        if self._closed:
+            return
         self._closed = True
-        self.root.destroy()
+        if self.on_end is None:
+            self.root.destroy()
+            return
+        for key in self.KEYS:
+            self.root.unbind(key)
+        for child in ("_editor", "_rack_win"):
+            w = getattr(self, child, None)
+            if w is not None and w.win.winfo_exists():
+                w.win.destroy()
+        self.frame.destroy()
+        self.on_end()
 
     # --- refresh loops ------------------------------------------------------------
 
@@ -407,7 +513,11 @@ class CopilotGUI:
 
     def refresh(self, st: Any) -> None:
         snap = st.protocol
+        if st.session_id != self._session_id:  # started, or restarted as a new session
+            self._session_id = st.session_id
+            self._t0, self._last_event_count, self._last_steps = None, -1, None
         self.title_lbl.configure(text=f"{snap['title']}    |    {st.session_id}")
+        self.progress_lbl.configure(text=progress_text(snap))
         self._badge("mode", "QUIET" if snap["mode"] == "quiet" else "VOICE", PANEL_2)
         self._badge("paused", "PAUSED" if snap["paused"] else "RUNNING", WARN if snap["paused"] else OK)
         self._badge("mic", *mic_badge(st))
@@ -424,13 +534,20 @@ class CopilotGUI:
                     BAD if st.recording else PANEL_2)
         self._badge("stream", f"STREAM {st.stream_url.split('?')[0]}" if st.stream_url else "STREAM off",
                     PANEL_2)
-        self.pause_btn.configure(text="Resume  [Space]" if snap["paused"] else "Pause  [Space]")
+        self.pause_btn.configure(
+            text="▶  Resume  [Space]" if snap["paused"] else "⏸  Pause  [Space]",
+            bg=WARN if snap["paused"] else PANEL_2, fg=BG if snap["paused"] else FG)
         self.mode_btn.configure(text="Voice mode  [Q]" if snap["mode"] == "quiet" else "Quiet mode  [Q]")
         self.now_lbl.configure(text=current_step_text(snap),
                                fg=WARN if snap["paused"] else FG)
-        if st.recent_speech:
-            self.spoken_lbl.configure(text=f"last announced: \"{st.recent_speech[-1]['text']}\"")
-        self.warn_lbl.configure(text=st.warnings[-1].splitlines()[0][:110] if st.warnings else "")
+        self.spoken_lbl.configure(
+            text=f"last announced: \"{st.recent_speech[-1]['text']}\"" if st.recent_speech else "")
+        pending = getattr(self.app, "restart_pending", None)
+        if pending is not None and pending():
+            self.warn_lbl.configure(text="Restart asked by voice - say it again to confirm", fg=BAD)
+        else:
+            self.warn_lbl.configure(text=st.warnings[-1].splitlines()[0][:110] if st.warnings else "",
+                                    fg=WARN)
 
         lines = step_lines(snap)
         key = tuple((ln.glyph, ln.text, ln.colour, ln.is_current) for ln in lines)
@@ -439,10 +556,15 @@ class CopilotGUI:
             t = self.steps_txt
             t.configure(state="normal")
             t.delete("1.0", "end")
-            for ln in lines:
+            current_line = None
+            for n, ln in enumerate(lines, 1):
                 tags = (ln.colour, "step", "current") if ln.is_current else (ln.colour, "step")
                 t.insert("end", f" {ln.glyph}  {ln.text}\n", tags)
+                if ln.is_current and current_line is None:
+                    current_line = n
             t.configure(state="disabled")
+            # long protocols don't fit: keep the step due now in view
+            t.see(f"{current_line or len(lines)}.0")
 
         if st.recent_events and self._t0 is None:
             self._t0 = st.recent_events[0]["ts"]
@@ -451,12 +573,14 @@ class CopilotGUI:
         ):
             self._last_event_count = len(st.recent_events)
             t = self.events_txt
+            names = {s["id"]: (f"{s['object']}: " if s.get("object") else "") + s["prompt"]
+                     for s in snap.get("steps", [])}
             t.configure(state="normal")
             t.delete("1.0", "end")
             for e in st.recent_events:
-                line = event_line(e, self._t0)
+                line = event_line(e, self._t0, names)
                 if line is not None:
-                    t.insert("end", line[0] + "\n", (line[1],))
+                    t.insert("end", line[0] + "\n", (line[1], "event"))
             t.see("end")
             t.configure(state="disabled")
 

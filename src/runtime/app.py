@@ -46,7 +46,13 @@ from src.protocol.loader import (
     repo_path,
     resolve,
 )
-from src.runtime.announcer import AnnouncerSettings, AudioRequest, speakable_phrases
+from src.runtime.announcer import (
+    RESTART_CONFIRM_TEXT,
+    RESTARTING_TEXT,
+    AnnouncerSettings,
+    AudioRequest,
+    speakable_phrases,
+)
 from src.runtime.audio import console_printer
 from src.runtime.capture import CaptureConfig, VideoSource
 from src.runtime.clock import SystemClock
@@ -147,33 +153,21 @@ class CopilotApp:
         # [default] vs [protocol], so nothing is enforced invisibly.
         self.printer(format_resolved_report(self.resolved, IMPLEMENTED_CONSTRAINT_IDS))
 
-        # --- session + log --------------------------------------------------
-        self.session_id = self.opts.session_id or datetime.now().strftime("session_%Y%m%d_%H%M%S")
-        log_dir = repo_path(sess_cfg.get("log_dir", "logs"))
-        self.log_path = log_dir / f"{self.session_id}.jsonl"
-        self.logger = SessionLogger(self.log_path, self.session_id)
-
         # --- audio ----------------------------------------------------------
         audio_cfg = cfg
         if not self.opts.audio:
             audio_cfg = {**cfg, "audio": {**cfg["audio"], "enabled": False}}
         self.audio: AudioStage = build_audio_stage(audio_cfg, printer=printer)
         self.warnings += self.audio.warnings
-        worker = self.audio.worker
 
         self._recent_events: deque[dict[str, Any]] = deque(maxlen=50)
         self._recent_speech: deque[dict[str, Any]] = deque(maxlen=20)
-        self.session = Session(
-            self.resolved,
-            clock=self.clock,
-            audio_submit=worker.submit if worker is not None else None,
-            settings=AnnouncerSettings.from_config(cfg["audio"].get("prompts", {})),
-            logger=self.logger,
-            operator=sess_cfg.get("operator"),
-            event_listeners=[self._on_engine_event],
-            audio_listeners=[self._on_speech],
-            geometry_status=self._geometry_status,
-        )
+        # --- session + log --------------------------------------------------
+        self._restart_lock = threading.Lock()
+        self._restart_armed_until = 0.0
+        self.log_dir = repo_path(sess_cfg.get("log_dir", "logs"))
+        self.session_id = ""
+        self._new_session(self.opts.session_id)
 
         # --- voice control ----------------------------------------------------
         self.listener = None
@@ -198,8 +192,9 @@ class CopilotApp:
         # --- perception ---------------------------------------------------------
         self.perception: PerceptionStage | None = None
         if self.opts.perception and self.opts.capture:
+            # Looked up per event, not bound once: a restart swaps the session.
             self.perception, why = build_perception(
-                cfg, self.resolved, REPO_ROOT, self.session.on_event, printer)
+                cfg, self.resolved, REPO_ROOT, lambda e: self.session.on_event(e), printer)
             if why:
                 self._warn(why)
             else:
@@ -322,7 +317,94 @@ class CopilotApp:
             return None, msg + " -- too inaccurate, not applied (wrong marker size? a marker not flat?)"
         return new, msg
 
+    def _new_session(self, session_id: str | None = None) -> None:
+        """A fresh engine, alert state and hash-chained log. Used at start
+        and by restart_session(); capture, recording, detector and voice
+        keep running across a restart."""
+        sess_cfg = self.cfg.get("session") or {}
+        sid = session_id or datetime.now().strftime("session_%Y%m%d_%H%M%S")
+        if sid == self.session_id:  # restarted within the same second
+            sid += "_r"
+        self.session_id = sid
+        self.log_path = self.log_dir / f"{sid}.jsonl"
+        self.logger = SessionLogger(self.log_path, sid)
+        self._recent_events.clear()
+        self._recent_speech.clear()
+        worker = self.audio.worker
+        self.session = Session(
+            self.resolved,
+            clock=self.clock,
+            audio_submit=worker.submit if worker is not None else None,
+            settings=AnnouncerSettings.from_config(self.cfg["audio"].get("prompts", {})),
+            logger=self.logger,
+            operator=sess_cfg.get("operator"),
+            event_listeners=[self._on_engine_event],
+            audio_listeners=[self._on_speech],
+            geometry_status=self._geometry_status,
+        )
+
+    def restart_session(self) -> dict[str, Any]:
+        """Start the experiment again from step one, as a NEW session: the
+        old log gets a closing line naming the new session, is closed and
+        its hash chain verified; the new one starts clean (fresh engine,
+        fresh alert cooldowns, fresh perception votes). Operator authority:
+        never refused. Returns the old session's summary."""
+        with self._restart_lock:
+            old_id, old_log, old = self.session_id, self.log_path, self.session
+            snap = old.snapshot()
+            new_id = datetime.now().strftime("session_%Y%m%d_%H%M%S")
+            if new_id == old_id:
+                new_id += "_r"
+            old.retire(self.clock.now(), f"restart -> new session {new_id}")
+            self.logger.close()
+            chain = verify_chain(old_log)
+            if self.audio.worker is not None:
+                self.audio.worker.submit([AudioRequest(kind="system", flush_all=True,
+                                                       segments=(RESTARTING_TEXT,))])
+            if self.perception is not None:
+                self._rebuild_fusion(self.resolved)  # fresh votes: closed box, modules in
+            self._new_session(new_id)
+            rec = self.recorder.dir if self.recorder.active else None
+            self.session.command_note(
+                f"restarted from {old_id}" + (f"; video continues in {rec}" if rec else ""))
+            self.printer(f"experiment restarted: {old_id} -> {self.session_id} "
+                         f"(old log chain {'OK' if chain.ok else 'BROKEN'}, "
+                         f"{chain.lines_checked} lines)")
+            return {
+                "session_id": old_id, "log": str(old_log), "log_chain_ok": chain.ok,
+                "steps_done": sum(s["status"] in ("done", "confirmed") for s in snap["steps"]),
+                "steps_total": sum(s["status"] != "not_applicable" for s in snap["steps"]),
+                "violations": snap["violations"],
+            }
+
+    RESTART_CONFIRM_S = 8.0
+
+    def _voice_restart(self) -> None:
+        """Restart by voice needs the command twice within RESTART_CONFIRM_S:
+        a misheard "Hey BAS" must not throw away an experiment."""
+        now = time.monotonic()
+        if now < self._restart_armed_until:
+            self._restart_armed_until = 0.0
+            self.restart_session()
+            return
+        self._restart_armed_until = now + self.RESTART_CONFIRM_S
+        self.session.command_note("restart requested by voice, waiting for confirmation")
+        if self.audio.worker is not None:
+            self.audio.worker.submit([
+                AudioRequest(kind="system", release=True, replay_prompt=False),
+                AudioRequest(kind="system", segments=(RESTART_CONFIRM_TEXT,)),
+            ])
+
+    def restart_pending(self) -> bool:
+        """A voice restart is waiting for its confirmation (GUI shows it)."""
+        return time.monotonic() < self._restart_armed_until
+
     def _on_voice(self, parsed: Any) -> None:
+        if parsed.command == "restart":
+            self._armed_until = 0.0
+            self.printer(f"[voice] {parsed.text!r} -> restart")
+            self._voice_restart()
+            return
         if parsed.command == "wake":
             self._armed_until = time.monotonic() + float(
                 (self.cfg.get("voice_control") or {}).get("command_window_s", 5.0))
@@ -475,17 +557,21 @@ class CopilotApp:
         self.resolved = resolved
         if self.perception is not None:
             # roles/profile may have changed: rebuild the fusion (keeps the model)
-            from src.perception.fusion import FusionConfig, SceneFusion, binding_for, with_hand_classes
-
-            fusion = SceneFusion(
-                with_hand_classes(binding_for(resolved), self.cfg),
-                FusionConfig.from_config(self.cfg, resolved.timing))
-            if self.perception.rack is not None:
-                fusion.set_workspace(self.perception.rack.cfg)
-            self.perception.fusion = fusion
+            self._rebuild_fusion(resolved)
         self.audio.prewarm_async(speakable_phrases(resolved))
         self.printer("protocol reloaded:\n" + format_resolved_report(resolved, IMPLEMENTED_CONSTRAINT_IDS))
         return True
+
+    def _rebuild_fusion(self, resolved: ResolvedProtocol) -> None:
+        from src.perception.fusion import FusionConfig, SceneFusion, binding_for, with_hand_classes
+
+        assert self.perception is not None
+        fusion = SceneFusion(
+            with_hand_classes(binding_for(resolved), self.cfg),
+            FusionConfig.from_config(self.cfg, resolved.timing))
+        if self.perception.rack is not None:
+            fusion.set_workspace(self.perception.rack.cfg)
+        self.perception.fusion = fusion
 
     def _play_events(self) -> None:
         """Scripted event stream, replayed in real time from start()."""

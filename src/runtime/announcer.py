@@ -50,6 +50,10 @@ QUIET_TEXT = "Quiet mode. Alerts only."
 VOICE_TEXT = "Voice prompts on."
 NOTHING_PENDING_TEXT = "No step is pending."
 MARKED_DONE_TEXT = "Marked done."
+# Restart throws the running experiment away, so by voice it needs saying
+# twice (src/runtime/app.py): one misheard "Hey BAS" must not wipe a run.
+RESTART_CONFIRM_TEXT = "Say it again to restart the experiment."
+RESTARTING_TEXT = "Restarting the experiment."
 
 # Earcon keys beyond the three severities (configs/runtime.yaml).
 EARCON_STEP = "step"
@@ -170,6 +174,7 @@ def speakable_phrases(resolved: ResolvedProtocol) -> list[str]:
     phrases |= {
         FALLBACK_ALERT_TEXT, ANOMALY_TEXT, CONTINUE_TEXT, PAUSED_TEXT, RESUMED_TEXT,
         QUIET_TEXT, VOICE_TEXT, NOTHING_PENDING_TEXT, MARKED_DONE_TEXT,
+        RESTART_CONFIRM_TEXT, RESTARTING_TEXT,
     }
     order = resolved.parsed.order
     for sid in order:

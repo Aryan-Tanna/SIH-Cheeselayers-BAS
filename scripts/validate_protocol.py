@@ -302,6 +302,62 @@ def check_reachable(parsed: ParsedProtocol, idx: LineIndex, profile: dict | None
     return findings
 
 
+# action -> (state it puts its target in, the action that reverses it)
+_STATE_ACTIONS = {
+    "open": "close", "close": "open",
+    "remove_from": "place_into", "place_into": "remove_from",
+}
+
+
+def check_state_already_reached(parsed: ParsedProtocol, idx: LineIndex) -> list[Finding]:
+    """A step whose action a prerequisite already performed on the same
+    target, with nothing in between reversing it: "open container" after
+    the container was opened and never closed. It passes every structural
+    check, but the engine waits for a state change that cannot happen,
+    so the run ends with a spurious skip (a GUI-added placeholder step
+    did exactly this to bas_specimen_v1). Conservative: only prerequisites
+    count (steps that MUST come first), conditional steps are never the
+    earlier one, and any reversing step between them clears it -- so
+    repeated remove/return cycles stay valid."""
+    ancestors: dict[str, set[str]] = {}
+
+    def anc(step_id: str) -> set[str]:
+        if step_id not in ancestors:
+            ancestors[step_id] = set()  # cycle guard (cycles reported elsewhere)
+            out: set[str] = set()
+            for p in parsed.effective_after_leaf_ids(step_id):
+                if p in parsed.nodes and not parsed.nodes[p].is_group:
+                    out |= {p} | anc(p)
+            ancestors[step_id] = out
+        return ancestors[step_id]
+
+    findings = []
+    for step_id in parsed.order:
+        node = parsed.nodes[step_id]
+        undo = _STATE_ACTIONS.get(node.action or "")
+        if node.is_group or undo is None:
+            continue
+        before = anc(step_id)
+        for a in before:
+            prev = parsed.nodes[a]
+            if prev.action != node.action or prev.target != node.target or prev.condition:
+                continue
+            reversed_between = any(
+                parsed.nodes[b].action == undo and parsed.nodes[b].target == node.target
+                and a in anc(b)
+                for b in before
+            )
+            if not reversed_between:
+                findings.append(Finding(
+                    idx.line_for_id(step_id),
+                    f"'{step_id}' does '{node.action}' on '{node.target}', but prerequisite "
+                    f"'{a}' already did and nothing in between reverses it -- this step can "
+                    "never happen",
+                ))
+                break
+    return findings
+
+
 def validate(protocol_path: Path, defaults_path: Path,
              object_profile: str | Path | None = None) -> list[Finding]:
     # This is the live hot-reload path (CLAUDE.md: "protocols reloadable
@@ -347,6 +403,7 @@ def validate(protocol_path: Path, defaults_path: Path,
     findings += check_constraints_have_basis(raw, idx)
     findings += check_disabled_non_overridable(raw, idx, defaults)
     findings += check_reachable(parsed, idx, profile)
+    findings += check_state_already_reached(parsed, idx)
 
     return findings
 

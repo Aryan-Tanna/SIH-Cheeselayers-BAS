@@ -38,6 +38,22 @@ from src.runtime.gui import ACCENT, BAD, BG, FG, FONT, FONT_BOLD, FONT_MONO, MUT
 REFERENCE_PROTOCOLS = {"bas_specimen_v1.json"}  # harness fixtures depend on these: the editor never overwrites them
 STEP_COLS = ("action", "target", "place", "after", "prompt", "condition")
 RULE_COLS = ("on", "severity", "timer", "alert", "origin")
+# What each primitive means, shown under the form. The camera perceives
+# open/close, take out/put in and lid stowing today (src/perception/fusion.py);
+# the rest are confirmed by the operator ("next step").
+ACTION_HELP = {
+    "open": "open it: the container, or a module's cap",
+    "close": "close it: the container, or a module's cap",
+    "remove_from": "take the object OUT of a container (pick the container in From / to)",
+    "place_into": "put the object INTO a container (pick the container in From / to)",
+    "move_to_zone": "put the object in a zone, e.g. a lid in the stow zone",
+    "grasp": "hold the object -- not seen by the camera yet: the operator confirms it",
+    "release": "let go of the object -- not seen by the camera yet: the operator confirms it",
+    "dwell": "keep the object still for a while -- not seen by the camera yet: the operator confirms it",
+}
+HOW_TO = ("How to add a step:  1) click the step it comes after   2) Add step   3) choose Action and "
+          "Object, write the Spoken prompt   4) Apply changes to step   5) Save as new experiment.  "
+          "Order comes only from 'After' -- a group does not order its steps.")
 
 
 def _parse_after(text: str) -> list[str]:
@@ -152,19 +168,21 @@ class ProtocolEditor:
 
         btns = tk.Frame(t, bg=PANEL)
         btns.pack(side="top", fill="x", padx=6, pady=6)
-        self._button(btns, "Update selected", self.update_row)
+        self._button(btns, "Apply changes to step", self.update_row)
         self._button(btns, "Add step", lambda: self.add_row("step"))
         self._button(btns, "Add group", lambda: self.add_row("group"))
         self._button(btns, "Delete", self.delete_row)
         self._button(btns, "Move up", lambda: self.move(-1))
         self._button(btns, "Move down", lambda: self.move(1))
-        self._label(btns, "Order comes only from 'After' -- a group does not order its steps.",
-                    fg=MUTED).pack(side="left", padx=10)
         # form + buttons keep their space; the table takes what is left
         for w in (btns, form, self.tree):
             w.pack_forget()
         btns.pack(side="bottom", fill="x", padx=6, pady=6)  # buttons at the bottom, fields above them
+        self.action_help = self._label(t, "", fg=ACCENT, anchor="w")
+        self.action_help.pack(side="bottom", fill="x", padx=10)
         form.pack(side="bottom", fill="x", padx=6)
+        self._label(t, HOW_TO, fg=MUTED, anchor="w", justify="left", wraplength=1100).pack(
+            side="top", fill="x", padx=8, pady=(6, 0))
         self.tree.pack(side="top", fill="both", expand=True, padx=6, pady=6)
 
     def _build_rules(self) -> None:
@@ -256,7 +274,9 @@ class ProtocolEditor:
         self.f["condition"].set(r.condition)
 
     def _action_changed(self) -> None:
-        key = ACTION_FIELD.get(self.f["action"].get())
+        action = self.f["action"].get()
+        self.action_help.configure(text=f"{action}: {ACTION_HELP[action]}" if action in ACTION_HELP else "")
+        key = ACTION_FIELD.get(action)
         self.combos["place"].configure(values=self._place_values.get(key, []) if key else [],
                                        state="normal" if key else "disabled")
         if not key:
@@ -327,7 +347,7 @@ class ProtocolEditor:
         self.dirty = True
         self.refresh_steps(select=row.id)
         self._load_form()
-        self._say(f"Added '{row.id}'. Fill in the fields below and press Update selected.", OK)
+        self._say(f"Added '{row.id}'. Fill in the fields below, then press Apply changes to step.", OK)
 
     def delete_row(self) -> None:
         r = self._selected()
@@ -422,7 +442,31 @@ class ProtocolEditor:
         raw["protocol_id"] = self.pid_var.get().strip() or raw.get("protocol_id", "")
         return raw
 
+    def unapplied_step(self) -> str | None:
+        """The selected step's id if the form holds edits not yet applied to
+        it -- saving would silently drop them, the editor's most confusing
+        failure. None when the form matches the step."""
+        r = self._selected()
+        if r is None:
+            return None
+        key = ACTION_FIELD.get(r.action)
+        now = {"id": r.id, "group": r.group, "after": ", ".join(r.after)}
+        if r.kind == "step":
+            now.update(action=r.action, target=r.target, place=getattr(r, key) if key else "",
+                       prompt=r.prompt, condition=r.condition)
+        differs = [k for k, v in now.items() if self.f[k].get().strip() != (v or "").strip()]
+        return r.id if differs else None
+
+    def _refuse_if_unapplied(self) -> bool:
+        sid = self.unapplied_step()
+        if sid is not None:
+            self._say(f"Step '{sid}' has changes in the form that are not applied yet. Press "
+                      "'Apply changes to step' first (or click the step again to discard them).", WARN)
+        return sid is not None
+
     def validate(self) -> bool:
+        if self._refuse_if_unapplied():
+            return False
         raw = self.current_raw()
         if raw is None:
             return False
@@ -434,6 +478,8 @@ class ProtocolEditor:
         return True
 
     def _write_and_apply(self, path: Path) -> None:
+        if self._refuse_if_unapplied():
+            return
         raw = self.current_raw()
         if raw is None:
             return

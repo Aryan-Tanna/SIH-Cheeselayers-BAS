@@ -239,3 +239,12 @@ def test_device_name_resolves_to_default_host_api_match():
     assert resolve_input_device(_FakeSD(), 4) == 4
     with pytest.raises(ValueError):
         resolve_input_device(_FakeSD(), "no such mic")
+
+
+def test_shipped_config_restart_phrases_parse_and_need_the_wake_phrase():
+    vc = load_runtime_config()["voice_control"]
+    p = WakeCommandParser(vc["wake_phrase"], vc["commands"], vc["command_window_s"])
+    assert _cmd(p.feed("hey bass restart experiment", 0.0)) == "restart"
+    assert _cmd(p.feed("hey bass start over", 1.0)) == "restart"
+    assert _cmd(p.feed("hey bass resume", 2.0)) == "resume"
+    assert p.feed("start over", 20.0) is None  # no wake phrase, no window: ignored

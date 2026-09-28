@@ -43,7 +43,7 @@ def test_step_lines_name_the_object_so_repeated_prompts_are_distinct():
 def test_step_lines_mark_current_and_status():
     lines = step_lines(_snap())
     assert [ln.is_current for ln in lines] == [False, True, False]
-    assert lines[0].colour == OK and "(done)" in lines[0].text
+    assert lines[0].colour == OK and lines[0].glyph == "✓" and "(done)" not in lines[0].text
     confirmed = step_lines(_snap(steps=[{"id": "a", "prompt": "x", "status": "confirmed"}]))[0]
     assert confirmed.colour == CONFIRMED and "operator" in confirmed.text
     missed = step_lines(_snap(steps=[{"id": "a", "prompt": "x", "status": "missed"}]))[0]
@@ -65,7 +65,7 @@ def test_event_line_filters_internal_noise_and_colours_severity():
     assert "2.5s" in text and "WARNING" in text and colour == BAD
     text, _ = event_line({"ts": 2.0, "type": "step_complete", "step": "s1",
                           "status": "operator_confirmed"}, 0.0)
-    assert "(operator)" in text
+    assert "confirmed by operator" in text
 
 
 # --- window smoke test (needs a display) -------------------------------------------
@@ -122,7 +122,7 @@ def test_window_builds_refreshes_and_buttons_map_to_commands():
         gui._draw_frame()
         assert "yellow module" in gui.now_lbl.cget("text")
         assert "Unseal" in gui.steps_txt.get("1.0", "end")
-        assert "out_of_order" in gui.events_txt.get("1.0", "end")
+        assert "Out of order" in gui.events_txt.get("1.0", "end")
         assert gui.badges["rec"].cget("text").startswith("● REC")
         gui._toggle_pause()
         gui._toggle_mode()
@@ -132,7 +132,7 @@ def test_window_builds_refreshes_and_buttons_map_to_commands():
         assert app.commands[:2] == ["pause", "quiet"]
         app.snap = _snap(paused=True)
         gui.refresh(app.status())
-        assert gui.pause_btn.cget("text").startswith("Resume")
+        assert "Resume" in gui.pause_btn.cget("text")
         assert "PAUSED" in gui.now_lbl.cget("text")
     finally:
         gui.close()
@@ -189,3 +189,33 @@ def test_attend_badge_timer():
         "OPEN module_a  hands away 3.2/5 s", WARN)
     assert attend_badge({"attendance": {**base, "hands_in_view": False, "away_s": 6.0, "alerted": True}})[1] == BAD
     assert attend_badge({}) is None
+
+
+def test_session_screen_follows_a_restart_and_hands_back_on_end(tmp_path):
+    tk = pytest.importorskip("tkinter")
+    pytest.importorskip("PIL.ImageTk")
+    from src.runtime.gui import CopilotGUI
+    from tests.test_app import _headless
+
+    try:
+        root = tk.Tk()
+    except tk.TclError:
+        pytest.skip("no display")
+    root.withdraw()
+    app = _headless(tmp_path, session_id="first")
+    app.start()
+    ended = []
+    try:
+        gui = CopilotGUI(root, app, on_end=lambda: ended.append(True))
+        app.command("next")
+        gui.refresh(app.status())
+        assert "1 of 12" in gui.progress_lbl.cget("text")
+        app.restart_session()
+        gui.refresh(app.status())
+        assert app.session_id in gui.title_lbl.cget("text")
+        assert "0 of 12" in gui.progress_lbl.cget("text")
+        gui.close()  # what End session does after its confirmation
+        assert ended == [True] and not gui.frame.winfo_exists() and root.winfo_exists()
+    finally:
+        app.stop()
+        root.destroy()

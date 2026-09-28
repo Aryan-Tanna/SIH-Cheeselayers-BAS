@@ -77,6 +77,10 @@ class Session:
         self.audio_listeners: list[Callable[[AudioRequest], None]] = list(audio_listeners or [])
         self._seen = 0
         self._holding = False  # a wake chime is holding speech
+        # Set by retire() when the app restarts the experiment: a perception
+        # or voice thread still holding this object must not reach its
+        # (closed) log. Every entry point checks it under the lock.
+        self._retired = False
         with self._lock:
             self._flush()  # session_start + first prompt
 
@@ -92,12 +96,16 @@ class Session:
 
     def on_event(self, event: SemanticEvent) -> None:
         with self._lock:
+            if self._retired:
+                return
             self.engine.process(event)
             self._flush()
 
     def tick(self, now: float | None = None) -> None:
         """Let timeouts fire with no new event (call every frame / ~1 s)."""
         with self._lock:
+            if self._retired:
+                return
             self.engine.check_timeouts(self.clock.now() if now is None else now)
             self._flush()
 
@@ -105,6 +113,8 @@ class Session:
         if command not in COMMANDS:
             raise ValueError(f"unknown command {command!r}; expected one of {COMMANDS}")
         with self._lock:
+            if self._retired:
+                return
             ts = self.clock.now() if ts is None else ts
             extra: list[AudioRequest] = []
             if command == WAKE:
@@ -176,6 +186,25 @@ class Session:
                 "violations": sum(1 for e in eng.out if e.event_type == "violation"),
                 "attendance": eng.attendance_status(self.clock.now()),
             }
+
+    def command_note(self, note: str) -> None:
+        """Log an operator action handled outside the engine (restart)."""
+        with self._lock:
+            if self._retired:
+                return
+            self.engine.note_operator_command(self.clock.now(), note)
+            self._flush()
+
+    def retire(self, ts: float, note: str) -> None:
+        """End this session for good (the experiment is being restarted as
+        a new session): log why, then ignore every later call. The caller
+        closes the log after this returns."""
+        with self._lock:
+            if self._retired:
+                return
+            self.engine.note_operator_command(ts, note)
+            self._flush()
+            self._retired = True
 
     def reload_protocol(self, resolved: ResolvedProtocol) -> None:
         """Hot reload. The caller validates first (see engine.reload_protocol)."""

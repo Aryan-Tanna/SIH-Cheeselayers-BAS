@@ -125,6 +125,11 @@ voice_control:
     # Marks the current step done when the camera missed it (logged as an
     # operator override), then speaks the next step.
     next: [next step]
+    # Starts the experiment again from step one as a NEW session (new log;
+    # the old one is closed and its hash chain verified). Must be said TWICE
+    # within 8 s -- one misheard wake phrase must not wipe a run. Two-word
+    # phrases on purpose: a bare "restart" sits too close to "resume".
+    restart: [restart experiment, start over]
 
 # Local recording + live stream share ONE H.264 encode (src/runtime/recorder.py).
 # Local segments are MPEG-TS: measured to survive an encoder crash far

@@ -35,23 +35,27 @@ known-broken things not yet fixed.
   UDP stream, Tk GUI, all in `src/runtime/app.py`. Run `scripts/run_gui.py`.
   Engine only via `Session` (not thread-safe). Wake = HOLD 5 s; "next
   step" = `engine.confirm_step`. Loud noise/other voices untested.
-- Perception: detector + fusion emit container open/close, module
-  remove/return, operator hands in/out of view. Lids NOT perceived
-  (operator confirms). Known miss: module held just above the case reads
-  as returned (hover) -- needs grasp signal, not geometry.
+- Perception: container open/close, module remove/return, hands, module
+  lids (c2d42d9). Held-out S05 lids 16/18: 2 closes 2-4 s early (cap held
+  over the jar). v5 swaps lid<->same-colour module (red_lid->red_module
+  17%): a data fix. Hover (module/cap above the jar) needs grasp; nothing
+  in src/kinematics/ is wired in. MediaPipe gloved 39%/bare 72%: unused.
 - ArUco rack BUILT: `src/perception/rack.py`, `configs/rack.yaml` (DICT_4X4_50,
   IDs 1-4, 49 mm), GUI Rack setup [K], log geometry_status. Rack-space
   containment = `perception.geometry: auto`, OFF: ties image mode on the 3
   verified S05 fixtures (17/18 each). Stow zone = whole camera view.
 - Rule attended_while_open: module lid off + no hands in view > 5 s ->
   one warning; GUI timer badge. GUI Protocol editor [E]: steps + rules,
-  saves only through the validator, switches the session live.
+  saves only through the validator, never overwrites bas_specimen_v1.
+- GUI: start dashboard (experiment / props / camera) -> session -> back.
+  Restart = NEW session + log (button asks; voice "restart experiment"
+  said twice). Validator flags steps repeating a state already reached.
 - Not yet tested live: DroidCam with the markers taped on the rig.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
   after vision install; `numpy.trapz` shim; Windows eval workers=0; low
   system RAM kills training (IDE language server ~7 GB); never re-run
   `build_review_sheet.py`; Dataset22 gloves: leave as is. Install
-  `.[vision,audio,dev]`, then the opencv fix. 503 tests, harness 14/14.
+  `.[vision,audio,dev]`, then the opencv fix. 518 tests, harness 14/14.
 
 ## Your role
 

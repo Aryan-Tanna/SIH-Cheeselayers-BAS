@@ -111,3 +111,22 @@ def test_reference_protocol_cannot_be_overwritten_from_the_editor(root, tmp_path
     assert "Save as new" in ed.msg.get("1.0", "end")
     ed.dirty = False
     ed.close()
+
+
+def test_save_refuses_while_the_form_has_unapplied_changes(root, tmp_path):
+    from src.runtime.protocol_editor_gui import ProtocolEditor
+
+    ed = ProtocolEditor(root, _app(tmp_path))
+    ed.tree.selection_set("remove_a"); ed._load_form()
+    assert ed.unapplied_step() is None
+    ed.f["prompt"].set("Take out the first module.")  # typed, not applied
+    assert ed.unapplied_step() == "remove_a"
+    out = tmp_path / "unapplied.json"
+    ed._write_and_apply(out)
+    assert not out.exists() and "not applied" in ed.msg.get("1.0", "end")
+    ed.update_row()
+    assert ed.unapplied_step() is None
+    ed.f["action"].set("dwell")
+    assert "operator confirms" in ed.action_help.cget("text")
+    ed.dirty = False
+    ed.close()

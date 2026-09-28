@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from src.logging.session_log import load_events
+from src.logging.session_log import load_events, verify_chain
 from src.protocol.loader import REPO_ROOT
 from src.runtime.app import AppOptions, CopilotApp, ProtocolInvalid
 from src.runtime.config import load_runtime_config
@@ -226,3 +226,37 @@ def test_switch_to_a_protocol_written_in_the_editor(tmp_path):
     bad = tmp_path / "bad.json"
     bad.write_text("{not json", encoding="utf-8")
     assert app.use_protocol(bad) is False and app.protocol_path == new  # kept running protocol
+
+
+def test_restart_starts_a_new_session_and_closes_the_old_log(tmp_path):
+    from src.protocol.events import ActionEvent
+
+    app = _headless(tmp_path, session_id="first")
+    app.start()
+    app.session.on_event(ActionEvent(ts=app.clock.now(), action="open", target="container"))
+    assert app.status().protocol["current_step"] != "open_container"
+    old_log = app.log_path
+    old = app.restart_session()
+    assert old["session_id"] == "first" and old["log_chain_ok"] and old["steps_done"] == 1
+    assert app.session_id != "first" and app.log_path != old_log
+    # the old log ends by naming the new session; late calls to the old
+    # session object (a perception thread mid-frame) are ignored, not crashes
+    assert app.session_id in load_events(old_log)[-1]["message"]
+    st = app.status().protocol
+    assert st["current_step"] == "open_container"
+    assert {s["status"] for s in st["steps"]} == {"open", "pending"}
+    summary = app.stop()
+    assert summary["log_chain_ok"] and summary["steps_done"] == 0
+    assert verify_chain(old_log).ok
+
+
+def test_voice_restart_needs_saying_twice(tmp_path):
+    from src.runtime.voice_control import ParsedCommand
+
+    app = _headless(tmp_path, session_id="first")
+    app.start()
+    app._on_voice(ParsedCommand("restart", "hey bass restart experiment"))
+    assert app.session_id == "first" and app.restart_pending()
+    app._on_voice(ParsedCommand("restart", "hey bass restart experiment"))
+    assert app.session_id != "first" and not app.restart_pending()
+    app.stop()
