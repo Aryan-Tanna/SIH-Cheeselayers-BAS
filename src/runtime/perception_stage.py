@@ -95,6 +95,7 @@ class PerceptionStage:
 
     def set_rack(self, cfg: RackConfig) -> None:
         self.rack = RackTracker(cfg)
+        self.fusion.set_workspace(cfg)  # the rig area follows a re-calibration
 
     def collect_markers(self, sink: list[dict] | None) -> None:
         """While a list is set, every processed frame's markers are appended
@@ -146,7 +147,9 @@ class PerceptionStage:
                     self.printer(f"WARNING: rack tracking failed on a frame: {exc!r}")
                     pose = None
             # the SAME frame's rack pose; fusion uses it only with geometry: auto
-            for event in self.fusion.update(frame.ts_monotonic, dets, pose):
+            shape = getattr(frame.payload, "shape", None)
+            size = (int(shape[1]), int(shape[0])) if shape is not None and len(shape) >= 2 else None
+            for event in self.fusion.update(frame.ts_monotonic, dets, pose, size):
                 s.events += 1
                 try:
                     self.emit(event)
@@ -176,6 +179,8 @@ def build_perception(runtime_cfg: dict[str, Any], resolved: Any, repo_root: Any,
     fusion = SceneFusion(with_hand_classes(binding_for(resolved), runtime_cfg),
                          FusionConfig.from_config(runtime_cfg, resolved.timing))
     rack = build_rack(runtime_cfg, repo_root, printer)
+    if rack is not None:
+        fusion.set_workspace(rack.cfg)
     return PerceptionStage(detector, fusion, emit, printer=printer, rack=rack), None
 
 

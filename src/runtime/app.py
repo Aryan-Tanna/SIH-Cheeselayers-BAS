@@ -477,9 +477,12 @@ class CopilotApp:
             # roles/profile may have changed: rebuild the fusion (keeps the model)
             from src.perception.fusion import FusionConfig, SceneFusion, binding_for, with_hand_classes
 
-            self.perception.fusion = SceneFusion(
+            fusion = SceneFusion(
                 with_hand_classes(binding_for(resolved), self.cfg),
                 FusionConfig.from_config(self.cfg, resolved.timing))
+            if self.perception.rack is not None:
+                fusion.set_workspace(self.perception.rack.cfg)
+            self.perception.fusion = fusion
         self.audio.prewarm_async(speakable_phrases(resolved))
         self.printer("protocol reloaded:\n" + format_resolved_report(resolved, IMPLEMENTED_CONSTRAINT_IDS))
         return True

@@ -220,3 +220,22 @@ perception:
   # Per-class minimum confidence on top of detector.conf, e.g. to damp a
   # class the model over-fires on:  {red_lid: 0.5}
   min_conf: {}
+  # Minimum hold: a new state must keep its k-of-n votes this long (any
+  # vote for the current state restarts the clock). Swept 2026-09-28 with
+  # v5 (tune clips / live handheld stress recording, held-out only
+  # reported): container 0-1.5 s no loss on tune (10/12), 2.0 s drops to
+  # 6/12 -- so 1.0 keeps margin; module 1.0 no loss. Live flips 62 -> 30,
+  # engine anomalies 22 -> 11. Covers sub-second flicker (the 0.8 s one
+  # that ended a live session); does NOT cover a moved/handheld camera --
+  # the camera must be fixed.
+  container_min_hold_s: 1.0
+  module_min_hold_s: 1.0
+  # Ignore container/module detections outside the rig (hands are always
+  # kept). OFF by default: built and unit-tested, NOT yet validated on
+  # marker video (clips_Aruco is on Aryan's machine -- run
+  # `scripts/replay_clip.py --geometry auto` there with margin_mm set).
+  workspace:
+    # rack space, when the ArUco pose is known: rig floor + this margin
+    margin_mm: null            # e.g. 100
+    # without markers: fixed image region, fractions of the frame
+    roi: null                  # e.g. [0.15, 0.10, 0.85, 0.95]

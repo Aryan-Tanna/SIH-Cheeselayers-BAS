@@ -53,6 +53,18 @@ Design decisions, stated because they decide test outcomes:
   area. The fix needs a depth cue -- the grasp signal from
   src/kinematics/grasp.py (hand still holding it = not placed yet).
 
+* Minimum hold (`container_min_hold_s`, `module_min_hold_s`): on top of
+  k-of-n, a new state must hold its votes for this long -- any vote for
+  the current state restarts the clock. Found live (2026-09-26): an
+  open->closed flicker of 0.8 s met k-of-n, completed close_container
+  and ENDED the protocol at 54 s of a 4-minute session.
+* Workspace filter: objects (container, modules) detected outside the rig
+  are ignored -- live, red chairs and clothing were detected as the red
+  module (conf 0.81). With the rack pose known, "outside" = floor position
+  beyond the ArUco layout + `workspace.margin_mm`; without markers an
+  optional fixed image region (`workspace.roi`, fractions of the frame)
+  does the same. Hands are never filtered: operators reach in from outside.
+
 Operator presence: StateEvent("operator.hands_in_view", bool) on every
 confirmed change, from its own k-of-n vote over "any hand class detected
 in this frame" (perception.hands_k / hands_n; a detector missing a hand
@@ -90,23 +102,38 @@ Box = tuple[float, float, float, float]  # x0, y0, x1, y1
 class StateVote:
     """k-of-n agreement over categorical observations for one object."""
 
-    def __init__(self, initial: str, k: int, n: int, stale_s: float) -> None:
+    def __init__(self, initial: str, k: int, n: int, stale_s: float,
+                 min_hold_s: float = 0.0) -> None:
         if not 1 <= k <= n:
             raise ValueError(f"need 1 <= k <= n, got k={k} n={n}")
+        if min_hold_s < 0:
+            raise ValueError("min_hold_s must be >= 0")
         self.state = initial
-        self.k, self.n, self.stale_s = k, n, stale_s
+        self.k, self.n, self.stale_s, self.min_hold_s = k, n, stale_s, min_hold_s
         self._window: deque[str] = deque(maxlen=n)
         self._last_ts: float | None = None
+        # first vote of the challenger since the last vote for the current
+        # state: the new state must keep its votes this long (min_hold_s)
+        self._cand: str | None = None
+        self._cand_since: float | None = None
 
     def observe(self, ts: float, value: str) -> str | None:
         """Returns the NEW state on a confirmed transition, else None."""
         if self._last_ts is not None and ts - self._last_ts > self.stale_s:
             self._window.clear()
+            self._cand = self._cand_since = None
         self._last_ts = ts
         self._window.append(value)
-        if value != self.state and sum(1 for v in self._window if v == value) >= self.k:
+        if value == self.state:
+            self._cand = self._cand_since = None  # the current state reasserted itself
+            return None
+        if value != self._cand:
+            self._cand, self._cand_since = value, ts
+        held = ts - (self._cand_since if self._cand_since is not None else ts)
+        if sum(1 for v in self._window if v == value) >= self.k and held >= self.min_hold_s:
             self.state = value
             self._window.clear()
+            self._cand = self._cand_since = None
             return value
         return None
 
@@ -114,6 +141,7 @@ class StateVote:
         """Forget pending votes, keep the confirmed state."""
         self._window.clear()
         self._last_ts = None
+        self._cand = self._cand_since = None
 
 
 # ----------------------------------------------------------------------
@@ -192,6 +220,11 @@ class FusionConfig:
     hands_k: int = 8  # "hands gone" / "hands back" needs k of the last n frames
     hands_n: int = 10
     hand_min_conf: float = 0.0  # on top of detector.conf
+    container_min_hold_s: float = 0.0  # new container state must hold this long
+    module_min_hold_s: float = 0.0
+    # workspace filter: objects outside the rig are ignored (hands never)
+    workspace_margin_mm: float | None = None  # rack space; None = off
+    workspace_roi: tuple[float, float, float, float] | None = None  # image fractions x0,y0,x1,y1
 
     @classmethod
     def from_config(cls, runtime_cfg: dict[str, Any], timing: dict[str, Any]) -> "FusionConfig":
@@ -211,7 +244,43 @@ class FusionConfig:
             hands_k=int(p.get("hands_k", 8)),
             hands_n=int(p.get("hands_n", 10)),
             hand_min_conf=float(p.get("hand_min_conf", 0.0)),
+            container_min_hold_s=float(p.get("container_min_hold_s", 0.0)),
+            module_min_hold_s=float(p.get("module_min_hold_s", 0.0)),
+            workspace_margin_mm=_opt_float((p.get("workspace") or {}).get("margin_mm")),
+            workspace_roi=_roi((p.get("workspace") or {}).get("roi")),
         )
+
+
+def _opt_float(v: Any) -> float | None:
+    return None if v is None else float(v)
+
+
+def _roi(v: Any) -> tuple[float, float, float, float] | None:
+    if v is None:
+        return None
+    x0, y0, x1, y1 = (float(a) for a in v)
+    if not (0.0 <= x0 < x1 <= 1.0 and 0.0 <= y0 < y1 <= 1.0):
+        raise ValueError(f"perception.workspace.roi must be fractions x0<x1, y0<y1 in [0,1], got {v!r}")
+    return (x0, y0, x1, y1)
+
+
+def workspace_polygon(rack_cfg: Any, margin_mm: float) -> np.ndarray | None:
+    """The rig floor the markers span (mm), grown by margin_mm: convex hull
+    of every calibrated marker's corners, each hull vertex expanded by a
+    circle of radius margin_mm. None when the layout is not calibrated."""
+    import cv2
+
+    from src.perception.rack import marker_corners_mm
+
+    layout = getattr(rack_cfg, "layout", None) or {}
+    if not layout:
+        return None
+    pts = np.vstack([marker_corners_mm(p, rack_cfg.marker_size_mm) for p in layout.values()])
+    hull = cv2.convexHull(pts.astype(np.float32)).reshape(-1, 2)
+    ang = np.linspace(0, 2 * np.pi, 16, endpoint=False)
+    ring = np.stack([np.cos(ang), np.sin(ang)], axis=1) * float(margin_mm)
+    grown = (hull[:, None, :] + ring[None, :, :]).reshape(-1, 2)
+    return cv2.convexHull(grown.astype(np.float32)).reshape(-1, 2).astype(np.float64)
 
 
 # ----------------------------------------------------------------------
@@ -253,14 +322,34 @@ class SceneFusion:
         self.cfg = cfg
         self.geometry = geometry or ImageSpaceGeometry(cfg.min_overlap)
         self.container_box: Box | None = None
-        self.container = StateVote("closed", cfg.k, cfg.n, cfg.stale_s)
-        self.modules = {role: StateVote("in", cfg.k, cfg.n, cfg.stale_s)
+        self.container = StateVote("closed", cfg.k, cfg.n, cfg.stale_s, cfg.container_min_hold_s)
+        self.modules = {role: StateVote("in", cfg.k, cfg.n, cfg.stale_s, cfg.module_min_hold_s)
                         for role in binding.modules}
+        # rig floor (mm) for the workspace filter; set_workspace() -- needs
+        # the rack layout, which fusion does not load itself
+        self.workspace_floor: np.ndarray | None = None
+        self.filtered = 0  # object detections dropped as outside the workspace
         # rack space (floor mm): footprints of the last closed / open box
         self.closed_floor: np.ndarray | None = None
         self.open_floor: np.ndarray | None = None
         self.mode = "image"  # geometry used for the last update
         self.hands = StateVote("present", cfg.hands_k, cfg.hands_n, cfg.stale_s)
+
+    def set_workspace(self, rack_cfg: Any) -> None:
+        """Enable the rack-space workspace filter from a calibrated layout
+        (no-op unless perception.workspace.margin_mm is set)."""
+        if self.cfg.workspace_margin_mm is not None:
+            self.workspace_floor = workspace_polygon(rack_cfg, self.cfg.workspace_margin_mm)
+
+    def _in_workspace(self, d: Detection, fit: Any, frame_size: tuple[int, int] | None) -> bool:
+        if fit is not None and self.workspace_floor is not None:
+            pt = floor_polygon(fit, [(d.cx, d.cy)])[0]
+            return signed_distance_mm(self.workspace_floor, pt) >= 0
+        roi = self.cfg.workspace_roi
+        if roi is not None and frame_size is not None:
+            w, h = frame_size
+            return roi[0] * w <= d.cx <= roi[2] * w and roi[1] * h <= d.cy <= roi[3] * h
+        return True
 
     def _best(self, dets: list[Detection], classes: set[str]) -> Detection | None:
         ok = [d for d in dets if d.cls in classes and d.conf >= self.cfg.min_conf.get(d.cls, 0.0)]
@@ -276,11 +365,21 @@ class SceneFusion:
             return closed
         return opened
 
-    def update(self, ts: float, dets: list[Detection], rack_pose: Any = None) -> list[ActionEvent | StateEvent]:
+    def update(self, ts: float, dets: list[Detection], rack_pose: Any = None,
+               frame_size: tuple[int, int] | None = None) -> list[ActionEvent | StateEvent]:
         """rack_pose: src.perception.rack.RackPose of the SAME frame, or None.
-        Used only with geometry 'auto' and a known pose (ok / held)."""
+        Used for containment only with geometry 'auto', and for the
+        workspace filter whenever it is known (ok / held).
+        frame_size: (width, height), for the image-region workspace filter."""
         b = self.binding
         events: list[ActionEvent | StateEvent] = []
+        known_fit = (rack_pose.fit if rack_pose is not None and rack_pose.status in ("ok", "held")
+                     else None)
+        if self.workspace_floor is not None or self.cfg.workspace_roi is not None:
+            kept = [d for d in dets if d.cls in b.hand_classes
+                    or self._in_workspace(d, known_fit, frame_size)]
+            self.filtered += len(dets) - len(kept)
+            dets = kept
         if b.hand_classes:
             seen = any(d.cls in b.hand_classes and d.conf >= self.cfg.hand_min_conf for d in dets)
             new_h = self.hands.observe(ts, "present" if seen else "absent")

@@ -330,6 +330,27 @@ kept here so it can be rebuilt anywhere if needed.
    Its database is per-machine — annotations only travel via exports
    into `labels/`. Export often.
 
+## Robustness pass (Parth side, 2026-09-28)
+
+Found in the live DroidCam run of 2026-09-26 (handheld phone, busy room):
+a 0.8 s open->closed flicker ended the protocol at 54 s; red chairs and
+clothing were detected as the red module (conf 0.81).
+- `perception.container_min_hold_s` / `module_min_hold_s` (both 1.0):
+  a new state must hold its votes that long. Swept with v5 on the tune
+  clips (0-1.5 s no loss, 2.0 s drops 10/12 -> 6/12) and the live
+  recording as a stress clip (flips 62 -> 30, anomalies 22 -> 11). Does
+  NOT fix a moving camera (that session's "closed" lasted 2.9 s): the
+  camera must be fixed.
+- `perception.workspace` (OFF by default): drop container/module
+  detections outside the rig -- rack space (layout + margin_mm) when the
+  ArUco pose is known, else an optional image `roi`. Hands never dropped.
+  Unit-tested; NOT validated on marker video -- Aryan: run
+  `scripts/replay_clip.py --geometry auto` on clips_Aruco with margin_mm.
+- v5 on the 5 clips (stride 3): tune 10/12, held-out (Parth test1/test2,
+  verified NOT in v5 training labels) 11/13 -- was 5/13 with v4.
+- Note: `runs/label_batch_v5` proposed ids Dataset75_desk/76_desk, which
+  clash with Aryan's Dataset75/76_glovebox -- renumber if ever used.
+
 ## Gotchas that will cost you time
 
 - `ultralytics==8.3.28` needs `numpy.trapz = numpy.trapezoid` before import
