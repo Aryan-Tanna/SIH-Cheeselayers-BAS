@@ -31,5 +31,6 @@
     }
   ],
   "partial": true,
-  "expected_missed_steps_note": "not asserted for real clips yet (lid steps need operator confirmation)"
+  "expected_missed_steps_note": "not asserted for real clips yet (lid steps need operator confirmation)",
+  "_lid_note": "The red jar is handled (~30-34 s) but never opened: no lid steps may complete (checked 2026-09-28)."
 }

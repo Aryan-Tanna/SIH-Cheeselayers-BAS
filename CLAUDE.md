@@ -51,7 +51,7 @@ known-broken things not yet fixed.
   after vision install; `numpy.trapz` shim; Windows eval workers=0; low
   system RAM kills training (IDE language server ~7 GB); never re-run
   `build_review_sheet.py`; Dataset22 gloves: leave as is. Install
-  `.[vision,audio,dev]`, then the opencv fix. 489 tests, harness 14/14.
+  `.[vision,audio,dev]`, then the opencv fix. 501 tests, harness 14/14.
 
 ## Your role
 

@@ -351,6 +351,37 @@ clothing were detected as the red module (conf 0.81).
 - Note: `runs/label_batch_v5` proposed ids Dataset75_desk/76_desk, which
   clash with Aryan's Dataset75/76_glovebox -- renumber if ever used.
 
+## Module lids from perception (Parth side, 2026-09-28)
+
+`SceneFusion` now emits the jar lid steps (profiles with `lid_class_id`:
+jar, mixed; slab profile unaffected). Per module, a lid vote
+(`perception.lid` in runtime.yaml: k 3 of n 5, hold 0.3 s):
+
+- **detached** = some `red_lid` box lies off the `red_module` box
+  (< 0.3 of the lid box on the body) -> `open(module_a)`. It is "some lid
+  off", not "no lid on": with the cap off, v5 also fires `red_lid` on the
+  open jar mouth (overlap 0.9-1.0 for the whole detach in train1/train2).
+- detached lid **in view** -> `move_to_zone(module_a.lid, stow_zone)` --
+  team rule, the whole camera view is the stow area. A lid carried out of
+  view is not stowed until it is seen again (lid_unstowed still fires).
+- every lid box back on the body -> `close(module_a)`.
+- no body or no lid box in a frame = no evidence (state held).
+
+Tune clips only (held-out has no lids): lid ground truth from 2 fps
+strips -- train1 off ~4.8 s / on ~6.4 s, train2 off ~8.4 s / on ~9.8 s,
+train3 handles the jar but never opens it. Replay: 6/6 lid steps, 0 false
+(train3 clean; train2's two lone "separate lid" frames at 20.4/20.8 s are
+voted out). Tune 10/12 -> 16/18, held-out unchanged 11/13. Latency +0.3 to
++0.7 s. Sweep: overlap 0.1-0.5 and k/n 2/4-3/5 all 6/6; hold <= 0.6 s
+fine, 1.0 s loses train2 (detach lasts only ~1.3 s), so lids must NOT
+share the 1.0 s container/module hold.
+
+Known limits: in train1 the cap comes off above the box before fusion
+sees remove_a, so open_a_lid is flagged out_of_order (steps still
+complete). The lid never leaves a hand in these clips, so "set down" is
+unmeasured -- a stricter stow (lid not overlapping a hand) would need new
+clips. Untested live; tests: tests/test_fusion_lid.py.
+
 ## Gotchas that will cost you time
 
 - `ultralytics==8.3.28` needs `numpy.trapz = numpy.trapezoid` before import

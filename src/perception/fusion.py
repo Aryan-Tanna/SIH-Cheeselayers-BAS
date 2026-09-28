@@ -72,11 +72,11 @@ for a frame or two must not read as "operator left"). Hand classes are
 the profile's detector_classes_not_role_bound unless perception.hand_classes
 says otherwise. Consumed by the engine's attended_while_open constraint.
 
-Lid steps (open/close a module's lid, stow the lid) are NOT emitted yet:
-stowing needs a rack-space stow zone that does not exist, and lid
-open/close needs the lid-vs-body rule (src/kinematics/lid_state.py) fed
-with tracked lid boxes -- next step. Until then, those steps are
-confirmed by the operator ("Hey BAS, next step").
+Module lids (profiles with lid_class_id): a lid box lying off the body
+box -> open(module); that detached lid in view -> move_to_zone(module.lid,
+<the protocol's stow zone>) -- the team rule is that the whole camera
+view is the stow area; every lid box back on the body -> close(module).
+See SceneFusion._update_lid and perception.lid in runtime.yaml.
 """
 
 from __future__ import annotations
@@ -225,6 +225,11 @@ class FusionConfig:
     # workspace filter: objects outside the rig are ignored (hands never)
     workspace_margin_mm: float | None = None  # rack space; None = off
     workspace_roi: tuple[float, float, float, float] | None = None  # image fractions x0,y0,x1,y1
+    # module lids (screw caps): detached = a lid box lies off the body box
+    lid_attach_overlap: float = 0.3  # lid box fraction inside the body box below this = off it
+    lid_k: int = 3  # detached/attached needs k of the last n lid observations
+    lid_n: int = 5
+    lid_min_hold_s: float = 0.3
 
     @classmethod
     def from_config(cls, runtime_cfg: dict[str, Any], timing: dict[str, Any]) -> "FusionConfig":
@@ -248,6 +253,10 @@ class FusionConfig:
             module_min_hold_s=float(p.get("module_min_hold_s", 0.0)),
             workspace_margin_mm=_opt_float((p.get("workspace") or {}).get("margin_mm")),
             workspace_roi=_roi((p.get("workspace") or {}).get("roi")),
+            lid_attach_overlap=float((p.get("lid") or {}).get("attach_overlap", 0.3)),
+            lid_k=int((p.get("lid") or {}).get("k", 3)),
+            lid_n=int((p.get("lid") or {}).get("n", 5)),
+            lid_min_hold_s=float((p.get("lid") or {}).get("min_hold_s", 0.3)),
         )
 
 
@@ -294,10 +303,12 @@ class RoleBinding:
     closed_cls: str
     modules: dict[str, str]  # role -> detector class
     hand_classes: frozenset[str] = frozenset()  # empty = presence not tracked
+    lids: dict[str, str] = field(default_factory=dict)  # role -> lid detector class
+    lid_zones: dict[str, str] = field(default_factory=dict)  # role -> its stow step's zone
 
     @classmethod
     def from_profile(cls, profile: dict[str, Any], container_roles: set[str],
-                     module_roles: set[str]) -> "RoleBinding":
+                     module_roles: set[str], lid_zones: dict[str, str] | None = None) -> "RoleBinding":
         roles = profile.get("roles") or {}
         (container,) = sorted(container_roles) or ("container",)
         states = (roles.get(container) or {}).get("state_class_ids") or {}
@@ -310,7 +321,10 @@ class RoleBinding:
                 raise ValueError(f"profile role {role!r} has no class_id")
             modules[role] = str(cls_id)
         hands = frozenset(str(c) for c in (profile.get("detector_classes_not_role_bound") or []))
-        return cls(container, str(states["open"]), str(states["closed"]), modules, hands)
+        lids = {role: str(roles[role]["lid_class_id"]) for role in modules
+                if (roles.get(role) or {}).get("has_lid") and (roles.get(role) or {}).get("lid_class_id")}
+        zones = {r: z for r, z in (lid_zones or {}).items() if r in lids}
+        return cls(container, str(states["open"]), str(states["closed"]), modules, hands, lids, zones)
 
 
 class SceneFusion:
@@ -334,6 +348,9 @@ class SceneFusion:
         self.open_floor: np.ndarray | None = None
         self.mode = "image"  # geometry used for the last update
         self.hands = StateVote("present", cfg.hands_k, cfg.hands_n, cfg.stale_s)
+        self.lids = {role: StateVote("on", cfg.lid_k, cfg.lid_n, cfg.stale_s, cfg.lid_min_hold_s)
+                     for role in binding.lids}
+        self.lid_stowed = {role: False for role in binding.lids}
 
     def set_workspace(self, rack_cfg: Any) -> None:
         """Enable the rack-space workspace filter from a calibrated layout
@@ -430,11 +447,48 @@ class SceneFusion:
             elif new == "in":
                 events.append(ActionEvent(ts=ts, action="place_into", target=role,
                                           dest=b.container, confidence=det.conf))
+        for role, lid_cls in b.lids.items():
+            events += self._update_lid(ts, dets, role, lid_cls)
         return events
+
+    def _update_lid(self, ts: float, dets: list[Detection], role: str,
+                    lid_cls: str) -> list[ActionEvent]:
+        """Screw-cap lid of one module: detached while some lid box lies
+        off the body box, attached while every lid box is on it
+        (LABELLING_RULINGS: an attached lid is boxed overlapping the body,
+        a detached one separately). "Some lid off", not "no lid on": with
+        the cap off, v5 also fires the lid class on the open jar mouth
+        (train1/train2, overlap 0.9-1.0 all through the detach). No body
+        or no lid in the frame = no evidence. Detach -> open; a detached lid still in view ->
+        move_to_zone(role.lid, stow zone): the team rule is that the whole
+        camera view is the stow area (defaults.yaml attended_while_open);
+        re-attach -> close."""
+        body = self._best(dets, {self.binding.modules[role]})
+        lids = [d for d in dets if d.cls == lid_cls and d.conf >= self.cfg.min_conf.get(d.cls, 0.0)]
+        if body is None or not lids:
+            return []
+        overlaps = [overlap_fraction(d.aabb, body.aabb) for d in lids]
+        attached = min(overlaps) >= self.cfg.lid_attach_overlap
+        vote = self.lids[role]
+        new = vote.observe(ts, "on" if attached else "off")
+        out: list[ActionEvent] = []
+        if new == "off":
+            self.lid_stowed[role] = False
+            out.append(ActionEvent(ts=ts, action="open", target=role, confidence=body.conf))
+        elif new == "on":
+            out.append(ActionEvent(ts=ts, action="close", target=role, confidence=body.conf))
+        if (vote.state == "off" and not self.lid_stowed[role] and not attached
+                and role in self.binding.lid_zones):
+            self.lid_stowed[role] = True
+            free = lids[overlaps.index(min(overlaps))]
+            out.append(ActionEvent(ts=ts, action="move_to_zone", target=f"{role}.lid",
+                                   zone=self.binding.lid_zones[role], confidence=free.conf))
+        return out
 
     def states(self) -> dict[str, str]:
         out = {self.binding.container: self.container.state,
-               **{r: v.state for r, v in self.modules.items()}}
+               **{r: v.state for r, v in self.modules.items()},
+               **{f"{r}.lid": v.state for r, v in self.lids.items()}}
         if self.binding.hand_classes:
             out["hands"] = self.hands.state
         return out
@@ -446,15 +500,18 @@ def binding_for(resolved: Any) -> RoleBinding:
     bound to detector classes through the resolved object profile."""
     containers: set[str] = set()
     modules: set[str] = set()
+    lid_zones: dict[str, str] = {}
     for sid in resolved.parsed.order:
         node = resolved.parsed.nodes[sid]
+        if node.action == "move_to_zone" and node.target.endswith(".lid") and node.zone:
+            lid_zones[node.target.split(".", 1)[0]] = node.zone
         if node.action in ("remove_from", "place_into"):
             modules.add(node.target.split(".", 1)[0])
             if node.source:
                 containers.add(node.source)
             if node.dest:
                 containers.add(node.dest)
-    return RoleBinding.from_profile(resolved.parsed.object_profile or {}, containers, modules)
+    return RoleBinding.from_profile(resolved.parsed.object_profile or {}, containers, modules, lid_zones)
 
 
 def with_hand_classes(binding: RoleBinding, runtime_cfg: dict[str, Any]) -> RoleBinding:
