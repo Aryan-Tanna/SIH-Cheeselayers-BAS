@@ -4,7 +4,7 @@
  "session": "S05",
  "split": "tune",
  "object_profile": "configs/objects/profile_jar.yaml",
- "verified": false,
+ "verified": true,
  "_note": "DRAFT by Claude from 1-frame-per-second strips (2026-09-28): times +/- 1 s, lid (cap) times +/- 2 s and marked 'rough'. NOT yet verified by a human -- Aryan to check against the video. Physical actions only (the clip does not follow the protocol).",
  "_extra": "yellow cap off/on twice 11-16 s; yellow lifted again ~50 s and put back ~52 s",
  "tolerance_s": 1.5,
@@ -94,5 +94,6 @@
    "target": "container",
    "conf": "clear"
   }
- ]
+ ],
+ "_verified_note": "Accepted as truth by Aryan on 2026-09-28 without a per-event re-check against the video. Times still carry the draft precision: +/- 1 s, caps +/- 2 s."
 }
