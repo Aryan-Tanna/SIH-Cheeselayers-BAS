@@ -286,8 +286,12 @@ kept here so it can be rebuilt anywhere if needed.
    `python scripts/convert_labels_to_yolo_obb.py --json labels/batch-1_full.json
    labels/batch-2_full.json labels/batch-3_full.json labels/batch-4_sih.json
    labels/batch5_retrain.json labels/batch6_retrain3.json labels/batch7
-   labels/batch8_retrain.json labels/batch9 labels/dedup/batch10_dedup_v2.json
+   labels/dedup/batch8_retrain_dedup.json labels/batch9 labels/dedup/batch10_dedup_v2.json
    labels/dedup/batch11_dedup.json labels/dedup/batch12_dedup.json labels/batch13
+   labels/dedup/batch14_dedup.json
+   (batch14 raw export = the whole Label Studio project: use the dedup copy -- its 99 new
+   frames + the Dataset47_glovebox_000000 case_closed fix, which is why batch8 is the
+   dedup copy without that frame. v6 was built this way into runs/yolo_dataset_v6.)
    --out-images runs/yolo_dataset_v5/images/train
    --out-labels runs/yolo_dataset_v5/labels/train`, then
    `python scripts/split_yolo_dataset.py --dataset-dir runs/yolo_dataset_v5

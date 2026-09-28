@@ -27,10 +27,10 @@ known-broken things not yet fixed.
   20 ArUco clips `clips_Aruco/` (0 labelled). Split: test = S01+S03+S05 +
   `configs/training/split_v5_s00_test.yaml`; train = rest. Next labels: S05
   test batch `runs/label_batch12/batch12_S05_test_import.json` (60).
-- Detector = `models/bootstrap_v5_best.pt`: test S01+S03 mAP50 .89 (v4 .77);
-  S01 alone .92 is the clean number, S03 flattered by similar S02 in train.
-  No leakage (nearest-frame check). Training on v5's own labels (v6p): no
-  gain -- label v5's unsure frames instead (`runs/autolabel_predictions_v5/`).
+- Detector = v5 (`.onnx` live, `.pt` for training): S01+S03 mAP50 .89. v6 =
+  v5 + batch14 (99 lid-confusion frames, `labels/dedup/`): no measurable gain,
+  NOT adopted (models/README). Decider: label S05 test batch (60), rerun
+  `scripts/compare_detectors.py`. v6 has 43% fewer false hand_gloved boxes.
 - Phase 2 runtime DONE: audio (Piper + Vosk "Hey BAS"), capture, recorder +
   UDP stream, Tk GUI, all in `src/runtime/app.py`. Run `scripts/run_gui.py`.
   Engine only via `Session` (not thread-safe). Wake = HOLD 5 s; "next

@@ -80,6 +80,30 @@ runtime, per `CLAUDE.md`).
   measured on live human speech or with fan noise.
 - **License**: Apache License 2.0 (Alpha Cephei).
 
+## bootstrap_v6 -- evaluated 2026-09-29, NOT adopted (v5 stays live)
+
+- **What**: v5 recipe exactly (yolov8n-obb, augment_v4, 120 epochs, GPU,
+  2.3 h) on v5's data + `labels/dedup/batch14_dedup.json` (99 train-side
+  frames picked for the lid <-> same-colour module confusion by
+  `scripts/select_lid_confusion_batch.py`) + the Dataset47_000000
+  case_closed fix + 2 stray boxes removed. Split identical to v5 (train 715
+  -> 814, same 205 + 112 test frames). Weights: `runs/train/bootstrap_v6/`
+  (not copied here).
+- **Bar set before the results**: unseen mAP50 must not drop > 0.01, lid <->
+  module confusions must fall, the 7 perception-fixture clips must not get
+  worse. `scripts/compare_detectors.py`, `scripts/score_perception.py`.
+- **Result**: test S01+S03 mAP50 .892 -> .897 (yellow_lid .758 -> .741);
+  test_s00 .908 -> .910. Lid<->module confusions S01+S03 29 -> 34, test_s00
+  30 -> 23 (+-2-3 per cell: noise). Clips: held-out 29/30 both (extra 5 -> 3,
+  delay +0.30 -> +0.11 s); tune 45 -> 46/51, extra 15 -> 18. Criterion 2
+  failed; nothing separates the models -> not worth a switch.
+- **In v6's favour, separate from the bar**: false `hand_gloved` boxes on the
+  bare-handed clips 206 -> 118 (Dataset9 171 -> 82, Dataset15 13 -> 24) -- each
+  one removes a correct hand skeleton (src/perception/hand_pose.py).
+- **What would decide it**: label the 60-frame S05 test batch
+  (`runs/label_batch12/batch12_S05_test_import.json`; S05 = the demo rig,
+  0 labels today) and re-run `compare_detectors.py` on it.
+
 ## `bootstrap_v5_best.onnx` (runtime default since 2026-09-28)
 
 - **What**: `bootstrap_v5_best.pt` exported to ONNX, one self-contained file
