@@ -26,7 +26,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from src.link.wire import encode, read_message
+from src.link.wire import encode, read_message, snapshot_name
 from src.logging.session_log import GENESIS_HASH, check_line
 
 ACK_EVERY_S = 0.5
@@ -114,8 +114,7 @@ class GroundSession:
 
     def add_snapshot(self, header: dict[str, Any], jpeg: bytes) -> dict[str, Any]:
         sha = hashlib.sha256(jpeg).hexdigest()
-        safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(header.get("label", "")))
-        name = f"{int(header.get('for_seq') or 0):05d}_{safe}.jpg"
+        name = snapshot_name(header.get("for_seq"), header.get("label"))
         if jpeg:
             (self.dir / "snapshots" / name).write_bytes(jpeg)
         snap = {"file": str(self.dir / "snapshots" / name) if jpeg else None, "label": header.get("label"),

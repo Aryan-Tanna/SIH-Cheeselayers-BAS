@@ -96,6 +96,10 @@ completion and per alert** — never video — to a ground station (`scripts/gro
 - **Verified on the ground:** every line is checked against the hash chain as it arrives (one altered line → "LOG TAMPERED");
   every image's sha256 is **written into the chain** on board, so the ground marks it VERIFIED only if the system attested it.
 - **Light-time simulation:** `--link-delay 1.3` (Moon) for the demo; a bandwidth cap too.
+- **Two modes:** LIVE (sent as it happens) or **fully offline, send later**: every session always keeps its log,
+  one JPEG per step/alert (attested in the chain) and its report on board; "Send to Earth" in the Sessions list
+  (or `scripts/send_to_earth.py`) uploads it when a link window opens. Tested on a real clip: 48 lines + 14 images
+  arrived later byte-identical; a second send transfers nothing new.
 
 | One real session (clip Dataset12, 32.5 s, 12 steps) | Bytes |
 |---|---|

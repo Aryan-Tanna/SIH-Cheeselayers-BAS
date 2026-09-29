@@ -202,11 +202,19 @@ class CopilotApp:
             dl_cfg = dl_cfg.with_target(self.opts.downlink)
         if self.opts.link_delay_s is not None:
             dl_cfg = replace(dl_cfg, simulate_delay_s=float(self.opts.link_delay_s))
+        # Always on: one image per step / alert, attested in the log and kept on
+        # board with it (logs/<session>/), so a fully offline session can be
+        # sent to Earth later. The network link only when enabled (LIVE mode).
+        self.downlink = Downlink(dl_cfg, attest=self._attest_snapshot, printer=printer,
+                                 send=dl_cfg.enabled,
+                                 save_root=repo_path(sess_cfg.get("log_dir", "logs")))
         if dl_cfg.enabled:
-            self.downlink = Downlink(dl_cfg, attest=self._attest_snapshot, printer=printer)
-            self.printer(f"downlink: log + event snapshots to ground {dl_cfg.host}:{dl_cfg.port}"
+            self.printer(f"downlink LIVE: log + event images to ground {dl_cfg.host}:{dl_cfg.port}"
                          + (f" (simulated light-time {dl_cfg.simulate_delay_s:g} s)"
                             if dl_cfg.simulate_delay_s else ""))
+        else:
+            self.printer("offline: log + event images kept on board (logs/); "
+                         "send them to Earth later from Sessions")
         # --- session + log --------------------------------------------------
         self._restart_lock = threading.Lock()
         self._restart_armed_until = 0.0
@@ -594,7 +602,7 @@ class CopilotApp:
         """Downlink bytes next to what the same session costs as video: the
         PS's bandwidth argument, measured, not assumed."""
         out: dict[str, Any] = {}
-        if self.downlink is not None:
+        if self.downlink is not None and self.downlink.send:
             st = self.downlink.status()
             out.update(downlink_bytes=st["bytes_sent"], downlink_log_bytes=st["log_bytes"],
                        downlink_snapshot_bytes=st["snapshot_bytes"], downlink_snapshots=st["snapshots"],

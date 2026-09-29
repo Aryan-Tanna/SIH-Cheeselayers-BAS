@@ -283,7 +283,8 @@ class Dashboard:
         sessions_tab = tk.Frame(tabs, bg=PANEL)
         tabs.add(left, text="  Experiments  ")
         tabs.add(sessions_tab, text="  Sessions (this station)  ")
-        self.local_sessions = SessionsTable(sessions_tab, self._local_rows, earth=False)
+        self.local_sessions = SessionsTable(sessions_tab, self._local_rows, earth=False,
+                                            earth_target=lambda: self.link_target.get().strip())
         tabs.bind("<<NotebookTabChanged>>", lambda _e: self.local_sessions.refresh())
         style.configure("Dash.Treeview", background=PANEL_2, fieldbackground=PANEL_2, foreground=FG,
                         rowheight=30, font=FONT)
@@ -798,12 +799,18 @@ class SessionsTable:
 
     COLS = ("when", "experiment", "steps", "alerts", "log", "images")
 
-    def __init__(self, parent: tk.Widget, rows: Callable[[], list[dict[str, Any]]], earth: bool) -> None:
+    def __init__(self, parent: tk.Widget, rows: Callable[[], list[dict[str, Any]]], earth: bool,
+                 earth_target: Callable[[], str] | None = None) -> None:
+        """earth_target (station side): the Earth IP[:port] from the start
+        screen, for "Send to Earth" -- the fully offline mode's link window."""
         self.rows_fn, self.earth, self.rows = rows, earth, []
-        cols = self.COLS if earth else self.COLS[:-1]
+        self.earth_target = earth_target
+        self._busy = False
+        cols = self.COLS if earth else self.COLS + ("earth",)
         self.tree = ttk.Treeview(parent, columns=cols, show="headings", selectmode="browse", style="Dash.Treeview")
-        widths = {"when": 140, "experiment": 300, "steps": 90, "alerts": 70, "log": 170, "images": 70}
-        heads = {"steps": "steps done", "log": "log (hash chain)"}
+        widths = {"when": 140, "experiment": 300, "steps": 90, "alerts": 70, "log": 170, "images": 70,
+                  "earth": 150}
+        heads = {"steps": "steps done", "log": "log (hash chain)", "earth": "sent to Earth"}
         for c in cols:
             self.tree.heading(c, text=heads.get(c, c))
             self.tree.column(c, width=widths[c], stretch=c == "experiment",
@@ -817,6 +824,11 @@ class SessionsTable:
             tk.Button(btns, text=text, command=(lambda w=what: self._open(w)) if what else self.refresh,
                       bg=PANEL_2, fg=FG, activebackground=ACCENT, activeforeground=BG, relief="flat",
                       font=FONT_BOLD, padx=12, pady=5, cursor="hand2").pack(side="left", padx=(0, 8))
+        if earth_target is not None:
+            for text, cmd in (("🌍 Send to Earth", self._send_selected), ("Send all unsent", self._send_unsent)):
+                tk.Button(btns, text=text, command=cmd, bg=ACCENT, fg=BG, activebackground=OK,
+                          relief="flat", font=FONT_BOLD, padx=12, pady=5, cursor="hand2").pack(
+                    side="left", padx=(0, 8))
         self.msg = tk.Label(btns, text="", bg=PANEL, fg=MUTED, font=FONT)
         self.msg.pack(side="left", padx=8)
 
@@ -829,10 +841,82 @@ class SessionsTable:
         for i, r in enumerate(self.rows):
             vals = [r["when"], r["experiment"], r["steps_done"], r["violations"],
                     f"verified, {r['lines']} lines" if r["chain_ok"] else "BROKEN"]
-            if self.earth:
-                vals.append(r.get("images", 0))
+            vals.append(r.get("images", 0))
+            if not self.earth:
+                s = r.get("sent")
+                vals.append(f"✓ {s['target']}" if s else "not sent")
             self.tree.insert("", "end", iid=str(i), values=vals, tags=() if r["chain_ok"] else ("bad",))
         self.msg.configure(text=f"{len(self.rows)} session(s)" if self.rows else "no sessions yet")
+
+    # --- fully offline mode: send stored sessions when a link is available --
+
+    def _target(self) -> tuple[str, int] | None:
+        raw = self.earth_target() if self.earth_target else ""
+        host, _, port = raw.rpartition(":") if ":" in raw else (raw, "", "5055")
+        if not host:
+            self.msg.configure(text='type the Earth IP in "Send to Earth - ground station at" (Setup, right)',
+                               fg=BAD)
+            return None
+        if not port.isdigit():
+            self.msg.configure(text="Earth address must look like 192.168.1.42:5055", fg=BAD)
+            return None
+        return host, int(port)
+
+    def _send_selected(self) -> None:
+        sel = self.tree.selection()
+        if not sel:
+            self.msg.configure(text="select a session first", fg=WARN)
+            return
+        self._send([self.rows[int(sel[0])]])
+
+    def _send_unsent(self) -> None:
+        todo = [r for r in self.rows if not r.get("sent")]
+        if not todo:
+            self.msg.configure(text="every session is already on Earth", fg=OK)
+            return
+        self._send(todo)
+
+    def _send(self, rows: list[dict[str, Any]]) -> None:
+        import threading
+
+        from src.link.upload import upload_session
+        from src.runtime.offline import allow_host
+
+        target = self._target()
+        if target is None or self._busy:
+            return
+        host, port = target
+        allow_host(host)  # the one address outside the LAN the offline guard lets through
+        self._busy = True
+        widget = self.tree
+
+        def work() -> None:
+            done, failed = 0, []
+            for i, r in enumerate(rows, 1):
+                widget.after(0, lambda i=i, r=r: self.msg.configure(
+                    text=f"sending {i}/{len(rows)}: {r['session_id']} to {host}:{port} ...", fg=ACCENT))
+                try:
+                    res = upload_session(Path(r["log"]), host, port, timeout_s=45.0)
+                except OSError as exc:
+                    res = {"ok": False, "error": str(exc)}
+                if res["ok"]:
+                    done += 1
+                else:
+                    failed.append(res.get("error", "failed"))
+                    break  # link is down: stop, try again later
+
+            def finish() -> None:
+                self._busy = False
+                self.refresh()
+                if failed:
+                    self.msg.configure(text=f"{done} sent; stopped: {failed[0]} (nothing is lost - "
+                                            "send again when the link is up)", fg=BAD)
+                else:
+                    self.msg.configure(text=f"{done} session(s) on Earth - log verified there, images attested",
+                                       fg=OK)
+            widget.after(0, finish)
+
+        threading.Thread(target=work, name="send_to_earth", daemon=True).start()
 
     def _open(self, what: str) -> None:
         sel = self.tree.selection()

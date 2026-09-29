@@ -48,7 +48,12 @@ def list_local_sessions(log_dir: Path, limit: int = 40) -> list[dict[str, Any]]:
             continue
         rep = log.with_suffix(".report.txt")
         row["report"] = str(rep) if rep.is_file() else None
-        row["folder"] = str(log.parent)
+        row["folder"] = str(log.parent / log.stem) if (log.parent / log.stem).is_dir() else str(log.parent)
+        from src.link.upload import sent_info
+
+        sent = sent_info(log)
+        row["sent"] = sent
+        row["images"] = len(list((log.parent / log.stem / "snapshots").glob("*.jpg")))
         out.append(row)
     return out
 

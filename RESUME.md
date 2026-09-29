@@ -472,6 +472,11 @@ Send back per run: the summary table printed on close and the
   ground_station; `--allow-internet` to disable): audit hook refuses any
   connection / DNS lookup outside the LAN except the Earth IP; OFFLINE badge;
   summary `offline_blocked`. Measured: full live run, 0 blocked.
+- Fully offline mode: every session keeps logs/<session>/snapshots/*.jpg +
+  info.json + steps.json next to its log (Downlink send=False); "Send to
+  Earth" in the station's Sessions tab / `scripts/send_to_earth.py <ip>`
+  uploads later over the same wire (fixed link id per session: resumes, no
+  duplicates; marker logs/<session>/sent_to_earth.json).
 - GOTCHA: never let CopilotApp raise after the hand stage is built -- a
   garbage-collected MediaPipe landmarker deadlocks the process in close().
 

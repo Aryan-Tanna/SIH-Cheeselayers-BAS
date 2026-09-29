@@ -32,6 +32,12 @@ def encode(header: dict[str, Any], payload: bytes = b"") -> bytes:
     return struct.pack(">I", len(raw)) + raw + payload
 
 
+def snapshot_name(seq: Any, label: Any) -> str:
+    """File name of an event image, the same on board and on the ground."""
+    safe = "".join(c if c.isalnum() or c in "-_" else "_" for c in str(label or ""))
+    return f"{int(seq or 0):05d}_{safe}.jpg"
+
+
 def _recv_exact(sock: socket.socket, n: int) -> bytes:
     buf = bytearray()
     while len(buf) < n:

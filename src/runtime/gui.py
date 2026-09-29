@@ -243,8 +243,8 @@ def activity_text(activity: str, cues: list[dict[str, Any]], names: dict[str, st
 def earth_badge(st: Any) -> tuple[str, str] | None:
     """Downlink to the ground station: None when not configured."""
     d = getattr(st, "downlink", None)
-    if not d:
-        return None
+    if not d or not d.get("sending", True):
+        return None  # offline mode: nothing is sent live
     sent = d["bytes_sent"]
     size = f"{sent / 1024:.0f} KB" if sent < 1 << 20 else f"{sent / (1 << 20):.1f} MB"
     if d["connected"]:

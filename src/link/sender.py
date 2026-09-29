@@ -23,15 +23,17 @@ bandwidth cap, to demonstrate the degraded path honestly.
 from __future__ import annotations
 
 import hashlib
+import json
 import socket
 import threading
 import time
 import uuid
 from collections import deque
 from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Any, Callable
 
-from src.link.wire import encode, read_message
+from src.link.wire import encode, read_message, snapshot_name
 
 
 @dataclass(frozen=True)
@@ -84,11 +86,19 @@ class DownlinkStats:
 class Downlink:
     def __init__(self, cfg: DownlinkConfig,
                  attest: Callable[[str, float, dict[str, Any]], None] | None = None,
-                 printer: Callable[[str], None] = print) -> None:
+                 printer: Callable[[str], None] = print, *, send: bool = True,
+                 save_root: Path | None = None, link_id: str | None = None) -> None:
+        """send=False: never connects -- the fully offline mode. Event images
+        are still taken, attested in the log and, with save_root, kept on
+        disk (<save_root>/<session>/snapshots/) so the session can be sent to
+        Earth later (src/link/upload.py). link_id: fixed for an upload, so a
+        re-send after a drop resumes where the ground stopped."""
         self.cfg = cfg
         self.attest = attest
         self.printer = printer
-        self.link_id = uuid.uuid4().hex[:12]
+        self.send = send
+        self.save_root = Path(save_root) if save_root is not None else None
+        self.link_id = link_id or uuid.uuid4().hex[:12]
         self.stats = DownlinkStats()
         self._lock = threading.Condition()
         self._outbox: list[dict[str, Any]] = []  # unacknowledged, msg_id order
@@ -112,10 +122,42 @@ class Downlink:
             self._ring.append((ts, image))
 
     def begin_session(self, session_id: str, info: dict[str, Any]) -> None:
+        self._save_json(session_id, "info.json", info)
         self._enqueue({"kind": "hello", "session_id": session_id, "info": info})
 
     def send_steps(self, session_id: str, steps: list[dict[str, Any]]) -> None:
+        self._save_json(session_id, "steps.json", steps)
         self._enqueue({"kind": "steps", "session_id": session_id, "steps": steps})
+
+    def send_log_line(self, session_id: str, text: str) -> None:
+        self._enqueue({"kind": "log", "session_id": session_id, "line": text})
+
+    def send_snapshot(self, session_id: str, for_seq: int, label: str, jpeg: bytes,
+                      event_type: str | None = None) -> None:
+        self._enqueue({"kind": "snapshot", "session_id": session_id, "for_seq": for_seq, "label": label,
+                       "event_type": event_type, "sha256": hashlib.sha256(jpeg).hexdigest()}, jpeg)
+
+    def wait_delivered(self, timeout_s: float) -> bool:
+        """Every message enqueued so far acknowledged by the ground."""
+        end = time.monotonic() + timeout_s
+        while time.monotonic() < end:
+            if not self._jobs and not self._pending():
+                return True
+            time.sleep(0.05)
+        return False
+
+    def session_dir(self, session_id: str) -> Path | None:
+        return None if self.save_root is None else self.save_root / session_id
+
+    def _save_json(self, session_id: str, name: str, data: Any) -> None:
+        d = self.session_dir(session_id)
+        if d is None:
+            return
+        try:
+            d.mkdir(parents=True, exist_ok=True)
+            (d / name).write_text(json.dumps(data, indent=1), encoding="utf-8")
+        except OSError as exc:
+            self.stats.last_error = f"could not save {name}: {exc}"
 
     def send_report(self, session_id: str, text: str) -> None:
         self._enqueue({"kind": "report", "session_id": session_id}, text.encode("utf-8"))
@@ -143,6 +185,8 @@ class Downlink:
         return best if abs(best[0] - ts) <= self.cfg.ring_s else None
 
     def _enqueue(self, header: dict[str, Any], payload: bytes = b"") -> None:
+        if not self.send:
+            return  # fully offline: nothing is queued for a link
         with self._lock:
             header = {**header, "msg_id": self._next_id, "link_id": self.link_id}
             self._next_id += 1
@@ -176,7 +220,7 @@ class Downlink:
 
     def stop(self) -> None:
         deadline = time.monotonic() + self.cfg.flush_s + self.cfg.simulate_delay_s
-        while time.monotonic() < deadline and (self._jobs or self._pending()):
+        while time.monotonic() < deadline and (self._jobs or (self.send and self._pending())):
             time.sleep(0.05)
         self._stop.set()
         with self._lock:
@@ -194,7 +238,7 @@ class Downlink:
     def status(self) -> dict[str, Any]:
         with self._lock:
             s = self.stats
-            return {"target": f"{self.cfg.host}:{self.cfg.port}", "connected": s.connected,
+            return {"target": f"{self.cfg.host}:{self.cfg.port}", "sending": self.send, "connected": s.connected,
                     "bytes_sent": s.bytes_sent, "log_bytes": s.log_bytes,
                     "snapshot_bytes": s.snapshot_bytes, "log_lines": s.log_lines,
                     "snapshots": s.snapshots, "dropped_snapshots": s.dropped_snapshots,
@@ -207,6 +251,10 @@ class Downlink:
         next_try = 0.0
         while not self._stop.is_set():
             self._encode_jobs()
+            if not self.send:  # offline: only images to disk
+                with self._lock:
+                    self._lock.wait(0.2)
+                continue
             if self._sock is None:
                 if time.monotonic() >= next_try:
                     self._connect()
@@ -237,6 +285,13 @@ class Downlink:
                 self.stats.last_error = f"snapshot encode failed: {exc}"
                 continue
             sha = hashlib.sha256(jpeg).hexdigest()
+            d = self.session_dir(job["session_id"])
+            if d is not None:  # always kept on board: "send to Earth later" needs it
+                try:
+                    (d / "snapshots").mkdir(parents=True, exist_ok=True)
+                    (d / "snapshots" / snapshot_name(job["seq"], job["label"])).write_bytes(jpeg)
+                except OSError as exc:
+                    self.stats.last_error = f"could not save snapshot: {exc}"
             header = {"kind": "snapshot", "session_id": job["session_id"], "for_seq": job["seq"],
                       "event_type": job["event_type"], "label": job["label"],
                       "frame_ts": job["frame_ts"], "sha256": sha}

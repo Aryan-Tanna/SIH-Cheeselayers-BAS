@@ -45,19 +45,19 @@ known-broken things not yet fixed.
   `score_perception.py`, `score_hand_cues.py` (4 tune fixtures UNVERIFIED).
 - ArUco rack: `configs/rack.yaml` (DICT_4X4_50, IDs 1-4, 49 mm), GUI [K]. Rack
   containment (`geometry: auto`) OFF: ties image mode 17/18. Stow = whole view.
-- Rules: attended_while_open (5 s); extra_step (undone within settle_s 3 s =
-  logged only; verified S05 clips 0/0/2 alerts); step_time_limit (per step).
-  Editor [E]: steps, rules, time limit, optional (= allowed extra), out-together.
+- Rules: attended_while_open; extra_step (undone < settle_s 3 s = log only; S05
+  0/0/2 alerts); step_time_limit. Editor [E]: time limit, optional, out-together.
 - Earth link `src/link/`: log + JPEG per step/alert, store-and-forward, sha256 in
   chain; ~486 KB/33 s vs 3.6 MB video. Start screen: role SPACE (sender) / EARTH
-  (receiver, Mission Control), Sessions tabs, IP camera dialog. Offline guard
-  (`src/runtime/offline.py`) blocks non-LAN traffic except the Earth IP.
+  (receiver), Sessions + "Send to Earth" later (offline mode), IP camera dialog.
+  Offline guard blocks non-LAN traffic except the Earth IP. README = plain; dev
+  detail docs/DEVELOPER.md; demo docs/DEMO_SCRIPT.md; exe `build_app.py --zip`.
 - Not tested live: DroidCam + taped markers; Earth link across two PCs.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
   after vision install; `numpy.trapz` shim; Windows eval workers=0; low
   system RAM kills training (IDE language server ~7 GB); never re-run
   `build_review_sheet.py`; Dataset22 gloves: leave as is. Install
-  `.[vision,audio,dev]`, then the opencv fix. 598 tests, harness 16/16.
+  `.[vision,audio,dev]`, then the opencv fix. 601 tests, harness 16/16.
 
 ## Your role
 

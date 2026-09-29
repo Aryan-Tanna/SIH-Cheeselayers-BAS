@@ -91,22 +91,26 @@ def build(clean: bool) -> Path:
 
 README = """BAS Co-Pilot (SIH PS 26174, team Cheeselayers)
 
-Double-click BAS-Copilot (BAS-Copilot.exe on Windows): the start screen
-lets you pick the experiment, the props on the rig and the camera
-(webcam number, phone DroidCam address http://<phone-ip>:4747/video,
-or a video file), then Start experiment.
+START: double-click BAS-Copilot.exe. At the top right choose what this PC is:
 
-Start directly instead, from a terminal in this folder:
-  BAS-Copilot --no-dashboard --source http://<phone-ip>:4747/video --profile configs/objects/profile_rect.yaml
-  BAS-Copilot --help                                  all options
+  SPACE STATION  - runs the experiment: pick it, the props and the camera
+                   (webcam number, "IP camera..." for a phone, or a video file),
+                   optionally tick "Send to Earth" + the Earth PC's IP, Start.
+  EARTH          - Mission Control: shows this PC's IP (tell the station),
+                   then "Start receiving".
 
-Keys: Space pause/resume, N next step, R repeat, Q quiet/voice,
-F5 reload protocol. Voice: "Hey BAS, <command>" -- next step, repeat,
-pause, resume (or continue), quiet mode, voice mode, restart experiment
-(say it twice).
+Two ways to report to Earth:
+  LIVE      tick "Send to Earth" before starting.
+  LATER     run offline; afterwards Sessions tab -> "Send to Earth".
 
-Settings live in configs/ (runtime.yaml: camera, detector, audio).
-Session logs go to logs/, recordings to recordings/.
+During the experiment: Space pause, N next step, R repeat, Q quiet, H help.
+Voice: "Hey BAS, next step / repeat / pause / resume / restart experiment (twice)".
+
+Files: logs/ (hash-chained logs, reports, event photos), recordings/ (video),
+ground_archive/ (what Earth received), configs/ (settings, experiments).
+Windows may ask to allow the app through the firewall: allow Private networks.
+Fully offline: the app refuses any connection outside the local network
+except the Earth IP you type.
 """
 
 

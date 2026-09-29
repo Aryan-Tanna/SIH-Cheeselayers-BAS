@@ -228,7 +228,10 @@ class MissionControl:
         rate = f", {total * 8 / span / 1000:.1f} kbit/s avg" if span > 1 else ""
         self._badge("data", f"DATA {human_bytes(total)}  (log {human_bytes(b['log'])}, images "
                     f"{human_bytes(b['snapshot'])}{rate})", PANEL_2)
-        self._badge("delay", "DELAY -" if delay is None else f"DELAY {max(0.0, delay):.1f} s", PANEL_2)
+        if info.get("sent_later"):  # stored on board, sent in a later link window
+            self._badge("delay", "SENT LATER - recorded offline on board", ACCENT)
+        else:
+            self._badge("delay", "DELAY -" if delay is None else f"DELAY {max(0.0, delay):.1f} s", PANEL_2)
         self._draw_steps(steps)
         self._draw_feed(events, steps)
         self._draw_images(snaps)

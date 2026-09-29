@@ -1,166 +1,142 @@
-# BAS Glovebox HAR Co-Pilot
+# BAS Co-Pilot
 
-Offline, edge-native AI co-pilot for Smart India Hackathon PS **26174 —
-"AI Human Activity Recognition for On-board BAS Experiments"** (ISRO /
-Department of Space).
+**An AI assistant that watches an experiment on the space station, tells
+the astronaut what to do next, warns by voice when something goes wrong,
+and keeps a tamper-proof record — fully offline.**
 
-An astronaut on the Bharatiya Antariksh Station runs a scientific
-protocol with no real-time ground support (comms delay, restricted
-bandwidth). This system watches a fixed payload camera, tracks protocol
-progress against a declarative spec, prompts the next step, alerts by
-voice on skipped or out-of-order steps, and writes a tamper-evident log
-— fully offline, CPU-only, no internet at runtime.
+Smart India Hackathon · PS **26174** "AI Human Activity Recognition for On-board BAS Experiments" (ISRO) · Team **Cheeselayers**
 
-Full project brief, architecture rationale, and the phase-by-phase build
-plan live in [`CLAUDE.md`](CLAUDE.md) — that document is the
-specification this repo is built against. This README is an orientation
-map on top of it, not a replacement.
+![The co-pilot during an experiment](docs/img/copilot_session.jpg)
 
-## Architecture
+---
 
-Three-way split instead of one end-to-end model:
+## The problem, in one paragraph
 
-- **Lightweight vision** identifies objects: a YOLOv8n-OBB detector
-  trained on our own labelled frames (v5, ONNX on CPU), plus MediaPipe
-  hand skeletons for fingertip "holding" cues.
-- **Classical geometry**: ArUco markers on the rig give a planar
-  image-to-rack homography (`src/perception/rack.py`), so positions can
-  be expressed on the rack, not the image. Kinematics maths (One Euro,
-  grasp, drift, intent) is in `src/kinematics/` as tested pure functions;
-  only the fingertip grasp cue (`fingers.py`) runs live today.
-- **A deterministic constraint engine** (`src/protocol/`) validates
-  procedure sequence against a declarative protocol spec, with no
-  probabilistic hallucination in the safety-critical path.
+On the Bharatiya Antariksh Station there is no one on the ground watching
+live: signals are delayed and the link to Earth is too thin for video. An
+astronaut still has to do every step of an experiment in the right order.
+BAS Co-Pilot is the second pair of eyes: a camera watches the work, the
+software checks every step, and it speaks up the moment something is
+skipped, out of order, or not part of the procedure.
 
-```
-configs/          defaults.yaml, protocol schema, protocol/object/zone definitions, runtime.yaml
-src/
-  protocol/       constraint engine, debouncer, alert policy, config loader/validator, editor model
-  perception/     detector, fusion (detections -> step events), hand pose, ArUco rack
-  kinematics/     pure-function motion/grasp/drift/intent/lid-state math
-  logging/        hash-chained JSONL session log + readable session report
-  link/           Earth downlink: log + event images to a ground station
-  runtime/        app, GUI, dashboard, protocol editor, audio/voice, recorder, activity
-harness/          replay.py + run_all.py: headless fixture-driven pipeline tests
-scripts/          run_gui.py, ground_station.py, data pipeline, training, scoring
-tests/            pytest unit/regression suite
-clips/, clips_norm/, frames/, manifest/, labels/, runs/   data pipeline stages (gitignored)
-```
+## What it does
 
-The constraint engine tracks a **set** of currently-satisfiable protocol
-steps (not a list index), consumes semantic action events, and emits
-step completions or violations. Everything a protocol enforces is data
-(`configs/defaults.yaml` + a protocol JSON), not hardcoded logic — see
-`CLAUDE_addendum_protocol.md` for the inheritance/override rules.
+| | |
+|---|---|
+| 👀 **Watches** | A camera over the glovebox. A trained AI model recognises the container, the red and yellow modules, their caps and the astronaut's hands. |
+| 🗣️ **Guides** | Says the next step out loud, and shows it on screen. |
+| 🚨 **Warns** | By voice, once per mistake: a skipped step, a step out of order, the wrong object, an extra step that is not in the procedure. |
+| 📝 **Records** | A timestamped log of every step and outcome, locked with a hash chain (any edit is detected), plus a readable report. Video is recorded too. |
+| 🌍 **Reports to Earth** | Sends the log and one photo per step / alert to Mission Control — **live**, or **later** when a link is available. Never raw video. |
+| 🔌 **Offline** | Runs on a normal laptop CPU. No internet, no cloud. The app itself blocks any connection outside the local network. |
+| ✏️ **Editable** | Experiments are simple files. A built-in editor adds steps, order, time limits and rules — no coding. |
 
-## Status
-
-Phases 0-2 are built: engine + harness, data pipeline + trained
-detector (v5), and the full runtime (GUI, voice, recording, stream,
-Earth downlink, Mission Control). See `CLAUDE.md`'s **Session status**
-for what is open right now, and `ppt_context.md` for every measured
-number with its sample size.
-
-## Running the co-pilot and Mission Control
-
-Mission Control on a second laptop (only Python + Pillow): [`EARTH_SETUP.md`](EARTH_SETUP.md).
+## How it works
 
 ```
-.venv\Scripts\python.exe scripts\run_gui.py                     # start screen: experiment, props, camera, Earth link
-.venv\Scripts\python.exe scripts\ground_station.py              # Mission Control (ground side), port 5055
-.venv\Scripts\python.exe scripts\run_gui.py --downlink 127.0.0.1 --link-delay 1.3   # Moon light-time demo
-.venv\Scripts\python.exe scripts\run_gui.py --source clips_norm\<clip>.mp4 --no-dashboard   # replay a video
+ CAMERA ──► AI model finds objects & hands ──► "container opened", "red module out", "cap off" ...
+                                                     │
+                                                     ▼
+                         PROCEDURE CHECKER (fixed rules, no guessing)
+                          │           │             │              │
+                          ▼           ▼             ▼              ▼
+                   voice + screen   log file    report.txt    Earth link (live or later)
 ```
 
-Each session writes `logs/<session>.jsonl` (hash-chained) and
-`logs/<session>.report.txt` (readable). With the Earth link on, the
-ground station archives the same log byte for byte, one JPEG per step
-and per alert (sha256 attested in the chain), and the report, under
-`ground_archive/<session>/`. Press H in the co-pilot for a key/badge legend.
+The AI only **sees**. The **decisions** (is this step correct? was one
+skipped?) are made by a rule checker that always gives the same answer
+for the same situation — nothing is "hallucinated" in the safety part.
 
-## Setup
+---
 
-Requires the **python.org** Python 3.13 interpreter, not MSYS/MinGW
-Python — on Windows with MSYS installed, `python` on `PATH` may resolve
-to the wrong one and fail to fetch prebuilt wheels (no working CA
-bundle), then fail building `jsonschema`/`rpds-py` from source.
+## Two ways to talk to Earth
 
+| | **LIVE** | **OFFLINE, SEND LATER** |
+|---|---|---|
+| When | there is a link during the experiment | no link during the experiment |
+| What happens | every log line and photo goes to Mission Control as it happens | everything is saved on the laptop; press **Send to Earth** when a link is up |
+| If the link drops | nothing lost: the station keeps it and resends | nothing lost: send again any time |
+| Mission Control shows | live checklist, alerts, photos, delay | the same, marked "SENT LATER" |
+
+Either way Mission Control checks **every line** of the log and **every
+photo** as it arrives, and shows **LOG VERIFIED** — or **TAMPERED** if
+anything was changed.
+
+![Mission Control on Earth](docs/img/mission_control.jpg)
+
+---
+
+## Try it
+
+### Option 1 — the Windows app (no Python needed)
+1. Download `BAS-Copilot-windows.zip` (from the team / the Releases page) and unzip it.
+2. Double-click **BAS-Copilot.exe**.
+3. At the top right choose what this PC is: **SPACE STATION** or **EARTH**.
+
+### Option 2 — from the source code
 ```
 py -3.13 -m venv .venv
-.venv\Scripts\python.exe -m pip install -e ".[dev]"
+.venv\Scripts\python.exe -m pip install -e ".[vision,audio,dev]"
+.venv\Scripts\python.exe scripts\run_gui.py
 ```
+(one extra OpenCV step is in [docs/DEVELOPER.md](docs/DEVELOPER.md#setup))
 
-The phase-1 data pipeline additionally needs the `vision` extra
-(Pillow; OpenCV/YOLO/MediaPipe once phase 2 needs them) and `ffmpeg`
-+ `ffprobe` on `PATH`:
+Mission Control on a second laptop needs only Python + Pillow:
+see **[EARTH_SETUP.md](EARTH_SETUP.md)**.
 
-```
-.venv\Scripts\python.exe -m pip install -e ".[vision]"
-```
+---
 
-Always invoke `.venv\Scripts\python.exe` explicitly (or activate the
-venv) — do not rely on a bare `python`/`py` resolving to it.
+## Using it
 
-## Running things
+**1. Space station laptop** — pick the experiment, the props and the camera
+(webcam, phone camera by IP, or a video file). To report to Earth, tick
+**Send to Earth** and type the Earth laptop's IP. Press **Start experiment**.
 
-```
-# Full test suite
-.venv\Scripts\python.exe -m pytest
+![Start screen, space station](docs/img/start_space_station.jpg)
 
-# Synthetic fixture corpus through the replay harness (engine + alerts + logging,
-# no detector/video needed — this is the headline correctness metric)
-.venv\Scripts\python.exe harness\run_all.py
+**2. During the experiment** — just do the work. The screen shows the
+checklist, the step to do now, and what the camera sees you doing.
+Hands busy? Use your voice: *"Hey BAS, next step / repeat / pause / resume"*.
+Keys: **Space** pause, **N** next step, **R** repeat, **H** help.
 
-# Validate a protocol JSON (ordering cycles, unresolved roles/zones, missing
-# `basis` fields, etc. -- reports Finding lines with approximate source line numbers)
-.venv\Scripts\python.exe scripts\validate_protocol.py configs\protocols\bas_specimen_v1.json
-```
+**3. Earth laptop** — choose **EARTH**, read out the IP it shows to the
+station, press **Start receiving**.
 
-The resolved-constraint report (which defaults are enforced, which the
-protocol overrode, ordering) is `src/protocol/loader.py`'s
-`format_resolved_report()` / `print_resolved_constraints()` — not
-currently wired to a CLI entrypoint, so it's called from Python
-directly:
+![Start screen, Earth](docs/img/start_earth.jpg)
 
-```python
-from pathlib import Path
-from src.protocol.loader import resolve, print_resolved_constraints
-print_resolved_constraints(resolve(Path("configs/protocols/bas_specimen_v1.json"), Path("configs/defaults.yaml")))
-```
+**4. After** — each session leaves a **report** (steps, times, alerts) and
+a verified log. Both start screens list past **Sessions**; the station's
+list has **Send to Earth** for sessions recorded offline.
 
-Phase-1 data pipeline, in order, once real clips are in `clips/`:
+---
 
-```
-.venv\Scripts\python.exe scripts\normalize_clips.py      # VFR->CFR30, rotate to landscape -> clips_norm/
-.venv\Scripts\python.exe scripts\extract_frames.py        # sample + dedup -> frames/
-.venv\Scripts\python.exe scripts\build_review_sheet.py     # manifest/clips.csv + contact sheet -- STOP for human review
-.venv\Scripts\python.exe scripts\separability_check.py     # class-list decision support
-.venv\Scripts\python.exe scripts\split.py                  # train/val split by session_id, after review
-```
+## Measured results
 
-`build_review_sheet.py` is a hard checkpoint: `manifest/clips.csv`'s
-`session_id` and the guessed columns must be human-reviewed before
-anything downstream is trustworthy. A guessed column with no honest
-phase-1 signal (no detector exists yet) reports `unimplemented`, not a
-fabricated guess — see that script's docstring for exactly which
-columns and why.
+| What | Result |
+|---|---|
+| Object detection on recordings it never saw | **0.89** mAP50 (standard accuracy score) |
+| Steps recognised on 3 hand-checked test videos | **17 of 18** |
+| Procedure checker, 16 scripted scenarios | **16/16** correct, **0** false alarms |
+| Speed on a laptop CPU | 15–29 frames per second |
+| Data sent to Earth for a 33-second experiment | **~0.5 MB** (log 30 KB + 12 photos) instead of 3.6 MB of video |
+| Log after a link drop and ground restart | **byte-identical** on Earth |
+| Automated tests | 600 passing |
 
-Rotation is decided automatically but is not blindly trusted: a
-portrait clip with no rotation metadata gets a **default** guess
-(flagged `defaulted, verify` in `normalize_clips.py`'s output and in
-`manifest/rotation.csv`), which a human can override by editing that
-file and marking the row `confirmed`.
+Every number, with how it was measured: [ppt_context.md](ppt_context.md).
 
-## Testing philosophy
+## What it does not do (yet)
 
-- **Measure, never hand-derive.** Fixture expected-values and thresholds
-  come from running the real code and reading its actual output, not
-  from calculating what "should" happen — see `tests/test_normalize_clips.py`
-  and `tests/test_harness.py` for examples using real measured numbers
-  from the pilot corpus.
-- **Never tune against a single clip.** Thresholds live in `configs/`
-  and are calibrated against the aggregate tuning set.
-- **No clip ID, filename, or timestamp anywhere under `src/`** —
-  anti-overfitting rule enforced by convention, checked in review.
-- A capability with no honest signal reports itself as absent
-  (`unimplemented`), never as a confident-looking placeholder.
+- It is not a full-body 3D pose system (the PS lists that as optional); it tracks hands and objects relative to the rig.
+- Gloved hands are detected, but finger tracking works on bare hands only.
+- Voice commands are not yet tested in a noisy room.
+
+---
+
+## More
+
+| For | Read |
+|---|---|
+| The presentation (all numbers, limits, talking points) | [ppt_context.md](ppt_context.md) |
+| The demo video script | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) |
+| Setting up the Earth laptop | [EARTH_SETUP.md](EARTH_SETUP.md) |
+| Developers (code map, setup, tests, data pipeline) | [docs/DEVELOPER.md](docs/DEVELOPER.md) |
