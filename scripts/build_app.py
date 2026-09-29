@@ -48,6 +48,46 @@ COLLECT_ALL = ["piper", "vosk", "imageio_ffmpeg", "mediapipe"]
 MODEL_DIRS = ["asr", "tts"]
 
 
+# Developer-only config: never shipped.
+DEV_ONLY = ("configs/training/", "configs/objects/LABELLING_")
+
+
+def copy_configs(dest: Path) -> None:
+    """Ship ONLY config files committed in git (minus developer-only ones):
+    experiments made locally in the editor, local edits to settings and
+    anything else that should stay on this PC never go into the app.
+    Without git (a source zip), everything under configs/ except DEV_ONLY."""
+    import subprocess
+
+    try:
+        tracked = subprocess.run(["git", "ls-files", "configs"], cwd=REPO_ROOT, capture_output=True,
+                                 text=True, check=True).stdout.split()
+    except (OSError, subprocess.CalledProcessError):
+        tracked = [p.relative_to(REPO_ROOT).as_posix() for p in (REPO_ROOT / "configs").rglob("*") if p.is_file()]
+    shipped, left_out = 0, []
+    for rel in tracked:
+        if rel.startswith(DEV_ONLY):
+            continue
+        dst = dest / Path(rel).relative_to("configs")
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(REPO_ROOT / rel, dst)
+        shipped += 1
+    local = [p.relative_to(REPO_ROOT).as_posix() for p in (REPO_ROOT / "configs").rglob("*")
+             if p.is_file() and p.relative_to(REPO_ROOT).as_posix() not in tracked]
+    left_out = [r for r in local if not r.startswith(DEV_ONLY)]
+    # a committed file with LOCAL changes ships as committed? No: git ls-files
+    # lists it, and the working copy is copied -- warn so nothing slips through.
+    try:
+        changed = subprocess.run(["git", "diff", "--name-only", "--", "configs"], cwd=REPO_ROOT,
+                                 capture_output=True, text=True).stdout.split()
+    except OSError:
+        changed = []
+    print(f"configs: {shipped} committed files shipped; left out (local only): {left_out or 'none'}")
+    if changed:
+        print(f"WARNING: these shipped configs have UNCOMMITTED local edits: {changed} -- "
+              "commit or revert them if they should not be in the app")
+
+
 def build(clean: bool) -> Path:
     import PyInstaller.__main__
 
@@ -79,7 +119,7 @@ def build(clean: bool) -> Path:
     PyInstaller.__main__.run(args)
 
     out = REPO_ROOT / "dist" / NAME
-    shutil.copytree(REPO_ROOT / "configs", out / "configs", dirs_exist_ok=True)
+    copy_configs(out / "configs")
     (out / "models").mkdir(exist_ok=True)
     for f in (weights, hand_model):
         shutil.copy2(REPO_ROOT / f, out / f)
