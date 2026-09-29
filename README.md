@@ -1,112 +1,172 @@
 # BAS Co-Pilot
 
-**An AI assistant that watches an experiment on the space station, tells
-the astronaut what to do next, warns by voice when something goes wrong,
-and keeps a tamper-proof record — fully offline.**
+**An offline AI assistant for experiments on the space station: it watches the
+experiment through a camera, tells the astronaut the next step, warns by voice
+when a step is skipped or done out of order, and writes a tamper-proof record.**
 
-Smart India Hackathon · PS **26174** "AI Human Activity Recognition for On-board BAS Experiments" (ISRO) · Team **Cheeselayers**
+Smart India Hackathon 2026 · Problem Statement **26174** — *AI Human Activity
+Recognition for On-board BAS Experiments* (ISRO / Department of Space) ·
+Team **Cheeselayers**
 
 ![The co-pilot during an experiment](docs/img/copilot_session.jpg)
 
 ---
 
-## The problem, in one paragraph
+## ⬇️ Download and run (Windows)
 
-On the Bharatiya Antariksh Station there is no one on the ground watching
-live: signals are delayed and the link to Earth is too thin for video. An
-astronaut still has to do every step of an experiment in the right order.
-BAS Co-Pilot is the second pair of eyes: a camera watches the work, the
-software checks every step, and it speaks up the moment something is
-skipped, out of order, or not part of the procedure.
+1. Go to this repository's **[Releases](../../releases)** page and download
+   **`BAS-Copilot-windows.zip`** (≈ 325 MB).
+2. Unzip it anywhere and double-click **`BAS-Copilot.exe`**. No Python, no
+   installation, no internet needed.
+3. Choose what this computer is (top right): **SPACE STATION** (runs the
+   experiment) or **EARTH** (Mission Control). `README.txt` inside the zip has
+   the one-page guide.
 
-## What it does
+**Needs:** Windows 10/11 · 8 GB RAM (about 3 GB free while running) · a webcam,
+or a phone used as a camera over Wi-Fi · speakers; a microphone for voice commands.
+*macOS/Linux: run from the source code (see [For developers](#for-developers)).*
 
-| | |
+---
+
+## The problem
+
+On the Bharatiya Antariksh Station there is no real-time help from the ground:
+signals are delayed and the link to Earth is too limited for video. Astronauts
+still have to carry out every experiment exactly, step by step. The PS asks for
+an on-board, offline system that recognises what the astronaut is doing,
+checks it against the experiment's procedure, and helps in real time.
+
+**Our sample experiment** (from the PS: *a box that contains two smaller boxes,
+red and yellow*): open the container → take out a module → unscrew its cap →
+put the cap down → screw it back → return the module → the same for the second
+module → close the container. 12 steps.
+
+## How we answer the PS
+
+| The PS asks for | What we built |
 |---|---|
-| 👀 **Watches** | A camera over the glovebox. A trained AI model recognises the container, the red and yellow modules, their caps and the astronaut's hands. |
-| 🗣️ **Guides** | Says the next step out loud, and shows it on screen. |
-| 🚨 **Warns** | By voice, once per mistake: a skipped step, a step out of order, the wrong object, an extra step that is not in the procedure. |
-| 📝 **Records** | A timestamped log of every step and outcome, locked with a hash chain (any edit is detected), plus a readable report. Video is recorded too. |
-| 🌍 **Reports to Earth** | Sends the log and one photo per step / alert to Mission Control — **live**, or **later** when a link is available. Never raw video. |
-| 🔌 **Offline** | Runs on a normal laptop CPU. No internet, no cloud. The app itself blocks any connection outside the local network. |
-| ✏️ **Editable** | Experiments are simple files. A built-in editor adds steps, order, time limits and rules — no coding. |
+| Continuously track the experiment from local video | A trained detector + a procedure checker follow every step, live |
+| Suggest the next step, at the start and after each step | Spoken by voice and shown on screen |
+| Voice alert when a step is skipped or an out-of-sequence step is added | One clear spoken alert per mistake: skipped, out of order, wrong object, extra step |
+| A timestamped, structured, lightweight text log of steps and outcomes | A hash-chained log file (every edit detectable) + a readable report per session |
+| Stream the video to an IP and store it locally | Video recorded on the laptop and streamed on the local network |
+| A GUI for monitoring | The crew screen, plus **Mission Control** for Earth |
+| Dataset generation for object detection, pose and hand-object interaction | Our own videos, frames extracted and hand-labelled; hand pose + hand-object cues |
+| A trained AI model that runs on an offline standalone system | Our detector, trained on our dataset, running on a laptop CPU, packaged as an .exe |
+
+---
+
+## Features
+
+**Sees**
+- A **detector we trained ourselves** finds the container (open or closed),
+  the red and yellow modules, their caps, and bare or gloved hands.
+- **Hand skeletons** (21 points per hand) tell when a hand is *holding* an object.
+- Four **ArUco markers** on the rig give positions relative to the rack, not
+  the camera image.
+- A **"Now doing"** line: *Handling the red module cap*, *Yellow module out of the box*.
+
+**Understands and guides**
+- A **procedure checker** follows the experiment step by step. Steps may be in
+  any allowed order, and it always gives the same answer for the same situation.
+- Speaks the **next step** and a **clear alert for each mistake**:
+  skipped · out of order · wrong object · a step not in the procedure ·
+  two modules out at once · module returned unsealed · container closed with a
+  module outside · open module left unattended · step taking too long.
+- **One alert per mistake**, never a stream of beeps. Everything goes in the log.
+- **The astronaut is always in charge.** It never blocks; "next step" by voice
+  marks a step the camera missed (logged as confirmed by the operator).
+
+**Voice, hands-free and offline**
+- Natural offline speech for prompts and alerts.
+- Voice commands: *"Hey BAS, next step / repeat / pause / resume / quiet mode /
+  restart experiment"*, all recognised without internet.
+
+**Records**
+- **Session log**: every step, alert and command, with time and confidence.
+  Each line is locked to the previous one by a cryptographic hash, so changing
+  one character is detected.
+- **Report** (`report.txt`) at the end: every step, when and how it was seen, every alert.
+- **Video** recorded locally and optionally streamed on the local network.
+- **Sessions list** of past runs, each with its report and a verified log.
+
+**Reports to Earth**
+- **Mission Control** receives the log line by line and **one photo per step and
+  per alert**, never raw video. About 0.5 MB per experiment instead of several MB.
+- **Live**, or **fully offline**: everything is stored on board, and one click
+  on **Send to Earth** delivers it when a link is available.
+- Earth checks every line and every photo as it arrives: **LOG VERIFIED** or
+  **TAMPERED**. Nothing is lost if the link drops.
+
+![Mission Control on Earth](docs/img/mission_control.jpg)
+
+**Works offline, by design**
+- Runs on a normal laptop CPU. No GPU, no cloud.
+- The app **blocks any connection outside the local network**, except the
+  Earth address you type in (shown by the OFFLINE badge).
+
+**New experiments without code**
+- Experiments are simple files. The built-in **editor** adds or reorders steps,
+  sets time limits, marks optional steps and switches rules on or off. A
+  validator checks the file, and it applies while running.
+
+---
+
+## The AI model — trained by us
+
+**What it is:** a YOLOv8n-OBB object detector (fast, small, *oriented* boxes
+that follow tilted objects), **trained on our own dataset**, exported to ONNX
+to run on a laptop CPU.
+
+**How we built the dataset**
+1. **Recorded about 100 videos** of the experiment on our own rigs: 6 recording
+   sessions, different setups and lighting, bare and white-gloved hands,
+   unscripted (people did the steps naturally, including mistakes).
+2. **Normalised** the videos (fixed frame rate, rotation) and **extracted
+   frames**, dropping near-duplicates automatically.
+3. **Hand-labelled 1,032 whole images.** Each training image is a **full camera
+   frame** from our videos (not cropped objects), with every object in it
+   boxed: container open / closed, red module, yellow module, red cap, yellow
+   cap, bare hand, gloved hand (8 classes).
+4. **Split by recording session, never by frame.** The test videos come from
+   sessions the model never saw, so the score is honest (no near-identical
+   frames in both training and test).
+
+**How we trained it:** from the public YOLOv8n-OBB starting weights, 120 epochs
+on a GPU, with heavy augmentation (rotation up to 180° because there is no
+"up" in space, flips, blur, contrast, noise, compression). We improved it over
+several versions, each measured on unseen sessions (v4 → v5 raised mAP50 from
+0.77 to 0.89). A v6 and a self-labelling experiment were measured too, and
+rejected because they did not beat v5.
+
+**Results (v5, on recording sessions it never saw):**
+
+| | Precision | Recall | mAP50 | mAP50-95 |
+|---|---|---|---|---|
+| All classes | 0.887 | 0.833 | **0.892** | 0.703 |
+
+Per class (mAP50): container open 0.98 · container closed 0.86 · red module
+0.92 · yellow module 0.90 · red cap 0.84 · yellow cap 0.76 · bare hand 0.97.
+On a CPU: **23 ms per image**.
+
+**What is not ours:** the hand skeleton comes from Google's MediaPipe hand
+model, used offline as it is. The "holding" cue and the activity line are our
+own logic on top of it. The procedure checker is not a neural network, on
+purpose, so that it can never invent a step.
+
+---
 
 ## How it works
 
 ```
- CAMERA ──► AI model finds objects & hands ──► "container opened", "red module out", "cap off" ...
-                                                     │
-                                                     ▼
-                         PROCEDURE CHECKER (fixed rules, no guessing)
-                          │           │             │              │
-                          ▼           ▼             ▼              ▼
-                   voice + screen   log file    report.txt    Earth link (live or later)
+ camera ──► our detector (objects, hands) ─┐
+        └─► hand skeletons (holding?) ─────┼─► what happened ──► PROCEDURE CHECKER
+            ArUco markers (rack position) ─┘   "red module out"      (fixed rules)
+                                               "cap off"                 │
+                     ┌──────────────┬───────────────┬──────────────────┼──────────────┐
+                     ▼              ▼               ▼                  ▼              ▼
+                voice + screen   log (hash-chained)  report.txt   video + stream   Earth link
 ```
-
-The AI only **sees**. The **decisions** (is this step correct? was one
-skipped?) are made by a rule checker that always gives the same answer
-for the same situation — nothing is "hallucinated" in the safety part.
-
----
-
-## Two ways to talk to Earth
-
-| | **LIVE** | **OFFLINE, SEND LATER** |
-|---|---|---|
-| When | there is a link during the experiment | no link during the experiment |
-| What happens | every log line and photo goes to Mission Control as it happens | everything is saved on the laptop; press **Send to Earth** when a link is up |
-| If the link drops | nothing lost: the station keeps it and resends | nothing lost: send again any time |
-| Mission Control shows | live checklist, alerts, photos, delay | the same, marked "SENT LATER" |
-
-Either way Mission Control checks **every line** of the log and **every
-photo** as it arrives, and shows **LOG VERIFIED** — or **TAMPERED** if
-anything was changed.
-
-![Mission Control on Earth](docs/img/mission_control.jpg)
-
----
-
-## Try it
-
-### Option 1 — the Windows app (no Python needed)
-1. Download `BAS-Copilot-windows.zip` (from the team / the Releases page) and unzip it.
-2. Double-click **BAS-Copilot.exe**.
-3. At the top right choose what this PC is: **SPACE STATION** or **EARTH**.
-
-### Option 2 — from the source code
-```
-py -3.13 -m venv .venv
-.venv\Scripts\python.exe -m pip install -e ".[vision,audio,dev]"
-.venv\Scripts\python.exe scripts\run_gui.py
-```
-(one extra OpenCV step is in [docs/DEVELOPER.md](docs/DEVELOPER.md#setup))
-
-Mission Control on a second laptop needs only Python + Pillow:
-see **[EARTH_SETUP.md](EARTH_SETUP.md)**.
-
----
-
-## Using it
-
-**1. Space station laptop** — pick the experiment, the props and the camera
-(webcam, phone camera by IP, or a video file). To report to Earth, tick
-**Send to Earth** and type the Earth laptop's IP. Press **Start experiment**.
-
-![Start screen, space station](docs/img/start_space_station.jpg)
-
-**2. During the experiment** — just do the work. The screen shows the
-checklist, the step to do now, and what the camera sees you doing.
-Hands busy? Use your voice: *"Hey BAS, next step / repeat / pause / resume"*.
-Keys: **Space** pause, **N** next step, **R** repeat, **H** help.
-
-**3. Earth laptop** — choose **EARTH**, read out the IP it shows to the
-station, press **Start receiving**.
-
-![Start screen, Earth](docs/img/start_earth.jpg)
-
-**4. After** — each session leaves a **report** (steps, times, alerts) and
-a verified log. Both start screens list past **Sessions**; the station's
-list has **Send to Earth** for sessions recorded offline.
 
 ---
 
@@ -114,29 +174,62 @@ list has **Send to Earth** for sessions recorded offline.
 
 | What | Result |
 |---|---|
-| Object detection on recordings it never saw | **0.89** mAP50 (standard accuracy score) |
-| Steps recognised on 3 hand-checked test videos | **17 of 18** |
-| Procedure checker, 16 scripted scenarios | **16/16** correct, **0** false alarms |
-| Speed on a laptop CPU | 15–29 frames per second |
-| Data sent to Earth for a 33-second experiment | **~0.5 MB** (log 30 KB + 12 photos) instead of 3.6 MB of video |
-| Log after a link drop and ground restart | **byte-identical** on Earth |
-| Automated tests | 600 passing |
+| Detector on unseen recording sessions | mAP50 **0.892** (precision 0.887, recall 0.833) |
+| Steps recognised on 3 hand-checked test videos (full pipeline) | **17 of 18** |
+| Procedure checker, 16 scripted scenarios | **16/16**, **0 false alarms** |
+| Speed on a laptop CPU (live) | 15–29 frames per second |
+| Data to Earth for a 33 s experiment | **~0.5 MB** (log 30 KB + 12 photos) vs 3.6 MB of video |
+| Log after a link drop / ground restart | **byte-identical** on Earth |
+| Automated tests | **600** passing |
 
-Every number, with how it was measured: [ppt_context.md](ppt_context.md).
+All numbers, with sample sizes and how they were measured: [ppt_context.md](ppt_context.md).
 
-## What it does not do (yet)
+## Limits (honest)
 
-- It is not a full-body 3D pose system (the PS lists that as optional); it tracks hands and objects relative to the rig.
-- Gloved hands are detected, but finger tracking works on bare hands only.
+- No full-body 3D pose (HMR, optional in the PS). We track hands and objects relative to the rig.
+- Hand skeletons work on bare hands. Gloved hands are detected, but without finger tracking.
+- The gloved-hand class has no score on an unseen session yet (no gloved recording outside the training session).
 - Voice commands are not yet tested in a noisy room.
+- Windows is the tested platform. macOS/Linux run from source; untested.
 
 ---
 
-## More
+## Screenshots
+
+| Space station start screen | Earth start screen |
+|---|---|
+| ![](docs/img/start_space_station.jpg) | ![](docs/img/start_earth.jpg) |
+
+---
+
+## For developers
+
+```
+py -3.13 -m venv .venv
+.venv\Scripts\python.exe -m pip install -e ".[vision,audio,dev]"
+.venv\Scripts\python.exe scripts\run_gui.py
+```
+Plus one OpenCV fix after installing; see **[docs/DEVELOPER.md](docs/DEVELOPER.md)**,
+which also covers the code map, the data pipeline, training, tests and building the app.
+
+| Folder | What |
+|---|---|
+| `src/perception/` | detector, turning detections into events, hand pose, ArUco rack |
+| `src/protocol/` | the procedure checker, alert policy, experiment loader + validator |
+| `src/runtime/` | the app: screens, voice, recording, activity, offline guard |
+| `src/link/` | Earth link: sender, receiver, send-later, Mission Control |
+| `src/logging/` | hash-chained log, report |
+| `configs/` | safety rules, experiments, object profiles, settings |
+| `scripts/` | run the app, data pipeline, labelling helpers, training, evaluation, build |
+| `harness/`, `tests/` | scenario harness and 600 automated tests |
+| `models/` | our detector (ONNX), hand model, offline voice and speech models |
+
+## Documents
 
 | For | Read |
 |---|---|
-| The presentation (all numbers, limits, talking points) | [ppt_context.md](ppt_context.md) |
+| The presentation: every number, limit and talking point | [ppt_context.md](ppt_context.md) |
 | The demo video script | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) |
-| Setting up the Earth laptop | [EARTH_SETUP.md](EARTH_SETUP.md) |
-| Developers (code map, setup, tests, data pipeline) | [docs/DEVELOPER.md](docs/DEVELOPER.md) |
+| Setting up an Earth laptop | [EARTH_SETUP.md](EARTH_SETUP.md) |
+| Developers | [docs/DEVELOPER.md](docs/DEVELOPER.md) |
+| The detector versions and how each was measured | [models/README.md](models/README.md) |
