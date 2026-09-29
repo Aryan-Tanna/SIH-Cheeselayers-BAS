@@ -407,6 +407,33 @@ clips. Untested live; tests: tests/test_fusion_lid.py.
   -> packaging costs nothing. NOTE this laptop: ~11 det-fps with skeletons
   on (15.7 before them); Aryan measured 19.3 on his machine.
 
+## Handoff to Aryan: live tests (Parth, 2026-09-29)
+
+Parth built and verified everything above on clips only (no camera/mic);
+the props are with Aryan, so the live checks are his. In order:
+
+1. **Build the app**: `git pull`, then in `.venv`:
+   `pip install -e ".[build]"` and `python scripts/build_app.py --zip`.
+   Double-click `dist/BAS-Copilot/BAS-Copilot.exe`: the dashboard must open.
+2. **Speed on the demo laptop**: start a session on the real camera and
+   read `DET .. fps` in the top bar. Parth's laptop: ~11 det-fps with hand
+   skeletons on (15.7 without); Aryan's: 19.3. If the demo laptop is slow,
+   run skeletons less often before cutting anything else.
+3. **PS sample experiment first**: white container + red and yellow boxes
+   (slabs), profile `configs/objects/profile_rect.yaml`, camera FIXED on a
+   stand. This is what PS 26174 describes -- the headline demo.
+4. **Jar run** (profile_mixed / profile_jar): unscrew the cap, keep it in
+   view, screw it back -> unseal / stow / reseal must tick off.
+5. **Mistakes on purpose**: skip a step, do one out of order, bring in a
+   foreign object -> one spoken alert each, naming the step.
+6. **Voice**: "Hey BAS, pause / resume / next step / repeat", once in a
+   quiet room, once with people talking nearby (never tested in noise).
+7. **Markers taped on the rig** + DroidCam (never tested live).
+8. **Stream to another laptop**: `--stream-to <ip>:5000`, open it in VLC.
+
+Send back per run: the summary table printed on close and the
+`logs/session_*.jsonl`. Anything wrong -> note the time into the session.
+
 ## Gotchas that will cost you time
 
 - `ultralytics==8.3.28` needs `numpy.trapz = numpy.trapezoid` before import
