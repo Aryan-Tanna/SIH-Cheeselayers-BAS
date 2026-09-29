@@ -33,6 +33,7 @@ from src.protocol.loader import (  # noqa: E402
     resolve,
     resolve_constraints,
 )
+from src.protocol.loader import REPO_ROOT  # noqa: E402,F811  frozen-aware (packaged app)
 
 SCHEMA_PATH = REPO_ROOT / "configs" / "protocol.schema.json"
 

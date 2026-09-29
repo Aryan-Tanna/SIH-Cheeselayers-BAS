@@ -386,6 +386,27 @@ complete). The lid never leaves a hand in these clips, so "set down" is
 unmeasured -- a stricter stow (lid not overlapping a hand) would need new
 clips. Untested live; tests: tests/test_fusion_lid.py.
 
+## Deployment: packaged app, torch-free detector (Parth side, 2026-09-29)
+
+- `python scripts/build_app.py [--zip]` from `.venv` (the `build` extra) ->
+  `dist/BAS-Copilot/`: `BAS-Copilot.exe` (the GUI: dashboard by default,
+  same options as run_gui.py) + editable `configs/` + `models/` (detector
+  .onnx, hand_landmarker.task, asr, tts). No Python/torch on the demo
+  machine. Windows: 674 MB folder, 326 MB zip. PyInstaller does not
+  cross-compile: build Mac/Linux on Mac/Linux.
+- `.onnx` weights run on onnxruntime + numpy (`_OnnxObb` in detector.py),
+  replacing the ultralytics-session swap: identical output to ultralytics
+  on the same .onnx (351 frames, diff 0). `.pt` still uses torch.
+- Frozen app: `REPO_ROOT` = the executable's folder (src/protocol/loader.py;
+  runtime/config.py and validate_protocol.py import it).
+- Bundle keeps mediapipe + matplotlib (mediapipe's tasks API imports it);
+  drops torch, ultralytics, scipy, pandas, piper.train.
+- Verified frozen (no camera/mic): dashboard opens; train2.mp4 + mixed
+  profile -> 9/9 steps, 0 violations, hand skeletons on, log chain OK,
+  recording OK. Same run from source: identical steps, 10.8 vs 11.7 det-fps
+  -> packaging costs nothing. NOTE this laptop: ~11 det-fps with skeletons
+  on (15.7 before them); Aryan measured 19.3 on his machine.
+
 ## Gotchas that will cost you time
 
 - `ultralytics==8.3.28` needs `numpy.trapz = numpy.trapezoid` before import

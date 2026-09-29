@@ -31,10 +31,10 @@ known-broken things not yet fixed.
   v5 + batch14 (99 lid-confusion frames, `labels/dedup/`): no measurable gain,
   NOT adopted (models/README). Decider: label S05 test batch (60), rerun
   `scripts/compare_detectors.py`. v6 has 43% fewer false hand_gloved boxes.
-- Phase 2 runtime DONE: audio (Piper + Vosk "Hey BAS"), capture, recorder +
-  UDP stream, Tk GUI, all in `src/runtime/app.py`. Run `scripts/run_gui.py`.
-  Engine only via `Session` (not thread-safe). Wake = HOLD 5 s; "next
-  step" = `engine.confirm_step`. Loud noise/other voices untested.
+- Phase 2 runtime DONE: Piper + Vosk "Hey BAS", capture, recorder + UDP,
+  Tk GUI (`src/runtime/app.py`; run `scripts/run_gui.py`). Packaged torch-free
+  app: `scripts/build_app.py`. Engine only via `Session` (not thread-safe).
+  Wake = HOLD 5 s; "next step" = confirm_step. Noise/other voices untested.
 - Perception: box/module/hands/lids. S05 lids 16/18; 2 closes 2-5 s early =
   cap RESTING on jar before screwing (traced, not a label swap). v5 swaps
   lid->same-colour module 17%: data fix (label batch14). Hand skeletons ON:
@@ -57,7 +57,7 @@ known-broken things not yet fixed.
   after vision install; `numpy.trapz` shim; Windows eval workers=0; low
   system RAM kills training (IDE language server ~7 GB); never re-run
   `build_review_sheet.py`; Dataset22 gloves: leave as is. Install
-  `.[vision,audio,dev]`, then the opencv fix. 531 tests, harness 14/14.
+  `.[vision,audio,dev]`, then the opencv fix. 539 tests, harness 14/14.
 
 ## Your role
 

@@ -19,7 +19,7 @@ from src.runtime.audio_out import AudioSink, SoundDeviceSink
 from src.runtime.earcons import EarconSpec
 from src.runtime.tts import CachedTTS, build_tts
 
-REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+from src.protocol.loader import REPO_ROOT  # noqa: E402  (frozen-aware)
 DEFAULT_RUNTIME_CONFIG = REPO_ROOT / "configs" / "runtime.yaml"
 
 

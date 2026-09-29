@@ -24,6 +24,7 @@ each entry [default] or [protocol] — see print_resolved_constraints().
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -37,6 +38,10 @@ import yaml
 # profile every `condition: target.has_lid` is false, so all six lid steps
 # of bas_specimen_v1 vanished without a word (found 2026-09-24).
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+if getattr(sys, "frozen", False):
+    # Packaged app (scripts/build_app.py): configs/ and models/ sit next to
+    # the executable, editable, instead of inside the bundle.
+    REPO_ROOT = Path(sys.executable).resolve().parent
 DEFAULT_DEFAULTS_PATH = REPO_ROOT / "configs" / "defaults.yaml"
 
 

@@ -17,3 +17,5 @@ recordings/
 logs/
 test_clips/
 clips_Aruco
+dist/
+build/

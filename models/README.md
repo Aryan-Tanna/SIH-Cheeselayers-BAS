@@ -124,6 +124,12 @@ runtime, per `CLAUDE.md`).
   then `python -c "import onnx; onnx.save(onnx.load('x.onnx'), 'models/<new>.onnx')"`,
   then check parity with `yolo val` on `data_test_sessions.yaml` before switching.
 
+- **Runtime backend (Parth, 2026-09-29)**: `src/perception/detector.py`
+  now runs an `.onnx` on onnxruntime + numpy alone (no torch/ultralytics),
+  reproducing ultralytics 8.3.28's OBB pre/post-processing: identical to
+  ultralytics running this same file on 351 test_clips frames (conf and
+  corner difference 0). The packaged app (`scripts/build_app.py`) needs it.
+
 ## `bootstrap_v5_best.pt` (training weights; runtime default 2026-09-26 to 09-28)
 
 - **What**: YOLOv8n-OBB, same 8 classes, same recipe as v4 (from
