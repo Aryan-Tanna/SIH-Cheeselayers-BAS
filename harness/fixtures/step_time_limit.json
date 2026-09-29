@@ -1,0 +1,16 @@
+{
+  "clip_id": "step_time_limit",
+  "protocol_id": "time_limit_test",
+  "expected_events": [
+    {
+      "t": 49.0,
+      "type": "violation",
+      "code": "step_overdue",
+      "target": "module_b",
+      "tolerance_s": 0.5
+    }
+  ],
+  "expected_alerts": 1,
+  "expected_missed_steps": [],
+  "partial": true
+}

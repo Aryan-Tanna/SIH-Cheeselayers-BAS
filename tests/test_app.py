@@ -260,3 +260,23 @@ def test_voice_restart_needs_saying_twice(tmp_path):
     app._on_voice(ParsedCommand("restart", "hey bass restart experiment"))
     assert app.session_id != "first" and not app.restart_pending()
     app.stop()
+
+
+def test_step_time_limit_fires_live_on_the_real_clock(tmp_path):
+    """The real app, SystemClock and the session's own timeout ticks (no
+    VirtualClock): a 1 s limit on the first step, nothing done -> one
+    step_overdue in the log, and the alert line is in the spoken set."""
+    raw = json.loads(PROTOCOL.read_text(encoding="utf-8"))
+    raw["protocol_id"] = "timed_live"
+    raw["steps"][0]["timeout_s"] = 1.0
+    proto = tmp_path / "timed_live.json"
+    proto.write_text(json.dumps(raw), encoding="utf-8")
+    app = _headless(tmp_path, protocol=proto)
+    app.start()
+    deadline = time.monotonic() + 6.0
+    while time.monotonic() < deadline and not app.status().protocol.get("violations"):
+        time.sleep(0.1)
+    summary = app.stop()
+    overdue = [e for e in load_events(summary["log"]) if e.get("violation_type") == "step_overdue"]
+    assert len(overdue) == 1 and overdue[0]["step_id"] == "open_container"
+    assert summary["log_chain_ok"]

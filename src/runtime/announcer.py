@@ -235,7 +235,8 @@ class Announcer:
         # session -- the engine runs skip detection at that point, and
         # prompting for anything afterwards is noise.
         depended_on = set().union(*self._prereqs.values()) if self._prereqs else set()
-        self._terminal = {sid for sid in resolved.parsed.order if sid not in depended_on}
+        self._terminal = {sid for sid in resolved.parsed.order if sid not in depended_on
+                          and not getattr(resolved.parsed.nodes[sid], "optional", False)}
         # Steps the engine has announced as satisfiable that have not
         # completed yet, with their prompt text. The engine announces each
         # step exactly once, so if "speak the first" passes over a step
@@ -334,6 +335,12 @@ class Announcer:
                     session_over = True
                 feedback.extend(self._step_feedback(e))
             elif e.event_type == "next_step_suggested" and e.step_id and e.message:
+                node = self.resolved.parsed.nodes.get(e.step_id)
+                if getattr(node, "optional", False):
+                    # Permitted, never requested: the procedure ALLOWS it
+                    # (e.g. a second inspection), so it is never spoken or
+                    # made "the current step". The GUI still lists it.
+                    continue
                 progressed = True
                 self._open[e.step_id] = e.message
                 new_steps.append(e.step_id)

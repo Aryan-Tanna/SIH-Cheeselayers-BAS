@@ -23,7 +23,7 @@ default_constraints:
     severity: caution
     alert: "Return the current module before accessing another."
     basis: contamination_control
-    override_with: "concurrency: permitted | required on the group"
+    override_with: "concurrency: permitted on the group (required: not implemented -- the validator refuses it)"
 
   no_loose_objects:
     type: no_loose_objects
@@ -87,6 +87,24 @@ default_constraints:
       module. Hands out of view = perception sees no hand for k-of-n
       frames (configs/runtime.yaml perception.hands_*).
 
+  step_time_limit:
+    type: timeout
+    expression: "a step that declares its own timeout_s is done within that many seconds of becoming due"
+    violation_code: step_overdue
+    severity: caution
+    alert: "This step is taking longer than planned."
+    basis: procedural_integrity
+    override_with: "same id, disabled: true"
+    note: >
+      Armed ONLY for steps that declare timeout_s (per step, in the
+      protocol or the GUI editor's "Time limit" field) -- deliberately no
+      rule-level timer here, so a protocol with no step limits behaves
+      exactly as before. The clock runs only while the step is due: held
+      while another module group is in progress under
+      one_module_at_a_time (else a free-order protocol would alarm on a
+      correct run), frozen during an operator pause. Fires once per step,
+      never blocks. Not restored by session resume (the clock restarts).
+
   correct_insertion_orientation:
     type: precondition
     expression: "module.orientation within profile tolerance"
@@ -149,6 +167,30 @@ default_constraints:
       Only fires when exactly one satisfiable step shares the action —
       with two or more, which one the operator intended is ambiguous,
       so the engine logs it as an unmatched action instead of guessing.
+
+  no_extra_steps:
+    type: sequence
+    expression: "an action on an experiment object that no remaining step asks for (a repeat of a finished step, or an action the protocol never has)"
+    violation_code: extra_step
+    severity: caution
+    alert: "That step is not part of the procedure."
+    settle_s: 3
+    basis: procedural_integrity
+    note: >
+      Engine-native. PS 26174 asks for an alert when "an out of sequence
+      step is added": taking a returned module out again, re-opening a
+      sealed one. To ALLOW such an action, declare it in the protocol as
+      an `optional` step (the editor's "Optional" box) -- it is then a
+      step, not an extra. Actions on objects outside the experiment are
+      anomalies, not extra steps; an action that one due step would
+      match on another object is wrong_object. Disable this to go back
+      to logging extra actions silently.
+      settle_s: an extra action that is UNDONE within this long (object
+      back as it was) is logged, not alerted. Real clips show detector
+      jitter of exactly that shape: a cap resting on the jar reads
+      closed/open/closed within ~2 s, a jar hovering at the rim reads
+      returned/out/in (fusion.py: returns up to ~3 s early on the tune
+      clips). An extra that stays changed is alerted settle_s after it.
 
 # ---------------------------------------------------------------
 # Ordering defaults

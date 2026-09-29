@@ -261,6 +261,49 @@ def check_disabled_non_overridable(raw: dict, idx: LineIndex, defaults: dict) ->
     return findings
 
 
+# Step fields the schema accepts but the engine never reads. Accepting them
+# silently would let an author believe something is enforced that is not.
+_UNENFORCED_STEP_FIELDS = ("requires", "min_duration_s", "on_timeout")  # on_timeout: only "alert" is real
+
+
+def check_unenforced_fields(raw: dict, idx: LineIndex, defaults: dict) -> list[Finding]:
+    """Refuse anything that would validate but never be enforced: a
+    constraint with a NEW id (the engine enforces the built-in rules by
+    id -- a protocol may change them, not invent new ones), step fields
+    the engine ignores, concurrency 'required' (enforced no differently
+    from 'permitted'), and a zero time limit."""
+    findings = []
+    default_ids = set(defaults.get("default_constraints", {}))
+    for c in raw.get("constraints", []):
+        if c["id"] not in default_ids:
+            findings.append(Finding(
+                idx.line_for_id(c["id"]),
+                f"constraint '{c['id']}' is not a built-in rule, so the engine would never enforce it "
+                f"-- change a built-in rule by using its id (built-in: {', '.join(sorted(default_ids))})",
+            ))
+    for s in _flatten_steps(raw.get("steps", [])):
+        for key in _UNENFORCED_STEP_FIELDS:
+            if key == "on_timeout" and s.get(key) == "alert":
+                continue  # alerting IS what a time limit does
+            if key in s:
+                findings.append(Finding(
+                    idx.line_for_id(s["id"]),
+                    f"step '{s['id']}': '{key}' is not enforced by the engine -- remove it",
+                ))
+        if s.get("type") == "group" and s.get("concurrency") == "required":
+            findings.append(Finding(
+                idx.line_for_id(s["id"]),
+                f"group '{s['id']}': concurrency 'required' is not enforced (it behaves as "
+                "'permitted') -- use 'permitted'",
+            ))
+        if s.get("type") != "group" and "timeout_s" in s and not s["timeout_s"] > 0:
+            findings.append(Finding(
+                idx.line_for_id(s["id"]),
+                f"step '{s['id']}': time limit (timeout_s) must be more than 0 seconds",
+            ))
+    return findings
+
+
 def check_reachable(parsed: ParsedProtocol, idx: LineIndex, profile: dict | None) -> list[Finding]:
     """Fixpoint reachability: assuming every required, non-skipped step
     eventually completes, does every step (in particular the sink(s) —
@@ -403,6 +446,7 @@ def validate(protocol_path: Path, defaults_path: Path,
     findings += check_no_colour_or_shape_names(raw, idx)
     findings += check_constraints_have_basis(raw, idx)
     findings += check_disabled_non_overridable(raw, idx, defaults)
+    findings += check_unenforced_fields(raw, idx, defaults)
     findings += check_reachable(parsed, idx, profile)
     findings += check_state_already_reached(parsed, idx)
 

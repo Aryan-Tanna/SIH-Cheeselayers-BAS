@@ -41,6 +41,7 @@ def build_options(args: argparse.Namespace) -> AppOptions:
         voice_control=not args.no_voice_control, capture=not args.no_capture,
         record=not args.no_record, audio=not args.no_audio,
         perception=not args.no_perception,
+        downlink=args.downlink, link_delay_s=args.link_delay,
     )
 
 
@@ -59,6 +60,11 @@ def add_common_args(ap: argparse.ArgumentParser) -> None:
                     help="no detector: steps only via voice/GUI/--events")
     ap.add_argument("--stream-to", default=None, metavar="IP[:PORT]",
                     help="stream to this receiver (UDP, default port 5000) instead of stream.url")
+    ap.add_argument("--downlink", default=None, metavar="IP[:PORT]",
+                    help="send the log + event snapshots to a ground station "
+                         "(scripts/ground_station.py; default port 5055)")
+    ap.add_argument("--link-delay", type=float, default=None, metavar="S",
+                    help="simulate a one-way light-time on the downlink (Moon ~1.3)")
 
 
 def print_summary(summary: dict) -> None:
@@ -71,7 +77,13 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     add_common_args(ap)
     ap.add_argument("--seconds", type=float, default=None, help="stop after this long")
+    ap.add_argument("--allow-internet", action="store_true", help="switch OFF the offline guard")
     args = ap.parse_args()
+    if not args.allow_internet:
+        from src.runtime.offline import install_offline_guard
+
+        earth = (args.downlink or "").rpartition(":")[0] or args.downlink
+        install_offline_guard({earth} if earth else set())
 
     app = CopilotApp(load_runtime_config(), build_options(args))
     print(f"\nsession {app.session_id}: log -> {app.log_path}")

@@ -5,6 +5,8 @@
     python scripts/run_gui.py --no-dashboard        # straight into configs/runtime.yaml's protocol
     python scripts/run_gui.py --events harness/synthetic/clean_run.json
     python scripts/run_gui.py --source 1 --no-voice-control
+    python scripts/run_gui.py --role earth          # this PC is Earth: Mission Control
+    python scripts/run_gui.py --role earth --receive --port 5055   # ...and start receiving at once
 
 Same options as scripts/run_copilot.py. Passing --protocol, --events or
 --seconds skips the start screen (scripted runs). In a session: Space
@@ -78,15 +80,49 @@ def run_with_dashboard(args: argparse.Namespace) -> int:
     root = tk.Tk()
     root.title("BAS Co-Pilot")
     setup_window(root)
-    state: dict[str, Any] = {"app": None, "summary": None, "dash": None}
+    state: dict[str, Any] = {"app": None, "summary": None, "dash": None, "rx": None,
+                             "role": args.role}
 
     def show_dashboard() -> None:
         root.protocol("WM_DELETE_WINDOW", root.destroy)
+        root.title("BAS Co-Pilot")
         state["dash"] = Dashboard(root, cfg, on_start=start, last_summary=state["summary"],
-                                  source=base.source, object_profile=base.object_profile)
+                                  source=base.source, object_profile=base.object_profile,
+                                  downlink=base.downlink, role=state["role"], on_receive=receive)
+
+    def receive(port: int) -> None:
+        """EARTH: Mission Control inside this window until Stop receiving."""
+        from src.link.ground_gui import MissionControl
+        from src.link.receiver import GroundReceiver
+        from src.runtime.dashboard import ground_archive_dir
+
+        rx = GroundReceiver(ground_archive_dir(cfg), port=port)
+        try:
+            rx.start()
+        except OSError as exc:
+            messagebox.showerror("Could not start receiving",
+                                 f"Port {port} is not free ({exc}).\nIs Mission Control already running?",
+                                 parent=root)
+            return
+        state["dash"].destroy()
+        state["rx"], state["role"] = rx, "earth"
+
+        def back() -> None:
+            rx_, state["rx"] = state["rx"], None
+            if rx_ is not None:
+                rx_.stop()
+            show_dashboard()
+
+        mc = MissionControl(root, rx, on_back=back)
+        root.protocol("WM_DELETE_WINDOW", lambda: (mc.close(), root.destroy()))
 
     def start(choice: Any) -> None:
         state["dash"].destroy()
+        state["role"] = "space"
+        if choice.downlink:  # the one address outside the LAN the guard lets through
+            from src.runtime.offline import allow_host
+
+            allow_host(choice.downlink.rpartition(":")[0] or choice.downlink)
         busy = tk.Label(root, text="Starting the co-pilot...\n(loading the detector and the voice)",
                         bg=BG, fg=FG, font=FONT_BIG)
         busy.pack(expand=True)
@@ -95,7 +131,9 @@ def run_with_dashboard(args: argparse.Namespace) -> int:
                        source=choice.source if choice.source is not None else base.source,
                        voice_control=base.voice_control and choice.voice_control,
                        record=base.record and choice.record,
-                       perception=base.perception and choice.perception)
+                       perception=base.perception and choice.perception,
+                       downlink=choice.downlink,
+                       link_delay_s=choice.link_delay_s if choice.link_delay_s is not None else base.link_delay_s)
         try:
             app = CopilotApp(cfg, opts)
         except Exception as exc:  # noqa: BLE001 -- show it, go back; never a dead window
@@ -116,12 +154,16 @@ def run_with_dashboard(args: argparse.Namespace) -> int:
         show_dashboard()
 
     show_dashboard()
+    if args.receive:
+        receive(args.port)
     bring_to_front(root)
     try:
         root.mainloop()
     finally:
         if state["app"] is not None:  # window killed mid-session
             print_summary(state["app"].stop())
+        if state["rx"] is not None:
+            state["rx"].stop()
     return 0
 
 
@@ -132,10 +174,22 @@ def main() -> int:
     ap.add_argument("--screenshot", type=Path, default=None,
                     help="save a PNG of the window just before closing (with --seconds)")
     ap.add_argument("--no-dashboard", action="store_true", help="skip the start screen")
+    ap.add_argument("--role", choices=("space", "earth"), default="space",
+                    help="which end of the link this PC is (the start screen can switch it)")
+    ap.add_argument("--receive", action="store_true", help="with --role earth: start receiving at once")
+    ap.add_argument("--port", type=int, default=5055, help="Earth: port to receive on")
+    ap.add_argument("--allow-internet", action="store_true",
+                    help="switch OFF the offline guard (never needed for the co-pilot)")
     args = ap.parse_args()
 
+    if not args.allow_internet:
+        from src.runtime.offline import install_offline_guard
+
+        earth = (args.downlink or "").rpartition(":")[0] or args.downlink
+        install_offline_guard({earth} if earth else set())
     make_dpi_aware()
-    if args.no_dashboard or args.seconds is not None or args.events is not None or args.protocol is not None:
+    if args.role == "space" and (args.no_dashboard or args.seconds is not None or args.events is not None
+                                 or args.protocol is not None):
         return run_scripted(args)
     return run_with_dashboard(args)
 

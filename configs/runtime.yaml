@@ -166,6 +166,35 @@ stream:
   enabled: true
   url: udp://127.0.0.1:5000?pkt_size=1316
 
+# Downlink to a ground station (src/link/): the session log line by line
+# (the exact hash-chained text) + one JPEG per step completion and per
+# violation -- instead of raw video, the PS's bandwidth premise. Kept until
+# the ground acknowledges it; re-sent after a link drop. Receiver:
+#   python scripts/ground_station.py            (Mission Control window)
+# Enable here, or per run: run_gui.py --downlink <ground-ip>[:port]
+downlink:
+  enabled: false
+  host: 127.0.0.1
+  port: 5055
+  snapshot_on: [step_complete, violation]
+  snapshot_width: 640          # px; JPEG of the frame at the event
+  jpeg_quality: 70
+  ring_s: 3.0                  # a snapshot uses the nearest frame within this
+  ring_hz: 4.0                 # frames kept per second for that
+  max_buffer_mb: 32            # unacknowledged data kept; oldest images dropped beyond
+  # Link simulation, for demonstrating the degraded path. OFF by default.
+  simulate_delay_s: 0.0        # one-way light-time: Moon ~1.3
+  max_kbps: 0                  # bandwidth cap; 0 = none
+  reconnect_s: 2.0
+  flush_s: 3.0                 # at end of session: wait this long for the ground's ack
+
+# Derived activity line (src/runtime/activity.py): what the crew member is
+# doing now, from fingertip "holding" cues + object states. Not a trained
+# classifier. Logged (event_type activity) when a new label has held this long.
+activity:
+  min_hold_s: 1.0
+  log: true
+
 # Where frames come from (src/runtime/capture.py). Every frame is stamped
 # with the monotonic time at acquisition.
 capture:

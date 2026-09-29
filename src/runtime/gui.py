@@ -87,6 +87,8 @@ def step_lines(snapshot: dict[str, Any]) -> list[StepLine]:
         # Prompts repeat across objects ("Unseal the module." for both
         # modules), so name the object, exactly as the voice does.
         obj = f"{s['object']}:  " if s.get("object") else ""
+        if s.get("optional") and s["status"] not in ("done", "confirmed"):
+            suffix, colour = "   (optional)", MUTED
         out.append(StepLine(glyph, f"{obj}{s['prompt']}{suffix}",
                             ACCENT if is_current else colour, is_current))
     return out
@@ -101,7 +103,8 @@ def current_step_text(snapshot: dict[str, Any]) -> str:
             obj = f"   ({s['object']})" if s.get("object") else ""
             return f"NOW:  {s['prompt']}{obj}"
     if snapshot.get("steps") and all(
-        s["status"] in ("done", "confirmed", "missed", "not_applicable") for s in snapshot["steps"]
+        s["status"] in ("done", "confirmed", "missed", "not_applicable") or s.get("optional")
+        for s in snapshot["steps"]
     ):
         return "Experiment complete."
     return "Waiting..."
@@ -174,12 +177,16 @@ VIOLATION_TEXT = {
     "loose_object": "Loose object",
     "wrong_orientation": "Wrong orientation",
     "unattended_open_module": "Open module left unattended",
+    "step_overdue": "Step over its time limit",
+    "extra_step": "Extra step, not in the procedure",
 }
 
 
 def progress_text(snapshot: dict[str, Any]) -> str:
     """'Step 4 of 12' -- conditional steps skipped for these props don't count."""
-    steps = [s for s in snapshot.get("steps", []) if s["status"] != "not_applicable"]
+    # optional steps count only once done: they are allowed, never required
+    steps = [s for s in snapshot.get("steps", []) if s["status"] != "not_applicable"
+             and not (s.get("optional") and s["status"] not in ("done", "confirmed"))]
     if not steps:
         return ""
     done = sum(s["status"] in ("done", "confirmed") for s in steps)
@@ -218,6 +225,69 @@ def hand_cue_text(cues: list[dict[str, Any]], names: dict[str, str], gloved: int
     if gloved:
         parts.append(f"{gloved} gloved hand{'s' if gloved > 1 else ''} (no skeleton)")
     return "   ·   ".join(parts)
+
+
+def activity_text(activity: str, cues: list[dict[str, Any]], names: dict[str, str], gloved: int = 0) -> str:
+    """The 'now doing' line: the derived activity, plus the reach hint
+    (a guess -- measured right about a third of the time -- so 'maybe')."""
+    parts = [f"Now doing:  {activity}"] if activity else []
+    for c in cues:
+        if c["state"] == "reaching":
+            eta = f" ({c['eta_s']:.1f} s)" if c.get("eta_s") is not None else ""
+            parts.append(f"maybe reaching for the {names.get(c['obj'], c['obj'])}{eta}")
+    if gloved:
+        parts.append(f"{gloved} gloved hand{'s' if gloved > 1 else ''} (no skeleton)")
+    return "   ·   ".join(parts)
+
+
+def earth_badge(st: Any) -> tuple[str, str] | None:
+    """Downlink to the ground station: None when not configured."""
+    d = getattr(st, "downlink", None)
+    if not d:
+        return None
+    sent = d["bytes_sent"]
+    size = f"{sent / 1024:.0f} KB" if sent < 1 << 20 else f"{sent / (1 << 20):.1f} MB"
+    if d["connected"]:
+        waiting = d["queued"]
+        return (f"EARTH ● {size} sent" + (f", {waiting} queued" if waiting > 3 else ""), OK)
+    return (f"EARTH: no link, {d['unacked']} buffered", WARN)
+
+
+def offline_badge() -> tuple[str, str] | None:
+    """OFFLINE when the guard is on (src/runtime/offline.py); how many
+    attempts to leave the local network it refused. None = guard off."""
+    from src.runtime.offline import blocked_attempts, guard_installed
+
+    if not guard_installed():
+        return None
+    n = len(blocked_attempts())
+    return ("OFFLINE ✓", OK) if n == 0 else (f"OFFLINE - {n} blocked", WARN)
+
+
+HELP_TEXT = """WHAT THE SCREEN SHOWS
+  Right panel - PROTOCOL: every step.  ✓ done   ✓ (purple) confirmed by you   ▶ due now
+                ✗ missed   –  not applicable to these props   ·  later.  (optional) = allowed, never required.
+  EVENTS: steps done and every alert, with the time since the session started.
+  Big bar: the step to do NOW.  "Now doing": what the camera sees you doing.
+
+BADGES (top)
+  VOICE / QUIET   whether steps are spoken             RUNNING / PAUSED
+  MIC             the microphone "Hey BAS" listens on   DET  detector speed and delay
+  RACK            ArUco markers seen (rack geometry)    REC  local recording
+  STREAM          live video to an IP                   EARTH  log + images sent to the ground station
+  OFFLINE         nothing may leave the local network except the Earth IP (blocked attempts are counted)
+  OPEN MODULE     a module is open with no hands in view (timer)
+
+KEYS                                   VOICE ("Hey BAS, ...")
+  Space  pause / resume                pause, resume
+  N      next step (camera missed it)  next step
+  R      repeat the current step       repeat
+  Q      quiet / voice prompts         quiet mode, voice mode
+  D      show detections               restart experiment (say it twice)
+  E      protocol editor   K rack setup   F5 reload protocol   H / F1 this help
+
+ALERTS: one alert per root cause; everything is in the log (logs/<session>.jsonl, hash-chained)
+and a readable report is written when the session ends (logs/<session>.report.txt)."""
 
 
 def event_line(e: dict[str, Any], t0: float | None,
@@ -321,7 +391,7 @@ class CopilotGUI:
         self.title_lbl.pack(side="left", padx=12, pady=8)
         self.badges: dict[str, tk.Label] = {}
         self.show_dets = True
-        for key in ("stream", "rec", "rack", "det", "mic", "attend", "paused", "mode"):
+        for key in ("net", "earth", "stream", "rec", "rack", "det", "mic", "attend", "paused", "mode"):
             lbl = tk.Label(header, text="", bg=PANEL_2, fg=FG, font=FONT_BOLD, padx=8, pady=2)
             lbl.pack(side="right", padx=4, pady=8)
             self.badges[key] = lbl
@@ -398,6 +468,7 @@ class CopilotGUI:
             self._button(tools, "Rack setup  [K]", self._open_rack)
         if hasattr(self.app, "use_protocol"):
             self._button(tools, "Protocol editor  [E]", self._open_editor)
+        self._button(tools, "?  Help  [H]", self._open_help)
         self.hint_lbl = tk.Label(
             tools, bg=BG, fg=MUTED, font=FONT, anchor="w",
             text='Voice: "Hey BAS, pause / resume / repeat / next step / restart experiment (say twice)"')
@@ -412,7 +483,7 @@ class CopilotGUI:
         b.pack(side="left", padx=(0, 8))
         return b
 
-    KEYS = ("<space>", "<n>", "<r>", "<q>", "<F5>", "<d>", "<k>", "<e>")
+    KEYS = ("<space>", "<n>", "<r>", "<q>", "<F5>", "<d>", "<k>", "<e>", "<h>", "<F1>")
 
     def _bind_keys(self) -> None:
         self.root.bind("<space>", lambda _e: self._toggle_pause())
@@ -423,6 +494,8 @@ class CopilotGUI:
         self.root.bind("<d>", lambda _e: self._toggle_dets())
         self.root.bind("<k>", lambda _e: self._open_rack())
         self.root.bind("<e>", lambda _e: self._open_editor())
+        self.root.bind("<h>", lambda _e: self._open_help())
+        self.root.bind("<F1>", lambda _e: self._open_help())
 
     # --- actions ----------------------------------------------------------------
 
@@ -467,6 +540,20 @@ class CopilotGUI:
 
         self._editor = ProtocolEditor(self.root, self.app)
 
+    def _open_help(self) -> None:
+        win = getattr(self, "_help_win", None)
+        if win is not None and win.winfo_exists():
+            win.lift()
+            return
+        win = tk.Toplevel(self.root, bg=PANEL)
+        win.title("BAS Co-Pilot - help")
+        win.transient(self.root)
+        tk.Label(win, text=HELP_TEXT, bg=PANEL, fg=FG, font=FONT_MONO, justify="left", anchor="w").pack(
+            padx=16, pady=(14, 8))
+        tk.Button(win, text="Close", command=win.destroy, bg=PANEL_2, fg=FG, relief="flat",
+                  font=FONT_BOLD, padx=14, pady=4).pack(pady=(0, 12))
+        self._help_win = win
+
     def _open_rack(self) -> None:
         if not hasattr(self.app, "rack_config"):
             return
@@ -489,6 +576,9 @@ class CopilotGUI:
             w = getattr(self, child, None)
             if w is not None and w.win.winfo_exists():
                 w.win.destroy()
+        hw = getattr(self, "_help_win", None)
+        if hw is not None and hw.winfo_exists():
+            hw.destroy()
         self.frame.destroy()
         self.on_end()
 
@@ -573,8 +663,18 @@ class CopilotGUI:
             self._t0, self._last_event_count, self._last_steps = None, -1, None
         self.title_lbl.configure(text=f"{snap['title']}    |    {st.session_id}")
         self.progress_lbl.configure(text=progress_text(snap))
-        self.hands_lbl.configure(text=hand_cue_text(getattr(st, "hand_cues", []) or [], object_names(snap),
-                                                    getattr(st, "gloved_hands", 0)))
+        self.hands_lbl.configure(text=activity_text(getattr(st, "activity", ""), getattr(st, "hand_cues", []) or [],
+                                                    object_names(snap), getattr(st, "gloved_hands", 0)))
+        net = offline_badge()
+        if net is None:
+            self.badges["net"].pack_forget()
+        else:
+            self._badge("net", *net)
+        earth = earth_badge(st)
+        if earth is None:
+            self.badges["earth"].pack_forget()
+        else:
+            self._badge("earth", *earth)
         self._badge("mode", "QUIET" if snap["mode"] == "quiet" else "VOICE", PANEL_2)
         self._badge("paused", "PAUSED" if snap["paused"] else "RUNNING", WARN if snap["paused"] else OK)
         self._badge("mic", *mic_badge(st))

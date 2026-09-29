@@ -85,7 +85,9 @@ IMPLEMENTED_CONSTRAINT_IDS = frozenset({
     "container_empty_before_close",
     "lid_stow_required",
     "attended_while_open",
+    "step_time_limit",
     "out_of_order",
+    "no_extra_steps",
     "skip",
     "wrong_object",
 })
@@ -178,6 +180,15 @@ class ProtocolEngine:
         self._hands_away_since: float | None = None
         self._unattended_fired = False
 
+        # Per-step time limits (step_time_limit): seconds each step has
+        # spent actually due, accumulated tick to tick so a pause or an
+        # exclusion hold simply stops the clock. See _check_step_time_limits.
+        self._step_active_s: dict[str, float] = {}
+        self._step_overdue_fired: set[str] = set()
+        self._last_tick: float | None = self.clock.now()
+        # no_extra_steps: per object, an extra action waiting out settle_s
+        self._pending_extra: dict[str, dict[str, Any]] = {}
+
         self.out: list[EngineEvent] = []
         self._load(resolved)
         self._emit(EngineEvent(
@@ -229,6 +240,11 @@ class ProtocolEngine:
             self.complete = still_valid
             self.skipped &= set(self.parsed.nodes)
             self._suggested &= set(self.parsed.nodes)
+            # A surviving step keeps its elapsed time; its (possibly
+            # changed) limit is read from the new protocol on every tick.
+            self._step_active_s = {k: v for k, v in self._step_active_s.items() if k in self.parsed.nodes}
+            self._step_overdue_fired &= set(self.parsed.nodes)
+            self._pending_extra = {r: p for r, p in self._pending_extra.items() if r in self.role_state}
             self._skip_check_done = False
             if dropped:
                 self._emit(EngineEvent(
@@ -332,7 +348,10 @@ class ProtocolEngine:
             if p in seen:
                 continue
             seen.add(p)
-            if p in self.skipped:
+            if p in self.skipped or (
+                p not in self.complete and getattr(self.parsed.nodes[p], "optional", False)
+            ):
+                # optional = allowed, never required: an undone one gates nothing
                 stack.extend(self.parsed.effective_after_leaf_ids(p))
             else:
                 out.add(p)
@@ -434,6 +453,11 @@ class ProtocolEngine:
                 rs.lid_detached_ts += paused_for
         if self._hands_away_since is not None:
             self._hands_away_since += paused_for
+        for p in self._pending_extra.values():
+            p["since"] += paused_for
+        # Step time limits accumulate tick to tick: restart from here so
+        # the pause itself is never counted.
+        self._last_tick = ts
         self.paused = False
         self._paused_at = None
         self._emit(EngineEvent(
@@ -454,6 +478,8 @@ class ProtocolEngine:
     def check_timeouts(self, now: float) -> None:
         if self.paused:
             return
+        self._check_step_time_limits(now)
+        self._check_pending_extras(now)
         self._check_attendance(now)
         lid_stow = self.constraints_by_id.get("lid_stow_required")
         if lid_stow is None or not lid_stow.enabled:
@@ -474,6 +500,66 @@ class ProtocolEngine:
                     target=role,
                     message=f"{role} lid not stowed within {timeout_s}s",
                 )
+
+    def _check_step_time_limits(self, now: float) -> None:
+        """step_time_limit: a step that declares its own `timeout_s` must be
+        done within that many seconds of being DUE. Fires once per step,
+        never blocks (operator authority), nothing after the terminal step.
+
+        The clock runs only while the step is actually actionable. In the
+        free-order reference protocol, remove_b is satisfiable the moment
+        the container opens, yet one_module_at_a_time forbids starting it
+        while module A is out -- a wall-clock limit on remove_b would fire
+        on a CORRECT run. So a step whose module group is exclusive is held
+        while another module group is in progress."""
+        last = self._last_tick
+        if last is not None and now < last:
+            return  # never let the clock run backward
+        self._last_tick = now
+        if last is None or self._skip_check_done:
+            return
+        c = self.constraints_by_id.get("step_time_limit")
+        if c is None or not c.enabled:
+            return
+        dt = now - last
+        for step_id in sorted(self.satisfiable_steps()):
+            node = self.parsed.nodes[step_id]
+            limit = getattr(node, "timeout_s", None)
+            if not limit or step_id in self._step_overdue_fired or self._held_by_exclusion(step_id):
+                continue
+            elapsed = self._step_active_s.get(step_id, 0.0) + dt
+            self._step_active_s[step_id] = elapsed
+            if elapsed > limit:
+                self._step_overdue_fired.add(step_id)
+                self._violation(
+                    "step_overdue",
+                    root_cause_id=f"{step_id}.time_limit",
+                    target=node.target,
+                    message=f"'{step_id}' not done within its {limit:g}s time limit",
+                    step_id=step_id,
+                    extra={"time_limit_s": limit},
+                )
+
+    def _held_by_exclusion(self, step_id: str) -> bool:
+        """True if one_module_at_a_time currently forbids starting this
+        step's group because another module group is in progress."""
+        mutex = self.constraints_by_id.get("one_module_at_a_time")
+        if mutex is None or not mutex.enabled:
+            return False
+        group = self._enclosing_top_group(step_id)
+        if group is None or getattr(self.parsed.nodes[group], "concurrency", "forbidden") != "forbidden":
+            return False
+        return any(
+            other != group and self.parsed.nodes[other].is_group and self._group_in_progress(other)
+            for other in self.parsed.top_level
+        )
+
+    def _group_in_progress(self, group_id: str) -> bool:
+        """Started (some step done) but not finished (a required step left)."""
+        started = any(s in self.complete for s in self.parsed.leaf_steps(group_id))
+        finished = all(s in self.complete or s in self.skipped
+                       for s in self.parsed.required_leaf_steps(group_id))
+        return started and not finished
 
     def open_modules(self) -> list[str]:
         """Module roles whose own lid is off right now."""
@@ -552,6 +638,72 @@ class ProtocolEngine:
             return False
         if node.zone is not None and node.zone != event.zone:
             return False
+        return True
+
+    def _note_extra_action(self, event: ActionEvent, settle_s: float) -> None:
+        """An extra action is alerted only if it is NOT undone within
+        settle_s. Measured on real clips: a screw cap resting on the jar
+        reads as closed, then open, then closed again within 0.5-2 s, and
+        a jar hovering at the rim reads as returned, then out, then in --
+        the operator did nothing wrong. An object put back as it was
+        within settle_s is logged (not spoken); one that stays changed is
+        extra_step, keyed per object so one cooldown covers it."""
+        role, _ = split_target(event.target)
+        rs = self.role_state[role]
+        pending = self._pending_extra.get(role)
+        if pending is None:
+            pending = {"since": event.ts, "before": (rs.open, rs.location), "actions": [],
+                       "settle_s": settle_s}
+            self._pending_extra[role] = pending
+        done = next((s for s in self.parsed.order if s in self.complete
+                     and self._matches(self.parsed.nodes[s], event)), None)
+        pending["actions"].append({"action": event.action, "target": event.target, "repeat_of": done})
+        self._apply_state_effect(None, event)
+        if (rs.open, rs.location) == pending["before"]:
+            del self._pending_extra[role]
+            acts = ", ".join(f"{a['action']} {a['target']}" for a in pending["actions"])
+            self._emit(EngineEvent(
+                ts_monotonic=event.ts,
+                event_type="unmatched_action",
+                target=role,
+                message=(f"extra action undone within {event.ts - pending['since']:.1f}s, not alerted "
+                         f"(detector jitter or put straight back): {acts}"),
+                extra={"extra_reverted": pending["actions"]},
+            ))
+
+    def _check_pending_extras(self, now: float) -> None:
+        for role, p in list(self._pending_extra.items()):
+            if now - p["since"] < p["settle_s"]:
+                continue
+            del self._pending_extra[role]
+            first = p["actions"][0]
+            why = (f"repeats '{first['repeat_of']}', already done" if first["repeat_of"]
+                   else "is not a step of this procedure")
+            self._violation(
+                "extra_step",
+                root_cause_id=f"extra:{role}",
+                target=first["target"],
+                message=f"{first['action']} on '{first['target']}' {why}",
+                extra={"actions": p["actions"], "action_ts": p["since"], "settle_s": p["settle_s"]},
+            )
+
+    def _changes_state(self, event: ActionEvent) -> bool:
+        """Would this action change the engine's model of the world?
+        Actions with no tracked state (grasp, release, dwell) count as real."""
+        role, sub = split_target(event.target)
+        rs = self.role_state.get(role)
+        if rs is None:
+            return False
+        if event.action == "open":
+            return not rs.open
+        if event.action == "close":
+            return rs.open
+        if event.action == "remove_from":
+            return rs.location != "out"
+        if event.action == "place_into":
+            return rs.location != "in_container"
+        if event.action == "move_to_zone" and sub == "lid":
+            return rs.lid_zone != event.zone
         return True
 
     def _apply_state_effect(self, node, event: ActionEvent) -> None:
@@ -832,7 +984,9 @@ class ProtocolEngine:
 
         self._announce_newly_satisfiable()
 
-        if not self._has_dependent[step_id]:
+        # An optional step with nothing after it is NOT the end of the run:
+        # doing a permitted extra must never trigger end-of-run skip checks.
+        if not self._has_dependent[step_id] and not getattr(node, "optional", False):
             self._run_skip_detection()
 
     def confirm_step(self, ts: float, step_id: str, note: str = "") -> bool:
@@ -866,6 +1020,13 @@ class ProtocolEngine:
         return True
 
     def _handle_unmatched(self, event: ActionEvent) -> None:
+        pending_role = split_target(event.target)[0]
+        if pending_role in self._pending_extra and self._changes_state(event):
+            # The same object is mid-extra: this action continues it or
+            # undoes it (cap put back on) -- not a wrong_object attempt
+            # at whatever step happens to be due.
+            self._note_extra_action(event, self._pending_extra[pending_role]["settle_s"])
+            return
         action_used = any(
             self.parsed.nodes[s].action == event.action for s in self.parsed.order
         )
@@ -891,6 +1052,28 @@ class ProtocolEngine:
                     ),
                 )
                 return
+        extra = self.constraints_by_id.get("no_extra_steps")
+        if self._skip_check_done and self._changes_state(event):
+            # After "Experiment complete." the crew packs up (opens the box,
+            # takes the props out): record it, never alert on it -- like the
+            # step time limits, the procedure's rules end with the procedure.
+            self._apply_state_effect(None, event)
+            self._emit(EngineEvent(
+                ts_monotonic=event.ts, event_type="unmatched_action", target=event.target,
+                message=f"{event.action} on '{event.target}' after the procedure ended (not alerted)",
+            ))
+            return
+        if extra is not None and extra.enabled and self._changes_state(event):
+            # PS 26174: "alert when ... an out of sequence step is ADDED".
+            # An action on an experiment object that no remaining step asks
+            # for: a repeat of a finished step, or one the protocol never
+            # has. A protocol that wants to allow such an action declares
+            # it as an `optional` step. Only a real change counts (opening
+            # what is already open is a duplicate report, not an action).
+            # The world DID change, so the state follows: a returned module
+            # taken out again makes a later close flag module_not_returned.
+            self._note_extra_action(event, float(extra.params.get("settle_s", 3.0)))
+            return
         self._emit(EngineEvent(
             ts_monotonic=event.ts,
             event_type="unmatched_action",
@@ -932,6 +1115,8 @@ _CODE_TO_DEFAULT_ID = {
     "module_not_returned": "container_empty_before_close",
     "lid_unstowed": "lid_stow_required",
     "unattended_open_module": "attended_while_open",
+    "step_overdue": "step_time_limit",
+    "extra_step": "no_extra_steps",
     "wrong_orientation": "correct_insertion_orientation",
     "out_of_order": "out_of_order",
     "skip": "skip",

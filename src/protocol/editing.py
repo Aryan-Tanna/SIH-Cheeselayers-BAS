@@ -14,6 +14,13 @@ What an operator can change, and what they cannot, by design:
   An edit is written as a protocol `constraints` entry carrying only the
   changed fields (+ id, + basis: the validator requires one), so the
   startup printout marks it [protocol] -- nothing changes invisibly.
+* TIME LIMITS: a per-step "time limit" (the step's `timeout_s`), enforced
+  by the step_time_limit rule. GROUPS: "may be out together" (the group's
+  `concurrency`: forbidden / permitted). OPTIONAL steps: allowed, never
+  required or spoken -- how a protocol permits an action that would
+  otherwise be an extra_step (e.g. a second inspection). There is deliberately no "add a
+  new rule": the engine enforces the built-in rules by id, so a new one
+  would be saved and never enforced (the validator refuses it).
 * SAVE: always through the real validator (line-numbered findings); an
   invalid protocol is never written. Keys the editor does not know about
   (notes, variant examples, per-step extras like `success`) are kept.
@@ -32,9 +39,12 @@ from src.protocol.events import Action
 ACTIONS: tuple[str, ...] = get_args(Action)
 # Which extra field an action needs, as the engine matches it.
 ACTION_FIELD = {"remove_from": "source", "place_into": "dest", "move_to_zone": "zone"}
-STEP_KEYS = ("id", "action", "target", "source", "dest", "zone", "after", "prompt", "condition")
+STEP_KEYS = ("id", "action", "target", "source", "dest", "zone", "after", "prompt", "condition", "timeout_s", "optional")
+# Group `concurrency` values the engine enforces ("required" is refused by
+# the validator: it would behave exactly like "permitted").
+CONCURRENCY = ("forbidden", "permitted")
 # Rule fields the editor exposes (others stay as in defaults.yaml).
-TIMER_KEYS = ("timeout_s", "grace_s")
+TIMER_KEYS = ("timeout_s", "grace_s", "settle_s")
 SEVERITIES = ("advisory", "caution", "warning")
 # Prompt text a freshly added step starts with. The prompt is spoken to the
 # operator, so a step still carrying it is unfinished: saving is refused.
@@ -56,6 +66,9 @@ class StepRow:
     after: list[str] = field(default_factory=list)
     prompt: str = ""
     condition: str = ""
+    time_limit: float | None = None  # step `timeout_s`: step_time_limit rule
+    optional: bool = False  # allowed, never required: the way to permit an extra action
+    concurrency: str = "forbidden"  # group only: may this group's module be out with another?
     extra: dict[str, Any] = field(default_factory=dict)  # unknown keys, kept on save
 
     @property
@@ -79,12 +92,15 @@ def flatten(raw: dict[str, Any]) -> list[StepRow]:
             target=node.get("target", ""), source=node.get("source", ""), dest=node.get("dest", ""),
             zone=node.get("zone", ""), after=list(node.get("after", []) or []),
             prompt=node.get("prompt", ""), condition=node.get("condition", ""),
+            time_limit=node.get("timeout_s"), optional=bool(node.get("optional", False)),
             extra={k: v for k, v in node.items() if k not in known})
 
     for node in raw.get("steps", []):
         if node.get("type") == "group":
             rows.append(StepRow(kind="group", id=node["id"], after=list(node.get("after", []) or []),
-                                extra={k: v for k, v in node.items() if k not in ("id", "type", "after", "steps")}))
+                                concurrency=node.get("concurrency", "forbidden"),
+                                extra={k: v for k, v in node.items()
+                                       if k not in ("id", "type", "after", "steps", "concurrency")}))
             for child in node.get("steps", []):
                 if child.get("type") == "group":
                     raise ValueError(f"nested group {child['id']!r} inside {node['id']!r}: "
@@ -106,6 +122,10 @@ def _step_json(r: StepRow) -> dict[str, Any]:
         out["after"] = list(r.after)
     if r.prompt:
         out["prompt"] = r.prompt
+    if r.time_limit:
+        out["timeout_s"] = r.time_limit
+    if r.optional:
+        out["optional"] = True
     for k, v in r.extra.items():
         out.setdefault(k, v)
     return out
@@ -120,6 +140,7 @@ def build(raw: dict[str, Any], rows: list[StepRow]) -> dict[str, Any]:
     for r in rows:
         if r.kind == "group":
             node = {"id": r.id, "type": "group", **({"after": list(r.after)} if r.after else {}),
+                    **({"concurrency": r.concurrency} if r.concurrency != "forbidden" else {}),
                     **r.extra, "steps": []}
             group_nodes[r.id] = node
             steps.append(node)

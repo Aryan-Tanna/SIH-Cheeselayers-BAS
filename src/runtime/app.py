@@ -35,7 +35,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from src.logging.session_log import SessionLogger, verify_chain
+from src.logging.report import build_report
+from src.logging.session_log import SessionLogger, load_events, verify_chain
 from src.protocol.engine import IMPLEMENTED_CONSTRAINT_IDS
 from src.protocol.events import ActionEvent, AnomalyEvent, EngineEvent
 from src.protocol.loader import (
@@ -96,6 +97,8 @@ class AppOptions:
     stream_url: str | None = None  # override stream.url (e.g. udp://<phone-ip>:5000)
     object_profile: str | None = None  # override session.object_profile / the protocol's
     perception: bool = True  # detector + fusion on camera frames (needs capture)
+    downlink: str | None = None  # "host[:port]": send log + event snapshots to a ground station
+    link_delay_s: float | None = None  # simulated one-way light-time (demo), overrides config
 
 
 @dataclass
@@ -130,6 +133,9 @@ class AppStatus:
     recent_speech: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     uptime_s: float = 0.0
+    downlink: dict[str, Any] | None = None  # src/link/sender.py Downlink.status()
+    activity: str = ""  # derived activity (src/runtime/activity.py), "" without perception
+    last_report: str | None = None
 
 
 class CopilotApp:
@@ -145,6 +151,18 @@ class CopilotApp:
         self.clock = SystemClock()
         self.warnings: list[str] = []
         sess_cfg = cfg.get("session") or {}
+        # FIRST, before anything heavy is built: FFmpeg opens network cameras
+        # in C, outside the offline guard, so the address itself must be on
+        # the local network. (Refusing later leaks a MediaPipe landmarker whose
+        # garbage-collected close() deadlocks the process -- found in tests.)
+        if self.opts.capture:
+            src = self.opts.source if self.opts.source is not None else (cfg.get("capture") or {}).get("source")
+            if isinstance(src, str) and "://" in src:
+                from src.runtime.camera_setup import check_local
+
+                why = check_local(src)
+                if why:
+                    raise ValueError(f"camera {src} refused: {why}")
 
         # --- protocol -------------------------------------------------------
         self.protocol_path = repo_path(
@@ -168,6 +186,27 @@ class CopilotApp:
 
         self._recent_events: deque[dict[str, Any]] = deque(maxlen=50)
         self._recent_speech: deque[dict[str, Any]] = deque(maxlen=20)
+        self.last_report: Path | None = None
+        from src.runtime.activity import ActivityTracker
+
+        act_cfg = cfg.get("activity") or {}
+        self.activity = ActivityTracker(min_hold_s=float(act_cfg.get("min_hold_s", 1.0)))
+        self._activity_log = bool(act_cfg.get("log", True))
+        # --- downlink to the ground (before the first session: its hello
+        # must precede the session's first log line) -------------------------
+        self.downlink = None
+        from src.link.sender import Downlink, DownlinkConfig
+
+        dl_cfg = DownlinkConfig.from_config(cfg)
+        if self.opts.downlink:
+            dl_cfg = dl_cfg.with_target(self.opts.downlink)
+        if self.opts.link_delay_s is not None:
+            dl_cfg = replace(dl_cfg, simulate_delay_s=float(self.opts.link_delay_s))
+        if dl_cfg.enabled:
+            self.downlink = Downlink(dl_cfg, attest=self._attest_snapshot, printer=printer)
+            self.printer(f"downlink: log + event snapshots to ground {dl_cfg.host}:{dl_cfg.port}"
+                         + (f" (simulated light-time {dl_cfg.simulate_delay_s:g} s)"
+                            if dl_cfg.simulate_delay_s else ""))
         # --- session + log --------------------------------------------------
         self._restart_lock = threading.Lock()
         self._restart_armed_until = 0.0
@@ -220,6 +259,7 @@ class CopilotApp:
             cap_cfg = CaptureConfig.from_config(cfg)
             if self.opts.source is not None:
                 cap_cfg = replace(cap_cfg, source=self.opts.source)
+
             self.capture = VideoSource(cap_cfg, self._on_frame, printer=printer)
 
         self._stop = threading.Event()
@@ -238,8 +278,17 @@ class CopilotApp:
         self.warnings.append(msg)
         self.printer(f"WARNING: {msg}")
 
+    def _attest_snapshot(self, session_id: str, ts: float, extra: dict[str, Any]) -> None:
+        """Downlink thread: put the sent image's sha256 INTO the hash chain,
+        so the ground can prove the image is the one the system saw."""
+        if session_id == self.session_id:
+            self.session.note("snapshot", f"image sent to ground for log line {extra.get('for_seq')}: "
+                              f"{extra.get('label')}", ts=ts, extra=extra)
+
     def _on_frame(self, frame: Frame) -> None:
         self.recorder.submit(frame.payload, frame.ts_monotonic)
+        if self.downlink is not None:
+            self.downlink.offer_frame(frame.ts_monotonic, frame.payload)
         with self._frame_lock:
             self._latest_frame = frame
         if self.perception is not None:
@@ -348,7 +397,14 @@ class CopilotApp:
             sid += "_r"
         self.session_id = sid
         self.log_path = self.log_dir / f"{sid}.jsonl"
-        self.logger = SessionLogger(self.log_path, sid)
+        if self.downlink is not None:
+            self.downlink.begin_session(sid, {
+                "protocol_id": self.resolved.parsed.protocol_id,
+                "title": self.resolved.parsed.raw.get("title", self.resolved.parsed.protocol_id),
+                "object_profile": str(self.object_profile or self.resolved.parsed.raw.get("object_profile", "")),
+                "operator": sess_cfg.get("operator")})
+        self.logger = SessionLogger(self.log_path, sid,
+                                    on_line=self.downlink.on_log_line if self.downlink else None)
         self._recent_events.clear()
         self._recent_speech.clear()
         worker = self.audio.worker
@@ -363,6 +419,8 @@ class CopilotApp:
             audio_listeners=[self._on_speech],
             geometry_status=self._geometry_status,
         )
+        if self.downlink is not None:
+            self.downlink.send_steps(sid, self.session.snapshot()["steps"])
 
     def restart_session(self) -> dict[str, Any]:
         """Start the experiment again from step one, as a NEW session: the
@@ -379,6 +437,7 @@ class CopilotApp:
             old.retire(self.clock.now(), f"restart -> new session {new_id}")
             self.logger.close()
             chain = verify_chain(old_log)
+            report = self._write_report(old_log, old.snapshot(), chain)
             if self.audio.worker is not None:
                 self.audio.worker.submit([AudioRequest(kind="system", flush_all=True,
                                                        segments=(RESTARTING_TEXT,))])
@@ -396,7 +455,26 @@ class CopilotApp:
                 "steps_done": sum(s["status"] in ("done", "confirmed") for s in snap["steps"]),
                 "steps_total": sum(s["status"] != "not_applicable" for s in snap["steps"]),
                 "violations": snap["violations"],
+                "report": str(report) if report else None,
             }
+
+    def _write_report(self, log_path: Path, snap: dict[str, Any], chain: Any) -> Path | None:
+        """The readable report next to the log (logs/<session>.report.txt),
+        generated from the log itself. A failure here must never lose the
+        session: the JSONL is already safe on disk."""
+        try:
+            text = build_report(load_events(log_path), snap["steps"], title=snap.get("title", ""),
+                                chain_ok=chain.ok, chain_lines=chain.lines_checked,
+                                log_name=log_path.name)
+            out = log_path.with_suffix(".report.txt")
+            out.write_text(text, encoding="utf-8")
+            self.last_report = out
+            if self.downlink is not None:
+                self.downlink.send_report(log_path.stem, text)
+            return out
+        except Exception as exc:  # noqa: BLE001
+            self._warn(f"session report not written: {exc}")
+            return None
 
     def _voice_restart(self) -> None:
         """Restart by voice needs the command twice within
@@ -481,7 +559,50 @@ class CopilotApp:
             recent_speech=list(self._recent_speech),
             warnings=list(self.warnings),
             uptime_s=0.0 if self._started_at is None else time.monotonic() - self._started_at,
+            downlink=self.downlink.status() if self.downlink is not None else None,
+            last_report=str(self.last_report) if self.last_report else None,
+            activity=self.activity.shown if self.perception is not None else "",
         )
+
+    @staticmethod
+    def _offline_summary() -> dict[str, Any]:
+        from src.runtime.offline import blocked_attempts, guard_installed
+
+        return {"offline_guard": "on" if guard_installed() else "off",
+                "offline_blocked": len(blocked_attempts())}
+
+    def _update_activity(self) -> None:
+        """Derived activity from fusion states + fingertip holding cues;
+        logged on change once stable (never spoken)."""
+        if self.perception is None:
+            return
+        from src.runtime.activity import describe, holding_roles
+        from src.runtime.gui import object_names
+
+        try:
+            states = self.perception.fusion.states()
+            cues = self.hand_stage.latest().cues if self.hand_stage is not None else []
+            names = {k: v for k, v in object_names(self.session.snapshot()).items()}
+            label = describe(states, holding_roles(cues), names, self.perception.fusion.binding.container)
+        except Exception:  # noqa: BLE001 -- a display nicety must never stop the ticker
+            return
+        now = self.clock.now()
+        if self.activity.update(now, label) is not None and self._activity_log:
+            self.session.note("activity", label, ts=now)
+
+    def _link_summary(self, side: Any) -> dict[str, Any]:
+        """Downlink bytes next to what the same session costs as video: the
+        PS's bandwidth argument, measured, not assumed."""
+        out: dict[str, Any] = {}
+        if self.downlink is not None:
+            st = self.downlink.status()
+            out.update(downlink_bytes=st["bytes_sent"], downlink_log_bytes=st["log_bytes"],
+                       downlink_snapshot_bytes=st["snapshot_bytes"], downlink_snapshots=st["snapshots"],
+                       downlink_unacked=st["unacked"])
+        rec_dir = self.recorder.dir if side.t0_monotonic is not None else None
+        if rec_dir is not None and Path(rec_dir).is_dir():
+            out["video_bytes"] = sum(f.stat().st_size for f in Path(rec_dir).glob("*.ts"))
+        return out
 
     def _hand_status_fields(self) -> dict[str, Any]:
         hs = self.hand_stage
@@ -509,6 +630,8 @@ class CopilotApp:
 
     def start(self) -> None:
         self._started_at = time.monotonic()
+        if self.downlink is not None:
+            self.downlink.start()
         if self.audio.worker is not None:
             self.audio.worker.start()
             self.audio.prewarm_async(speakable_phrases(self.resolved))
@@ -542,6 +665,7 @@ class CopilotApp:
         mic_warned = False
         while not self._stop.wait(0.25):
             self.session.tick()
+            self._update_activity()
             if (not mic_warned and self.listener is not None
                     and self.listener.mic_silent_for() > self.MIC_SILENCE_WARN_S):
                 mic_warned = True
@@ -671,11 +795,15 @@ class CopilotApp:
         self.logger.close()
         chain = verify_chain(self.log_path)
         snap = self.session.snapshot()
+        report = self._write_report(self.log_path, snap, chain)
+        if self.downlink is not None:
+            self.downlink.stop()
         return {
             "session_id": self.session_id,
             "log": str(self.log_path),
             "log_chain_ok": chain.ok,
             "log_lines": chain.lines_checked,
+            "report": str(report) if report else None,
             "steps_done": sum(s["status"] in ("done", "confirmed") for s in snap["steps"]),
             "steps_total": sum(s["status"] != "not_applicable" for s in snap["steps"]),
             "violations": snap["violations"],
@@ -688,5 +816,7 @@ class CopilotApp:
             "recording_dir": str(self.recorder.dir) if side.t0_monotonic is not None else None,
             "recording_error": side.error,
             "warnings": len(self.warnings),
+            **self._link_summary(side),
+            **self._offline_summary(),
             "finished_utc": datetime.now(timezone.utc).isoformat(),
         }

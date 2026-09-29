@@ -20,24 +20,29 @@ map on top of it, not a replacement.
 
 Three-way split instead of one end-to-end model:
 
-- **Lightweight vision** identifies objects (phase 2 — no detector
-  trained yet).
-- **Classical geometry** (`src/kinematics/`) handles microgravity
-  physics in rack-relative coordinates — no fixed "up," so no
-  gravity-aligned pose assumptions.
+- **Lightweight vision** identifies objects: a YOLOv8n-OBB detector
+  trained on our own labelled frames (v5, ONNX on CPU), plus MediaPipe
+  hand skeletons for fingertip "holding" cues.
+- **Classical geometry**: ArUco markers on the rig give a planar
+  image-to-rack homography (`src/perception/rack.py`), so positions can
+  be expressed on the rack, not the image. Kinematics maths (One Euro,
+  grasp, drift, intent) is in `src/kinematics/` as tested pure functions;
+  only the fingertip grasp cue (`fingers.py`) runs live today.
 - **A deterministic constraint engine** (`src/protocol/`) validates
   procedure sequence against a declarative protocol spec, with no
   probabilistic hallucination in the safety-critical path.
 
 ```
-configs/          defaults.yaml, protocol schema, protocol/object/zone definitions
+configs/          defaults.yaml, protocol schema, protocol/object/zone definitions, runtime.yaml
 src/
-  protocol/       constraint engine, debouncer, alert policy, config loader/validator
-  kinematics/     pure-function motion/grasp/drift/intent/lid-state math (rack space)
-  logging/        hash-chained JSONL session log
-  runtime/        threaded capture -> detection -> fusion -> alert pipeline skeleton
+  protocol/       constraint engine, debouncer, alert policy, config loader/validator, editor model
+  perception/     detector, fusion (detections -> step events), hand pose, ArUco rack
+  kinematics/     pure-function motion/grasp/drift/intent/lid-state math
+  logging/        hash-chained JSONL session log + readable session report
+  link/           Earth downlink: log + event images to a ground station
+  runtime/        app, GUI, dashboard, protocol editor, audio/voice, recorder, activity
 harness/          replay.py + run_all.py: headless fixture-driven pipeline tests
-scripts/          phase-1 data pipeline (normalize, extract, review, split, ...)
+scripts/          run_gui.py, ground_station.py, data pipeline, training, scoring
 tests/            pytest unit/regression suite
 clips/, clips_norm/, frames/, manifest/, labels/, runs/   data pipeline stages (gitignored)
 ```
@@ -50,12 +55,26 @@ step completions or violations. Everything a protocol enforces is data
 
 ## Status
 
-Phase 0 (engine, harness, no video) is built and green. Phase 1 (data
-pipeline) is running against a 5-clip pilot corpus. See `CLAUDE.md`'s
-**Session status** section for exactly what's done, what's broken, and
-what's an open decision as of the last session — that section is kept
-current and capped short on purpose; check it before assuming anything
-below still holds.
+Phases 0-2 are built: engine + harness, data pipeline + trained
+detector (v5), and the full runtime (GUI, voice, recording, stream,
+Earth downlink, Mission Control). See `CLAUDE.md`'s **Session status**
+for what is open right now, and `ppt_context.md` for every measured
+number with its sample size.
+
+## Running the co-pilot and Mission Control
+
+```
+.venv\Scripts\python.exe scripts\run_gui.py                     # start screen: experiment, props, camera, Earth link
+.venv\Scripts\python.exe scripts\ground_station.py              # Mission Control (ground side), port 5055
+.venv\Scripts\python.exe scripts\run_gui.py --downlink 127.0.0.1 --link-delay 1.3   # Moon light-time demo
+.venv\Scripts\python.exe scripts\run_gui.py --source clips_norm\<clip>.mp4 --no-dashboard   # replay a video
+```
+
+Each session writes `logs/<session>.jsonl` (hash-chained) and
+`logs/<session>.report.txt` (readable). With the Earth link on, the
+ground station archives the same log byte for byte, one JPEG per step
+and per alert (sha256 attested in the chain), and the report, under
+`ground_archive/<session>/`. Press H in the co-pilot for a key/badge legend.
 
 ## Setup
 

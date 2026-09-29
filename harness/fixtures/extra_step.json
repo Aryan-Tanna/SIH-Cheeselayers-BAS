@@ -1,0 +1,24 @@
+{
+  "clip_id": "extra_step",
+  "protocol_id": "bas_specimen_v1",
+  "expected_events": [
+    {
+      "t": 20.0,
+      "type": "violation",
+      "code": "extra_step",
+      "target": "module_a",
+      "tolerance_s": 0.5
+    },
+    {
+      "t": 16.0,
+      "type": "violation",
+      "code": "module_not_returned",
+      "target": "module_a",
+      "tolerance_s": 0.5
+    }
+  ],
+  "expected_alerts": 2,
+  "expected_missed_steps": [],
+  "partial": true,
+  "_note": "extra action at t=14.0; the harness checks timeouts in the idle tail only at clip end (t=20), so extra_step is stamped 20.0 (live: t_extra + 3 s, 4 Hz ticks)."
+}

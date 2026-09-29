@@ -1,0 +1,31 @@
+{
+  "clip_id": "step_time_limit",
+  "protocol_id": "time_limit_test",
+  "_note": "remove_b (20 s limit) is due from t=1 but held from t=2 to t=30 while module A is out. Active time = 1 s + (t - 30), so it crosses 20 s at t=49. Nothing may fire during A's 28 s out of the box. remove_b is finally done at t=55 (late: the alert has already fired, and completing it does not fire again). The t=55 event also makes the harness tick timeouts between 30 and 55; with no later event it checks only once, at clip end.",
+  "events": [
+    {
+      "t": 1.0,
+      "action": "open",
+      "target": "container"
+    },
+    {
+      "t": 2.0,
+      "action": "remove_from",
+      "target": "module_a",
+      "source": "container"
+    },
+    {
+      "t": 30.0,
+      "action": "place_into",
+      "target": "module_a",
+      "dest": "container"
+    },
+    {
+      "t": 55.0,
+      "action": "remove_from",
+      "target": "module_b",
+      "source": "container"
+    }
+  ],
+  "clip_duration_s": 60.0
+}

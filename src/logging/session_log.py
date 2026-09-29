@@ -18,7 +18,7 @@ import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, TextIO
+from typing import Any, Callable, TextIO
 
 from src.protocol.events import EngineEvent
 
@@ -67,8 +67,13 @@ class SessionLogger:
     """Append-only writer. One instance per session, one file handle held
     open for the session's duration."""
 
-    def __init__(self, path: str | Path, session_id: str) -> None:
+    def __init__(self, path: str | Path, session_id: str,
+                 on_line: Callable[[str, dict[str, Any]], None] | None = None) -> None:
+        """on_line(text, record) is called after each line is written and
+        flushed, with the EXACT text of the line (the downlink sends it
+        byte for byte, so the ground can verify the same chain)."""
         self.path = Path(path)
+        self.on_line = on_line
         self.session_id = session_id
         self._seq = 0
         self._prev_hash = GENESIS_HASH
@@ -109,11 +114,18 @@ class SessionLogger:
         h = _line_hash(self._prev_hash, payload)
         line = LogLine(**payload, hash=h)  # type: ignore[arg-type]
 
-        self._fh.write(json.dumps(asdict(line), sort_keys=True) + "\n")
+        record = asdict(line)
+        text = json.dumps(record, sort_keys=True)
+        self._fh.write(text + "\n")
         self._fh.flush()
 
         self._prev_hash = h
         self._seq += 1
+        if self.on_line is not None:
+            try:
+                self.on_line(text, record)
+            except Exception:  # noqa: BLE001 -- a listener must never break the log
+                pass
         return line
 
 
@@ -135,6 +147,19 @@ class VerifyResult:
     lines_checked: int
     first_bad_seq: int | None
     reason: str | None
+
+
+def check_line(prev_hash: str, rec: dict[str, Any]) -> str | None:
+    """One link of the chain: None if `rec` follows `prev_hash` and its own
+    hash is right, else the reason. The ground station runs this on each
+    line as it arrives."""
+    if rec.get("prev_hash") != prev_hash:
+        return (f"prev_hash mismatch at seq={rec.get('seq')}: line claims "
+                f"{rec.get('prev_hash')}, chain expects {prev_hash}")
+    payload = {k: v for k, v in rec.items() if k != "hash"}
+    if _line_hash(prev_hash, payload) != rec.get("hash"):
+        return f"hash mismatch at seq={rec.get('seq')}: the line was altered"
+    return None
 
 
 def verify_chain(path: str | Path) -> VerifyResult:

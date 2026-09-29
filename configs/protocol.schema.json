@@ -334,6 +334,11 @@
           "type": "number",
           "minimum": 0
         },
+        "settle_s": {
+          "type": "number",
+          "minimum": 0,
+          "description": "no_extra_steps: an extra action undone within this long is logged, not alerted."
+        },
         "violation_code": {
           "enum": [
             "skip",
@@ -342,6 +347,8 @@
             "mutual_exclusion_breach",
             "lid_unstowed",
             "unattended_open_module",
+            "step_overdue",
+            "extra_step",
             "module_not_sealed",
             "module_not_returned",
             "premature_close",

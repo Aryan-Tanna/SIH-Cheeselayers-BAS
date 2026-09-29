@@ -22,10 +22,12 @@ def test_all_default_constraints_present_and_unmodified_by_silent_protocol():
         "container_empty_before_close",
         "lid_stow_required",
         "attended_while_open",
+        "step_time_limit",
         "correct_insertion_orientation",
         "out_of_order",
         "skip",
         "wrong_object",
+        "no_extra_steps",
     }
     # bas_specimen_v1 declares no constraints/strict_mode of its own —
     # every entry must be [default], not [protocol].

@@ -434,6 +434,45 @@ the props are with Aryan, so the live checks are his. In order:
 Send back per run: the summary table printed on close and the
 `logs/session_*.jsonl`. Anything wrong -> note the time into the session.
 
+## Added 2026-09-29 (Aryan + Claude): PS gaps closed
+
+- **extra_step** (defaults.yaml `no_extra_steps`, PS "an out of sequence step
+  is added"): an action no remaining step asks for (e.g. a returned module
+  taken out again). The world state follows it, so a later close flags
+  module_not_returned. Undone within `settle_s` (3 s) = logged, not spoken:
+  real clips show exactly that jitter (cap resting on the jar, jar hovering).
+  `scripts/replay_clip.py --log-dir DIR` prints violations by type. Allowed
+  extras are declared as `optional` steps (never spoken, never missed, never
+  gate later steps; editor has an Optional box).
+- **step_time_limit**: per-step `timeout_s` (editor "Time limit"), clock held
+  while another module group is in progress (else free order false-alarms).
+- Validator refuses what the engine would never enforce: new rule ids,
+  `requires`, `min_duration_s`, `on_timeout` other than "alert",
+  `concurrency: required`.
+- **report.txt** next to each log (`src/logging/report.py`, built from the log only).
+- **Earth downlink** (`src/link/`): log lines byte for byte + 1 JPEG per step /
+  violation, ack + resend (store-and-forward), JPEG sha256 logged INTO the
+  chain. Ground: `scripts/ground_station.py` (Mission Control; `--headless`).
+  Co-pilot: start screen "Send to Earth" or `--downlink IP[:5055]`,
+  `--link-delay 1.3` (Moon). Measured: 486 KB per 33 s session vs 3.6 MB video;
+  ground killed + restarted mid-session -> archive byte-identical.
+  Two PCs: allow python through Windows Firewall on the ground PC.
+- **Activity line** (`src/runtime/activity.py`): derived from fingertip holding
+  + fusion states, logged on change (event_type activity). Not a trained HAR model.
+- GUI: EARTH badge, "Now doing" line, Help [H], report/logs buttons on the start screen.
+- Start screen roles: "This PC is: SPACE STATION (sender) | EARTH (receiver)".
+  EARTH shows this PC's IP to type on the station + Start receiving (Mission
+  Control in the same window; `run_gui.py --role earth [--receive]`). Both
+  roles list past sessions (chain re-verified, open report / folder).
+- IP camera dialog (DroidCam / IP Webcam / RTSP / custom), Test with preview;
+  camera URLs must be local-network numeric IPs (FFmpeg bypasses Python).
+- Offline guard (`src/runtime/offline.py`, on in run_gui / run_copilot /
+  ground_station; `--allow-internet` to disable): audit hook refuses any
+  connection / DNS lookup outside the LAN except the Earth IP; OFFLINE badge;
+  summary `offline_blocked`. Measured: full live run, 0 blocked.
+- GOTCHA: never let CopilotApp raise after the hand stage is built -- a
+  garbage-collected MediaPipe landmarker deadlocks the process in close().
+
 ## Gotchas that will cost you time
 
 - `ultralytics==8.3.28` needs `numpy.trapz = numpy.trapezoid` before import

@@ -1,0 +1,80 @@
+{
+  "clip_id": "extra_step",
+  "protocol_id": "bas_specimen_v1",
+  "_note": "PS 26174 'an out of sequence step is added': after both modules are back, module_a is taken out AGAIN (repeats remove_a) and left out. Sealing the container 2 s later flags module_a as not returned at once; extra_step fires when the extra action has stayed un-undone for settle_s (3 s) -- ticked by the idle tail.",
+  "events": [
+    {
+      "t": 1.0,
+      "action": "open",
+      "target": "container"
+    },
+    {
+      "t": 3.0,
+      "action": "remove_from",
+      "target": "module_a",
+      "source": "container"
+    },
+    {
+      "t": 4.0,
+      "action": "open",
+      "target": "module_a"
+    },
+    {
+      "t": 5.0,
+      "action": "move_to_zone",
+      "target": "module_a.lid",
+      "zone": "stow_zone"
+    },
+    {
+      "t": 6.0,
+      "action": "close",
+      "target": "module_a"
+    },
+    {
+      "t": 7.0,
+      "action": "place_into",
+      "target": "module_a",
+      "dest": "container"
+    },
+    {
+      "t": 8.0,
+      "action": "remove_from",
+      "target": "module_b",
+      "source": "container"
+    },
+    {
+      "t": 9.0,
+      "action": "open",
+      "target": "module_b"
+    },
+    {
+      "t": 10.0,
+      "action": "move_to_zone",
+      "target": "module_b.lid",
+      "zone": "stow_zone"
+    },
+    {
+      "t": 11.0,
+      "action": "close",
+      "target": "module_b"
+    },
+    {
+      "t": 12.0,
+      "action": "place_into",
+      "target": "module_b",
+      "dest": "container"
+    },
+    {
+      "t": 14.0,
+      "action": "remove_from",
+      "target": "module_a",
+      "source": "container"
+    },
+    {
+      "t": 16.0,
+      "action": "close",
+      "target": "container"
+    }
+  ],
+  "clip_duration_s": 20.0
+}

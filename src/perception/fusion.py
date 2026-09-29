@@ -44,8 +44,8 @@ Design decisions, stated because they decide test outcomes:
   does not move; hands occlude it constantly).
 * Known limit (measured on the tuning clips, 2026-09-24): from a
   top-down camera a module carried back and still hovering ABOVE the box
-  reads as inside, so a return can register up to ~3 s early (train2,
-  train3). A "hand must be off the module" rule was tried and reverted:
+  reads as inside, so a return can register up to ~3 s early (seen on 2
+  of the 3 tune clips). A "hand must be off the module" rule was tried and reverted:
   swept over 0.15-1.0 hand-overlap thresholds it recovered nothing (best
   10/12 = same as without it) -- hand boxes cover modules resting in the
   box too. Rack space does NOT fix this: a floor homography carries no
@@ -458,7 +458,7 @@ class SceneFusion:
         (LABELLING_RULINGS: an attached lid is boxed overlapping the body,
         a detached one separately). "Some lid off", not "no lid on": with
         the cap off, v5 also fires the lid class on the open jar mouth
-        (train1/train2, overlap 0.9-1.0 all through the detach). No body
+        (tune clips: overlap 0.9-1.0 all through the detach). No body
         or no lid in the frame = no evidence. Detach -> open; a detached lid still in view ->
         move_to_zone(role.lid, stow zone): the team rule is that the whole
         camera view is the stow area (defaults.yaml attended_while_open);

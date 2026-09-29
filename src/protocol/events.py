@@ -113,6 +113,11 @@ EngineEventType = Literal[
     # Operator voice/GUI command that changes no protocol state (e.g.
     # quiet mode) -- logged so the record shows why prompts went silent.
     "operator_command",
+    # Downlink: a JPEG sent to the ground for an event, attested by its
+    # sha256 IN the hash chain (the image itself is not in the log).
+    "snapshot",
+    # Derived activity (hand cues + object states), logged on change.
+    "activity",
 ]
 
 Severity = Literal["advisory", "caution", "warning"]
@@ -124,6 +129,8 @@ ViolationCode = Literal[
     "mutual_exclusion_breach",
     "lid_unstowed",
     "unattended_open_module",
+    "step_overdue",
+    "extra_step",
     "module_not_sealed",
     "module_not_returned",
     "premature_close",

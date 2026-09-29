@@ -112,6 +112,9 @@ def main() -> int:
     ap.add_argument("--geometry", choices=("config", "image", "auto"), default="config",
                     help="containment geometry (default: configs/runtime.yaml perception.geometry); "
                          "auto = rack space from ArUco markers where visible")
+    ap.add_argument("--log-dir", type=Path, default=None,
+                    help="write each clip's hash-chained session log here and print "
+                         "its violations by type")
     args = ap.parse_args()
 
     runtime = load_runtime_config()
@@ -163,9 +166,22 @@ def main() -> int:
         duration = frames[-1]["t"] if frames else 0.0
         stream = {"clip_id": clip.stem, "protocol_id": "bas_specimen_v1",
                   "object_profile": profile, "events": events, "clip_duration_s": duration}
-        result = run_replay(stream, fixture)
+        log_path = None
+        if args.log_dir is not None:
+            args.log_dir.mkdir(parents=True, exist_ok=True)
+            log_path = args.log_dir / f"{clip.stem}.jsonl"
+            log_path.unlink(missing_ok=True)  # the logger appends
+        result = run_replay(stream, fixture, log_path=log_path)
         ms = sorted(f["ms"] for f in frames)
         print(format_result(result))
+        if log_path is not None:
+            from collections import Counter
+
+            from src.logging.session_log import load_events
+
+            kinds = Counter(e["violation_type"] for e in load_events(log_path)
+                            if e["event_type"] == "violation")
+            print(f"    violations by type: {dict(sorted(kinds.items())) or 'none'}")
         if args.show_events:
             for ev in events:
                 if "state" in ev:

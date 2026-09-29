@@ -174,7 +174,7 @@ class Session:
                     status = "pending"
                 role = split_target(node.target)[0]
                 steps.append({"id": sid, "prompt": node.prompt or sid, "status": status,
-                              "target": node.target,
+                              "target": node.target, "optional": bool(getattr(node, "optional", False)),
                               "object": role_spoken_name(self.announcer.resolved, role)})
             return {
                 "protocol_id": eng.parsed.protocol_id,
@@ -193,6 +193,20 @@ class Session:
             if self._retired:
                 return
             self.engine.note_operator_command(self.clock.now(), note)
+            self._flush()
+
+    def note(self, event_type: str, message: str, ts: float | None = None, target: str | None = None,
+             extra: dict | None = None) -> None:
+        """Log a non-protocol line (downlink snapshot attestations, derived
+        activity) through the same locked path, so it joins the hash chain
+        in order. Never spoken, never changes protocol state."""
+        with self._lock:
+            if self._retired:
+                return
+            self.engine.out.append(EngineEvent(
+                ts_monotonic=self.clock.now() if ts is None else ts,
+                event_type=event_type,  # type: ignore[arg-type]
+                target=target, message=message, extra=extra or {}))
             self._flush()
 
     def retire(self, ts: float, note: str) -> None:

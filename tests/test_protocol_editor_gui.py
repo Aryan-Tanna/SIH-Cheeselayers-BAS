@@ -130,3 +130,37 @@ def test_save_refuses_while_the_form_has_unapplied_changes(root, tmp_path):
     assert "operator confirms" in ed.action_help.cget("text")
     ed.dirty = False
     ed.close()
+
+
+def test_time_limit_and_out_together_through_the_form(root, tmp_path):
+    from src.runtime.protocol_editor_gui import ProtocolEditor
+
+    app = _app(tmp_path)
+    ed = ProtocolEditor(root, app)
+
+    ed.tree.selection_set("remove_b"); ed._load_form()
+    ed.f["time_limit"].set("0"); ed.update_row()
+    assert ed._row("remove_b").time_limit is None  # refused, not applied
+    ed.f["time_limit"].set("45"); ed.update_row()
+    assert ed._row("remove_b").time_limit == 45.0
+    assert ed.tree.set("remove_b", "limit") == "45"
+
+    ed.tree.selection_set("handle_b"); ed._load_form()
+    assert ed.f["together"].get() == "forbidden"
+    ed.f["together"].set("permitted"); ed.update_row()
+    assert ed.unapplied_step() is None
+
+    # the step_time_limit rule is listed, with no rule-level timer
+    rule = ed._rules["step_time_limit"]
+    assert rule.enabled and rule.timer_key is None
+
+    ed.pid_var.set("timed_variant")
+    out = tmp_path / "timed_variant.json"
+    ed._write_and_apply(out)
+    assert out.exists() and app.protocol_path == out
+    saved = json.loads(out.read_text(encoding="utf-8"))
+    handle_b = next(n for n in saved["steps"] if n["id"] == "handle_b")
+    assert handle_b["concurrency"] == "permitted"
+    assert next(s for s in handle_b["steps"] if s["id"] == "remove_b")["timeout_s"] == 45.0
+    ed.dirty = False
+    ed.close()

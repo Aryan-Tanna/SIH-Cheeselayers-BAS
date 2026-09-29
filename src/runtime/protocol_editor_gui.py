@@ -20,6 +20,7 @@ import yaml
 from src.protocol.editing import (
     ACTION_FIELD,
     ACTIONS,
+    CONCURRENCY,
     SEVERITIES,
     StepRow,
     apply_rule_edit,
@@ -36,7 +37,7 @@ from src.protocol.editing import (
 from src.runtime.gui import ACCENT, BAD, BG, FG, FONT, FONT_BOLD, FONT_MONO, MUTED, OK, PANEL, PANEL_2, WARN
 
 REFERENCE_PROTOCOLS = {"bas_specimen_v1.json"}  # harness fixtures depend on these: the editor never overwrites them
-STEP_COLS = ("action", "target", "place", "after", "prompt", "condition")
+STEP_COLS = ("action", "target", "place", "after", "prompt", "condition", "limit")
 RULE_COLS = ("on", "severity", "timer", "alert", "origin")
 # What each primitive means, shown under the form. The camera perceives
 # open/close, take out/put in and lid stowing today (src/perception/fusion.py);
@@ -53,7 +54,14 @@ ACTION_HELP = {
 }
 HOW_TO = ("How to add a step:  1) click the step it comes after   2) Add step   3) choose Action and "
           "Object, write the Spoken prompt   4) Apply changes to step   5) Save as new experiment.  "
-          "Order comes only from 'After' -- a group does not order its steps.")
+          "Order comes only from 'After' -- a group does not order its steps.  Time limit (s): alert once "
+          "if the step is not done that long after it is due (blank = none).  A group's 'Out together': "
+          "may its module be out at the same time as another module.  Optional: an allowed extra action -- "
+          "never required or spoken; anything the procedure does not list is alerted as an extra step.")
+
+
+def _fmt_limit(v: float | None) -> str:
+    return "" if not v else f"{v:g}"
 
 
 def _parse_after(text: str) -> list[str]:
@@ -135,8 +143,9 @@ class ProtocolEditor:
         self.tree = ttk.Treeview(t, columns=STEP_COLS, show="tree headings", height=6, selectmode="browse")
         self.tree.heading("#0", text="step / group")
         self.tree.column("#0", width=190)
-        widths = {"action": 110, "target": 120, "place": 120, "after": 170, "prompt": 330, "condition": 120}
-        heads = {"place": "from / to / zone"}
+        widths = {"action": 110, "target": 120, "place": 120, "after": 170, "prompt": 330, "condition": 120,
+                  "limit": 70}
+        heads = {"place": "from / to / zone", "limit": "limit (s)"}
         for c in STEP_COLS:
             self.tree.heading(c, text=heads.get(c, c))
             self.tree.column(c, width=widths[c], stretch=c == "prompt")
@@ -145,23 +154,27 @@ class ProtocolEditor:
 
         form = tk.Frame(t, bg=PANEL)
         form.pack(side="top", fill="x", padx=6)
-        self.f = {k: tk.StringVar() for k in ("id", "group", "action", "target", "place", "after", "prompt", "condition")}
+        self.f = {k: tk.StringVar() for k in ("id", "group", "action", "target", "place", "after", "prompt",
+                                              "condition", "time_limit", "together", "optional")}
         roles = list((self.raw.get("roles") or {}).keys())
         zones = list((self.raw.get("zones") or {}).keys())
         self._place_values = {"source": roles, "dest": roles, "zone": zones}
         fields = [("id", "ID", None), ("group", "In group", []), ("action", "Action", list(ACTIONS)),
                   ("target", "Object", targets(self.raw, self.profile)), ("place", "From / to / zone", []),
                   ("after", "After (IDs)", None), ("condition", "Only if", ["", "target.has_lid"]),
-                  ("prompt", "Spoken prompt", None)]
+                  ("prompt", "Spoken prompt", None), ("time_limit", "Time limit (s)", None),
+                  ("together", "Group: out together", list(CONCURRENCY)),
+                  ("optional", "Optional (allowed extra)", ["no", "yes"])]
         self.combos: dict[str, ttk.Combobox] = {}
         for i, (key, label, values) in enumerate(fields):
             r, c = divmod(i, 4)
             self._label(form, label, font=FONT_BOLD).grid(row=r * 2, column=c, sticky="w", padx=4)
             if values is None:
-                w = self._entry(form, self.f[key], 58 if key == "prompt" else 24)
+                w = self._entry(form, self.f[key], 58 if key == "prompt" else (8 if key == "time_limit" else 24))
             else:
                 w = ttk.Combobox(form, textvariable=self.f[key], values=values, width=22,
-                                 state="readonly" if key in ("action", "group") else "normal")
+                                 state="readonly" if key in ("action", "group", "together", "optional")
+                                 else "normal")
                 self.combos[key] = w
             w.grid(row=r * 2 + 1, column=c, columnspan=3 if key == "prompt" else 1, sticky="we", padx=4, pady=(0, 6))
         self.f["action"].trace_add("write", lambda *_: self._action_changed())
@@ -243,10 +256,12 @@ class ProtocolEditor:
     def refresh_steps(self, select: str | None = None) -> None:
         self.tree.delete(*self.tree.get_children())
         for r in self.rows:
-            vals = ("", "", "", ", ".join(r.after), "", "") if r.kind == "group" else (
-                r.action, r.target, r.place, ", ".join(r.after), r.prompt, r.condition)
+            vals = ("", "", "", ", ".join(r.after), "", "", "") if r.kind == "group" else (
+                r.action, r.target, r.place, ", ".join(r.after), r.prompt, r.condition, _fmt_limit(r.time_limit))
             parent = r.group if (r.kind == "step" and r.group) else ""
-            text = f"[group] {r.id}" if r.kind == "group" else r.id
+            together = " (out together)" if r.concurrency == "permitted" else ""
+            text = f"[group] {r.id}{together}" if r.kind == "group" else (
+                f"{r.id} (optional)" if r.optional else r.id)
             self.tree.insert(parent, "end", iid=r.id, text=text, values=vals, open=True)
         self.combos["group"].configure(values=[""] + [r.id for r in self.rows if r.kind == "group"])
         if select and self.tree.exists(select):
@@ -272,6 +287,9 @@ class ProtocolEditor:
         self.f["after"].set(", ".join(r.after))
         self.f["prompt"].set(r.prompt)
         self.f["condition"].set(r.condition)
+        self.f["time_limit"].set(_fmt_limit(r.time_limit) if r.kind == "step" else "")
+        self.f["together"].set(r.concurrency if r.kind == "group" else "")
+        self.f["optional"].set(("yes" if r.optional else "no") if r.kind == "step" else "")
 
     def _action_changed(self) -> None:
         action = self.f["action"].get()
@@ -300,9 +318,21 @@ class ProtocolEditor:
         if new_id != r.id and self._row(new_id) is not None:
             self._say(f"ID '{new_id}' already exists.", BAD)
             return
+        limit: float | None = None
+        if r.kind == "step" and self.f["time_limit"].get().strip():
+            try:
+                limit = float(self.f["time_limit"].get())
+            except ValueError:
+                limit = -1.0
+            if not limit > 0:
+                self._say("Time limit: a number of seconds above 0, or blank for no limit.", BAD)
+                return
         if new_id != r.id:
             rename_step(self.rows, r.id, new_id)
         r.after = _parse_after(self.f["after"].get())
+        if r.kind == "group":
+            together = self.f["together"].get()
+            r.concurrency = together if together in CONCURRENCY else "forbidden"
         if r.kind == "step":
             group = self.f["group"].get()
             if group and group not in [g.id for g in self.rows if g.kind == "group"]:
@@ -319,6 +349,8 @@ class ProtocolEditor:
             if key:
                 setattr(r, key, self.f["place"].get())
             r.prompt, r.condition = self.f["prompt"].get().strip(), self.f["condition"].get().strip()
+            r.time_limit = limit
+            r.optional = self.f["optional"].get() == "yes"
         self.dirty = True
         self.refresh_steps(select=r.id)
         self._say(f"Updated '{r.id}'. Validate or Save to check it.", OK)
@@ -453,7 +485,10 @@ class ProtocolEditor:
         now = {"id": r.id, "group": r.group, "after": ", ".join(r.after)}
         if r.kind == "step":
             now.update(action=r.action, target=r.target, place=getattr(r, key) if key else "",
-                       prompt=r.prompt, condition=r.condition)
+                       prompt=r.prompt, condition=r.condition, time_limit=_fmt_limit(r.time_limit),
+                       optional="yes" if r.optional else "no")
+        else:
+            now.update(together=r.concurrency)
         differs = [k for k, v in now.items() if self.f[k].get().strip() != (v or "").strip()]
         return r.id if differs else None
 

@@ -18,7 +18,7 @@ A living scratchpad so the next session is not re-briefed from scratch.
 would waste the next session's time; open decisions awaiting the human;
 known-broken things not yet fixed.
 
-**Status:** (2026-09-26; handoff detail + rebuild steps in `RESUME.md`)
+**Status:** (2026-09-29; handoff detail + rebuild steps in `RESUME.md`)
 - SPLIT: Parth = Phase 2 code only (`.venv` + pytest; don't rebuild
   clips/frames/runs, label or train). Aryan = data/labels/training.
 - Labels = 1032 unique frames: batch-1..9, 13 + `labels/dedup/` 10_v2, 11,
@@ -43,26 +43,26 @@ known-broken things not yet fixed.
   "holding" 95% while jar out / 4% in box; reach hint 24-35% right (shown,
   never spoken). Box-based grasp/gate tried + reverted. Scorers:
   `score_perception.py`, `score_hand_cues.py` (4 tune fixtures UNVERIFIED).
-- ArUco rack BUILT: `src/perception/rack.py`, `configs/rack.yaml` (DICT_4X4_50,
-  IDs 1-4, 49 mm), GUI Rack setup [K], log geometry_status. Rack-space
-  containment = `perception.geometry: auto`, OFF: ties image mode on the 3
-  verified S05 fixtures (17/18 each). Stow zone = whole camera view.
-- Rule attended_while_open: module lid off + no hands in view > 5 s ->
-  one warning; GUI timer badge. GUI Protocol editor [E]: steps + rules,
-  saves only through the validator, never overwrites bas_specimen_v1.
-- GUI: dashboard -> session -> back; Restart = NEW session + log (voice: say
-  twice). Validator flags steps repeating a state already reached.
-- Not yet tested live: DroidCam with the markers taped on the rig.
+- ArUco rack: `configs/rack.yaml` (DICT_4X4_50, IDs 1-4, 49 mm), GUI [K]. Rack
+  containment (`geometry: auto`) OFF: ties image mode 17/18. Stow = whole view.
+- Rules: attended_while_open (5 s); extra_step (undone within settle_s 3 s =
+  logged only; verified S05 clips 0/0/2 alerts); step_time_limit (per step).
+  Editor [E]: steps, rules, time limit, optional (= allowed extra), out-together.
+- Earth link `src/link/`: log + JPEG per step/alert, store-and-forward, sha256 in
+  chain; ~486 KB/33 s vs 3.6 MB video. Start screen: role SPACE (sender) / EARTH
+  (receiver, Mission Control), Sessions tabs, IP camera dialog. Offline guard
+  (`src/runtime/offline.py`) blocks non-LAN traffic except the Earth IP.
+- Not tested live: DroidCam + taped markers; Earth link across two PCs.
 - Gotchas: no albumentations (breaks cv2.aruco); opencv-contrib reinstall
   after vision install; `numpy.trapz` shim; Windows eval workers=0; low
   system RAM kills training (IDE language server ~7 GB); never re-run
   `build_review_sheet.py`; Dataset22 gloves: leave as is. Install
-  `.[vision,audio,dev]`, then the opencv fix. 539 tests, harness 14/14.
+  `.[vision,audio,dev]`, then the opencv fix. 598 tests, harness 16/16.
 
 ## Your role
 
 You are the senior perception and systems engineer on a four-person team
-building a competition entry for Smart India Hackathon. You have shipped
+building a competition entry for Smart India Hackathon and also you should think what a sih level would think while reviewing this project which helps us win it . You have shipped
 real-time CV systems on constrained hardware before, and you have been burned
 by all the usual things: datasets with leakage, thresholds tuned to a single
 clip, demos that die on stage because nobody tested the degraded path.
