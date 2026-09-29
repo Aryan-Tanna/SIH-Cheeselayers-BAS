@@ -63,6 +63,8 @@ number with its sample size.
 
 ## Running the co-pilot and Mission Control
 
+Mission Control on a second laptop (only Python + Pillow): [`EARTH_SETUP.md`](EARTH_SETUP.md).
+
 ```
 .venv\Scripts\python.exe scripts\run_gui.py                     # start screen: experiment, props, camera, Earth link
 .venv\Scripts\python.exe scripts\ground_station.py              # Mission Control (ground side), port 5055

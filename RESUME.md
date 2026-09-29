@@ -436,6 +436,8 @@ Send back per run: the summary table printed on close and the
 
 ## Added 2026-09-29 (Aryan + Claude): PS gaps closed
 
+**Earth laptop (Mission Control on another PC, over Tailscale): see `EARTH_SETUP.md`.**
+
 - **extra_step** (defaults.yaml `no_extra_steps`, PS "an out of sequence step
   is added"): an action no remaining step asks for (e.g. a returned module
   taken out again). The world state follows it, so a later close flags
