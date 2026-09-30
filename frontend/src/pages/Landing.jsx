@@ -1,68 +1,60 @@
 import LandingHeader from '../components/LandingHeader.jsx';
-import AnnouncementBanner from '../components/AnnouncementBanner.jsx';
+import ShowcaseRibbon from '../components/ShowcaseRibbon.jsx';
 import Hero from '../components/Hero.jsx';
-import HeroCarousel from '../components/HeroCarousel.jsx';
-import HowItWorks from '../components/HowItWorks.jsx';
-import DemoVideo from '../components/DemoVideo.jsx';
+import PowerfulFeatures from '../components/PowerfulFeatures.jsx';
+import ChallengeSolve from '../components/ChallengeSolve.jsx';
+import OperationalScenarios from '../components/OperationalScenarios.jsx';
+import MissionMetrics from '../components/MissionMetrics.jsx';
 import Architecture from '../components/Architecture.jsx';
 import ExperimentProtocol from '../components/ExperimentProtocol.jsx';
-import ProblemSolution from '../components/ProblemSolution.jsx';
-import ResultsMetrics from '../components/ResultsMetrics.jsx';
 import EarthDownlink from '../components/EarthDownlink.jsx';
-import TrustStrip from '../components/TrustStrip.jsx';
-import DownloadCard from '../components/DownloadCard.jsx';
+import DemoVideo from '../components/DemoVideo.jsx';
+import DeployCTA from '../components/DeployCTA.jsx';
 import Footer from '../components/Footer.jsx';
 
 export default function Landing() {
   return (
-    <div className="min-h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-white font-sans antialiased text-slate-900 selection:bg-blue-100 selection:text-primary">
+      {/* 1 — Fixed Header Navigation (h-16) */}
       <LandingHeader />
-      <AnnouncementBanner />
 
-      <main className="flex-1">
-        {/* 1 — Hero + YouTube placeholder */}
+      {/* Main container with pt-16 to offset fixed header */}
+      <main className="flex-1 pt-16">
+        {/* 2 — Sticky Showcase Demo Bar (sticks at top-16 under navbar) */}
+        <ShowcaseRibbon />
+
+        {/* 3 — Sahayak-style Split Grid Hero Section */}
         <Hero />
 
-        {/* 2 — Project highlight carousel */}
-        <section className="bg-white border-t border-gray-100">
-          <h2 className="text-center text-xs font-bold text-gray-400 uppercase tracking-widest pt-10 mb-0">
-            Project Highlights
-          </h2>
-          <HeroCarousel />
-        </section>
+        {/* 4 — Powerful AI Features (Carousel with ambient glow) */}
+        <PowerfulFeatures />
 
-        {/* 3 — How it works (4 pipeline steps) */}
-        <HowItWorks />
+        {/* 5 — The Challenge We Solve (Problems vs Solutions split cards in dark theme) */}
+        <ChallengeSolve />
 
-        {/* 4 — Local demo video (drop your .mp4 into src/assets/) */}
-        <DemoVideo />
+        {/* 6 — Transforming Space Station Operations (6 Scenario Cards Grid) */}
+        <OperationalScenarios />
 
-        {/* 5 — System architecture */}
+        {/* 7 — Validated for BAS / Mission Metrics (Blue section) */}
+        <MissionMetrics />
+
+        {/* 8 — Three-Layer System Architecture */}
         <Architecture />
 
-        {/* 6 — 12-step experiment protocol + safety rules */}
+        {/* 9 — The 12-Step BAS Experiment Protocol & Safety Invariants */}
         <ExperimentProtocol />
 
-        {/* 7 — Problem / Solution pairs */}
-        <ProblemSolution />
-
-        {/* 8 — Measured results & violation codes */}
-        <ResultsMetrics />
-
-        {/* 9 — Earth downlink & bandwidth comparison */}
+        {/* 10 — Earth Downlink & Bandwidth Efficiency (486 KB vs 3.6 MB) */}
         <EarthDownlink />
 
-        {/* 10 — Trust badges */}
-        <TrustStrip />
+        {/* 11 — Local Demo Video Upload Player (drop demo-video.mp4 into assets) */}
+        <DemoVideo />
 
-        {/* 11 — Deploy CTA */}
-        <section className="bg-white">
-          <div className="max-w-7xl mx-auto px-4 py-16">
-            <DownloadCard />
-          </div>
-        </section>
+        {/* 12 — Pre-Footer Deploy CTA Banner */}
+        <DeployCTA />
       </main>
 
+      {/* 13 — Footer */}
       <Footer />
     </div>
   );

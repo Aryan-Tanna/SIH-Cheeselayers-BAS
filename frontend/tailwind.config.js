@@ -7,7 +7,7 @@ export default {
         white: '#ffffff',
         space: '#0a0e1a',        // deep space background
         navy: '#0d1530',         // card / surface
-        primary: '#04409f',      // ISRO blue — primary actions
+        primary: '#004079',      // ISRO blue — primary actions
         accent: '#06b6d4',       // cyan — highlights / glows
         success: '#22c55e',      // step-done green
         warn: '#f59e0b',         // alert amber
