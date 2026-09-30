@@ -1,6 +1,6 @@
-# BAS Co-Pilot
+# VYOM
 
-**An offline AI co-pilot for experiments on board the Bharatiya Antariksh
+**VYOM is an offline AI co-pilot for experiments on board the Bharatiya Antariksh
 Station.** A fixed camera watches the experiment. The co-pilot tells the
 astronaut the next step, gives a voice alert when a step is skipped or done out
 of order, and keeps a tamper-evident log that can be sent to Earth later
