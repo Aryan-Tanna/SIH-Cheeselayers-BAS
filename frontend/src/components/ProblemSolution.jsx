@@ -5,7 +5,7 @@ const items = [
       'Communication delay and restricted bandwidth make raw video streaming to Earth impossible.',
     solution: 'Fully On-Board Intelligence',
     solutionBenefit:
-      'Abhay runs entirely on the station — detector, engine, TTS — with zero dependency on Earth.',
+      'VYOM antariksh runs entirely on the station — detector, engine, TTS — with zero dependency on Earth.',
   },
   {
     problem: 'Steps Skipped or Done Out of Order',

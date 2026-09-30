@@ -12,7 +12,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Mission Control</h1>
           <p className="text-gray-500 text-sm">
-            Abhay — AI Human Activity Recognition for On-board BAS Experiments
+            VYOM antariksh — AI Human Activity Recognition for On-board BAS Experiments
           </p>
         </div>
         <StatsStrip />

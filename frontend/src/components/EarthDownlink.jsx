@@ -37,7 +37,7 @@ export default function EarthDownlink() {
             Transmitting to Earth &mdash; Without Video
           </h2>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Satellite downlink budgets cannot support continuous raw video streaming. Abhay transmits semantic state deltas and attested milestone frames — slashing bandwidth by 86.5%.
+            Satellite downlink budgets cannot support continuous raw video streaming. VYOM antariksh transmits semantic state deltas and attested milestone frames — slashing bandwidth by 86.5%.
           </p>
         </div>
 
@@ -87,7 +87,7 @@ export default function EarthDownlink() {
               </span>
             </div>
 
-            {/* Abhay Method */}
+            {/* VYOM antariksh Method */}
             <div className="bg-white rounded-2xl p-6 border-2 border-emerald-500 shadow-md">
               <div className="text-4xl sm:text-5xl font-black text-emerald-600 mb-2">486 KB</div>
               <div className="text-sm font-bold text-slate-800">Hash-Chained Log + 12 JPEGs</div>

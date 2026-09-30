@@ -59,7 +59,7 @@ export default function Auth() {
             </h1>
             <p className="text-sm text-gray-500 mb-6">
               {isSignup
-                ? 'Sign up to access Mission Control for Abhay.'
+                ? 'Sign up to access Mission Control for VYOM antariksh.'
                 : 'Log in to access your Mission Control dashboard.'}
             </p>
 

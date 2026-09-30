@@ -11,7 +11,9 @@ import {
   ExternalLink,
   ShieldAlert,
   Zap,
+  Download,
 } from 'lucide-react';
+import { ZIP_DOWNLOAD_URL } from '../lib/downloads.js';
 
 const YOUTUBE_VIDEO_ID = 'N_Sa6XlcNHM'; // Can be customized or user can switch to local
 
@@ -87,6 +89,14 @@ export default function Hero() {
             </Link>
 
             <a
+              href={ZIP_DOWNLOAD_URL}
+              className="flex items-center justify-center gap-3 rounded-xl border-2 border-primary px-8 py-4 font-semibold text-primary transition hover:bg-blue-50"
+            >
+              <Download className="h-5 w-5" />
+              <span>Download ZIP</span>
+            </a>
+
+            <a
               href="#architecture"
               className="flex items-center justify-center gap-3 rounded-xl border-2 border-slate-300 px-8 py-4 font-semibold text-slate-700 transition hover:bg-slate-100 hover:border-slate-400"
             >
@@ -117,7 +127,7 @@ export default function Hero() {
                     Showcase Demo
                   </h2>
                   <p className="mt-1 text-sm text-slate-500">
-                    See Abhay in action on BAS Glovebox
+                    See VYOM antariksh in action on BAS Glovebox
                   </p>
                 </div>
                 <a
@@ -133,7 +143,7 @@ export default function Hero() {
                 <iframe
                   className="absolute inset-0 h-full w-full"
                   src={`https://www.youtube.com/embed/${YOUTUBE_VIDEO_ID}?rel=0&modestbranding=1`}
-                  title="Abhay AI showcase demo"
+                  title="VYOM antariksh AI showcase demo"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                 />
@@ -167,7 +177,7 @@ export default function Hero() {
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50/90 px-4 py-2.5 text-sm font-semibold text-primary shadow-sm transition hover:bg-blue-100 hover:border-blue-300"
               >
                 <Sparkles className="h-4 w-4 shrink-0 text-primary" />
-                See Abhay Pipeline Architecture
+                See VYOM antariksh Pipeline Architecture
               </a>
 
               <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">

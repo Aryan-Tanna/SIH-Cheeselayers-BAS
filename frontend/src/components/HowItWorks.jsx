@@ -27,7 +27,7 @@ export default function HowItWorks() {
   return (
     <section id="how-it-works" className="bg-white">
       <div className="max-w-7xl mx-auto px-4 py-20">
-        <h2 className="text-3xl font-bold text-center text-gray-900 mb-2">How Abhay Works</h2>
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-2">How VYOM antariksh Works</h2>
         <p className="text-center text-gray-500 mb-12">
           Four stages. Entirely on-board. No cloud, no GPU, no internet.
         </p>

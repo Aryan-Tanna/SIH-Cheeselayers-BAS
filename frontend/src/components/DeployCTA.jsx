@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Play, FileText, Shield, CheckCircle2, Cpu, Globe } from 'lucide-react';
+import { Play, FileText, Download, Shield, CheckCircle2, Cpu, Globe } from 'lucide-react';
+import { ZIP_DOWNLOAD_URL } from '../lib/downloads.js';
 
 export default function DeployCTA() {
   return (
@@ -11,7 +12,7 @@ export default function DeployCTA() {
         </h2>
         
         <p className="text-lg sm:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-          Equip astronauts on the Bharatiya Antariksh Station with Abhay — the autonomous AI co-pilot engineered for zero-error microgravity payload operations.
+          Equip astronauts on the Bharatiya Antariksh Station with VYOM antariksh — the autonomous AI co-pilot engineered for zero-error microgravity payload operations.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4 mb-16">
@@ -24,8 +25,16 @@ export default function DeployCTA() {
           </Link>
 
           <a
-            href="#architecture"
+            href={ZIP_DOWNLOAD_URL}
             className="inline-flex items-center justify-center gap-3 rounded-xl border-2 border-primary bg-white px-8 py-4 font-bold text-primary transition hover:bg-blue-50 active:scale-95"
+          >
+            <Download className="h-5 w-5" />
+            <span>Download ZIP</span>
+          </a>
+
+          <a
+            href="#architecture"
+            className="inline-flex items-center justify-center gap-3 rounded-xl border-2 border-slate-200 bg-white px-8 py-4 font-bold text-slate-600 transition hover:bg-slate-50 active:scale-95"
           >
             <FileText className="h-5 w-5" />
             <span>Explore Technical Architecture</span>

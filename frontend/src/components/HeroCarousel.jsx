@@ -5,7 +5,7 @@ const slides = [
   {
     headline: 'Zero Network. Full Intelligence.',
     subtext:
-      'Abhay runs the entire detection-to-alert pipeline on a laptop CPU — air-gapped, offline, and ready for the Bharatiya Antariksh Station.',
+      'VYOM antariksh runs the entire detection-to-alert pipeline on a laptop CPU — air-gapped, offline, and ready for the Bharatiya Antariksh Station.',
     emoji: '🛸',
   },
   {

@@ -115,7 +115,7 @@ export default function OperationalScenarios() {
             Transforming Space Station Operations
           </h2>
           <p className="text-xl text-slate-300 max-w-3xl mx-auto">
-            See how Abhay provides mission assurance across critical microgravity experimental scenarios
+            See how VYOM antariksh provides mission assurance across critical microgravity experimental scenarios
           </p>
         </div>
 

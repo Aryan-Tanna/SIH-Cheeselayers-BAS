@@ -119,7 +119,7 @@ export default function ChallengeSolve() {
                 </div>
                 <div>
                   <h3 className="text-2xl font-bold text-emerald-400">Our Solutions</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">Abhay on-board intelligence</p>
+                  <p className="text-xs text-slate-400 mt-0.5">VYOM antariksh on-board intelligence</p>
                 </div>
               </div>
 

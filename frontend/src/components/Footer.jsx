@@ -41,7 +41,7 @@ export default function Footer() {
 
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
           <p>
-            &copy; {new Date().getFullYear()} Abhay &mdash; AI Human Activity Recognition for On-board BAS Experiments. Built by Team <strong>Cheeselayers</strong> for Smart India Hackathon (SIH 2026, PS 26174) &middot; ISRO / Department of Space.
+            &copy; {new Date().getFullYear()} VYOM antariksh &mdash; AI Human Activity Recognition for On-board BAS Experiments. Built by Team <strong>Cheeselayers</strong> for Smart India Hackathon (SIH 2026, PS 26174) &middot; ISRO / Department of Space.
           </p>
           <p className="shrink-0 font-medium">
             All rights reserved. Verified on-board CPU offline.

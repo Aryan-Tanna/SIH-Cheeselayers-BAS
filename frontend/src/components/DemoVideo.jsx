@@ -44,7 +44,7 @@ export default function DemoVideo() {
           <span className="inline-block bg-primary text-white text-xs font-bold px-4 py-1.5 rounded-full uppercase tracking-widest mb-4">
             Live Demo
           </span>
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">See Abhay in Action</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">See VYOM antariksh in Action</h2>
           <p className="text-gray-500 max-w-xl mx-auto">
             Watch the co-pilot guide an astronaut through the BAS Glovebox experiment —
             detecting every step, alerting on violations, all on a laptop CPU with no internet.
@@ -93,7 +93,7 @@ export default function DemoVideo() {
 
             {/* Bottom bar */}
             <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-5 py-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
-              <span className="text-white text-sm font-semibold">Abhay — BAS Glovebox Demo</span>
+              <span className="text-white text-sm font-semibold">VYOM antariksh — BAS Glovebox Demo</span>
               <div className="flex items-center gap-3">
                 <button onClick={toggleMute} aria-label="Toggle mute" className="text-white/80 hover:text-white">
                   {muted ? <VolumeX size={18} /> : <Volume2 size={18} />}
