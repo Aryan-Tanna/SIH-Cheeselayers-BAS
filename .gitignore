@@ -21,3 +21,5 @@ test_clips/
 clips_Aruco
 dist/
 build/
+screen record/
+node_modules/
