@@ -5,8 +5,11 @@ import AccessibilityControls from './AccessibilityControls.jsx';
 const navLinks = [
   { to: '/', label: 'Home' },
   { href: '#how-it-works', label: 'How It Works' },
-  { href: '#demo-video', label: 'Demo' },
-  { href: '#capabilities', label: 'Capabilities' },
+  { href: '#demo-video-local', label: 'Demo Video' },
+  { href: '#architecture', label: 'Architecture' },
+  { href: '#protocol', label: 'Protocol' },
+  { href: '#results', label: 'Results' },
+  { href: '#downlink', label: 'Downlink' },
 ];
 
 export default function LandingHeader() {
