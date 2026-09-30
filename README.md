@@ -1,4 +1,4 @@
-# VYOM
+# VYOM antariksh
 
 **VYOM is an offline AI co-pilot for experiments on board the Bharatiya Antariksh
 Station.** A fixed camera watches the experiment. The co-pilot tells the
