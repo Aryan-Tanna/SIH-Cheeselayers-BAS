@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { ZIP_DOWNLOAD_URL } from '../lib/downloads.js';
 
-const YOUTUBE_VIDEO_ID = 'N_Sa6XlcNHM'; // Can be customized or user can switch to local
+const YOUTUBE_VIDEO_ID = 'SLxP_mlLD9o'; // our demo video: https://www.youtube.com/watch?v=SLxP_mlLD9o
 
 export default function Hero() {
   return (
